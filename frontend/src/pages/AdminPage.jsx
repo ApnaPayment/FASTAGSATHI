@@ -24,6 +24,17 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [loginErr, setLoginErr] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true); // auto-verify on mount
+
+  // On mount: if a secret is stored, silently verify it so refresh keeps session
+  useEffect(() => {
+    const stored = getAdminSecret();
+    if (!stored) { setChecking(false); return; }
+    adminApi.login(stored)
+      .then(() => setAuthed(true))
+      .catch(() => { clearAdminSecret(); setSecret(""); })
+      .finally(() => setChecking(false));
+  }, []);
 
   const login = async () => {
     setLoading(true);
@@ -33,7 +44,7 @@ export default function AdminPage() {
       setAdminSecret(secret);
       setAuthed(true);
     } catch {
-      setLoginErr("Invalid admin secret. Check your .env ADMIN_SECRET.");
+      setLoginErr("Invalid admin secret.");
     } finally {
       setLoading(false);
     }
@@ -41,6 +52,11 @@ export default function AdminPage() {
 
   const logout = () => { clearAdminSecret(); setAuthed(false); setSecret(""); };
 
+  if (checking) return (
+    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+      <Loader2 className="w-8 h-8 text-[#FF6B00] animate-spin" />
+    </div>
+  );
   if (!authed) return <LoginScreen secret={secret} setSecret={setSecret} login={login} loading={loading} error={loginErr} />;
   return <Dashboard onLogout={logout} />;
 }
@@ -49,30 +65,73 @@ export default function AdminPage() {
 
 function LoginScreen({ secret, setSecret, login, loading, error }) {
   return (
-    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center px-6">
-      <div className="bg-white border-2 border-[#0A0A0A] rounded-3xl p-10 w-full max-w-sm shadow-[8px_8px_0_#FF6B00]">
-        <div className="w-14 h-14 rounded-2xl bg-[#FF6B00]/10 flex items-center justify-center mb-6">
-          <Shield className="w-7 h-7 text-[#FF6B00]" />
+    <div className="min-h-screen flex">
+      {/* Left panel */}
+      <div className="hidden lg:flex lg:w-1/2 bg-[#0A0A0A] flex-col justify-between p-12">
+        <div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#FF6B00] flex items-center justify-center">
+              <span className="font-black text-white text-lg">A</span>
+            </div>
+            <span className="font-display font-black text-white text-xl">ApnaFastag</span>
+          </div>
         </div>
-        <h1 className="font-display font-black text-2xl text-[#0A0A0A]">Admin Panel</h1>
-        <p className="text-[#4B5563] text-sm mt-1 mb-7">ApnaFastag internal dashboard</p>
-        <label className="block text-sm font-semibold text-[#0A0A0A] mb-1">Admin secret</label>
-        <input
-          type="password"
-          value={secret}
-          onChange={(e) => setSecret(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && login()}
-          placeholder="••••••••••••"
-          className="w-full bg-[#F8F9FA] border-2 border-[#E5E7EB] focus:border-[#FF6B00] rounded-xl px-4 py-3 outline-none transition-colors"
-        />
-        {error && <p className="text-[#DC2626] text-sm mt-2">{error}</p>}
-        <button
-          onClick={login}
-          disabled={loading || !secret}
-          className="mt-5 w-full bg-[#FF6B00] text-white font-bold py-3 rounded-full hover:bg-[#E66000] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sign in →"}
-        </button>
+        <div>
+          <div className="w-14 h-14 rounded-2xl bg-[#FF6B00]/20 flex items-center justify-center mb-6">
+            <Shield className="w-7 h-7 text-[#FF6B00]" />
+          </div>
+          <h2 className="font-display font-black text-4xl text-white leading-tight mb-3">
+            Internal<br />Dashboard
+          </h2>
+          <p className="text-white/50 text-sm">Manage Sathis, jobs, applications,<br />settlements and promo codes.</p>
+        </div>
+        <p className="text-white/20 text-xs">© 2026 ApnaFastag Technologies Pvt. Ltd.</p>
+      </div>
+
+      {/* Right panel */}
+      <div className="flex-1 flex items-center justify-center bg-[#F8F9FA] px-6 py-12">
+        <div className="w-full max-w-md">
+          <div className="lg:hidden flex items-center gap-2 mb-10">
+            <div className="w-8 h-8 rounded-lg bg-[#0A0A0A] flex items-center justify-center">
+              <span className="font-black text-white text-sm">A</span>
+            </div>
+            <span className="font-display font-black text-[#0A0A0A]">ApnaFastag Admin</span>
+          </div>
+
+          <h1 className="font-display font-black text-3xl text-[#0A0A0A] mb-1">Welcome back</h1>
+          <p className="text-[#6B7280] text-sm mb-8">Enter your admin secret to access the dashboard.</p>
+
+          <div className="bg-white border-2 border-[#E5E7EB] rounded-2xl p-8 shadow-sm">
+            <label className="block text-xs font-bold uppercase tracking-widest text-[#4B5563] mb-2">
+              Admin Secret
+            </label>
+            <input
+              type="password"
+              value={secret}
+              onChange={(e) => setSecret(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && login()}
+              placeholder="Enter your secret key"
+              autoFocus
+              className="w-full bg-[#F8F9FA] border-2 border-[#E5E7EB] focus:border-[#FF6B00] rounded-xl px-4 py-3 outline-none transition-colors font-mono text-sm"
+            />
+            {error && (
+              <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600 flex items-center gap-2">
+                <XCircle className="w-4 h-4 flex-shrink-0" /> {error}
+              </div>
+            )}
+            <button
+              onClick={login}
+              disabled={loading || !secret}
+              className="mt-5 w-full bg-[#0A0A0A] text-white font-bold py-3.5 rounded-xl hover:bg-[#FF6B00] transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Sign in <span className="opacity-60">→</span></>}
+            </button>
+          </div>
+
+          <p className="text-center text-xs text-[#9CA3AF] mt-6">
+            Restricted access · ApnaFastag internal only
+          </p>
+        </div>
       </div>
     </div>
   );
