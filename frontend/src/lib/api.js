@@ -102,6 +102,13 @@ export const adminApi = {
   togglePromoCode: (code) => api.patch(`/api/admin/promo-codes/${code}/toggle`, {}, { headers: adminHeaders() }),
   deletePromoCode: (code) => api.delete(`/api/admin/promo-codes/${code}`, { headers: adminHeaders() }),
   settlements: () => api.get("/api/admin/settlements", { headers: adminHeaders() }),
+  // Plaza management
+  plazas: (params) => api.get("/api/admin/plazas", { params, headers: adminHeaders() }),
+  plazaStats: () => api.get("/api/admin/plazas/stats", { headers: adminHeaders() }),
+  createPlaza: (data) => api.post("/api/admin/plazas", data, { headers: adminHeaders() }),
+  updatePlaza: (slug, data) => api.patch(`/api/admin/plazas/${slug}`, data, { headers: adminHeaders() }),
+  deletePlaza: (slug) => api.delete(`/api/admin/plazas/${slug}`, { headers: adminHeaders() }),
+  importPlazas: (list) => api.post("/api/admin/plazas/import", list, { headers: adminHeaders() }),
 };
 
 export default api;

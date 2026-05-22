@@ -3,10 +3,10 @@ import { adminApi, setAdminSecret, getAdminSecret, clearAdminSecret } from "@/li
 import {
   Users, Briefcase, MapPin, ClipboardList, CheckCircle2, XCircle,
   Clock, Loader2, LogOut, RefreshCw, ChevronDown, BadgeCheck, Shield,
-  Tag, Percent, Trash2, ToggleLeft, ToggleRight, Plus,
+  Tag, Percent, Trash2, ToggleLeft, ToggleRight, Plus, Search,
 } from "lucide-react";
 
-const TABS = ["Dashboard", "Applications", "Jobs", "Sathis", "Promo Codes", "Settlements"];
+const TABS = ["Dashboard", "Applications", "Jobs", "Sathis", "Promo Codes", "Settlements", "Plazas"];
 
 const STATUS_COLORS = {
   pending:    "bg-yellow-100 text-yellow-800",
@@ -177,6 +177,7 @@ function Dashboard({ onLogout }) {
         {tab === "Sathis"       && <SathisTab />}
         {tab === "Promo Codes"  && <PromoCodesTab />}
         {tab === "Settlements"  && <SettlementsTab />}
+        {tab === "Plazas"       && <PlazasTab />}
       </main>
     </div>
   );
@@ -1206,4 +1207,304 @@ function Spinner() {
 
 function Empty({ label }) {
   return <div className="text-center py-20 text-[#4B5563] font-medium">{label}</div>;
+}
+
+/* ─── Plazas Tab ──────────────────────────────────────────────────────────── */
+
+const PLAZA_FIELDS = [
+  { key: "name",              label: "Name",            type: "text",   required: true },
+  { key: "highway",           label: "Highway",         type: "text",   required: true, placeholder: "NH-48" },
+  { key: "state",             label: "State slug",      type: "text",   required: true, placeholder: "maharashtra" },
+  { key: "city",              label: "City",            type: "text",   required: true },
+  { key: "lat",               label: "Latitude",        type: "number", required: true },
+  { key: "lng",               label: "Longitude",       type: "number", required: true },
+  { key: "carRate",           label: "Car Rate (₹)",    type: "number" },
+  { key: "truckRate",         label: "Truck Rate (₹)",  type: "number" },
+  { key: "avgWait",           label: "Avg Wait",        type: "text",   placeholder: "4 min" },
+  { key: "topIssue",          label: "Top Issue",       type: "text" },
+  { key: "monthlyComplaints", label: "Monthly Complaints", type: "number" },
+];
+
+function PlazasTab() {
+  const [stats, setStats]       = useState(null);
+  const [plazas, setPlazas]     = useState([]);
+  const [total, setTotal]       = useState(0);
+  const [loading, setLoading]   = useState(true);
+  const [q, setQ]               = useState("");
+  const [stateFilter, setStateFilter] = useState("");
+  const [page, setPage]         = useState(0);
+  const PAGE = 50;
+
+  // Modal state
+  const [modal, setModal]       = useState(null); // null | "add" | "edit" | "import"
+  const [editing, setEditing]   = useState(null);
+  const [form, setForm]         = useState({});
+  const [saving, setSaving]     = useState(false);
+  const [saveErr, setSaveErr]   = useState("");
+
+  // Import state
+  const [importText, setImportText]     = useState("");
+  const [importResult, setImportResult] = useState(null);
+  const [importing, setImporting]       = useState(false);
+
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [plazaRes, statsRes] = await Promise.all([
+        adminApi.plazas({ q: q || undefined, state: stateFilter || undefined, skip: page * PAGE, limit: PAGE }),
+        stats ? Promise.resolve({ data: stats }) : adminApi.plazaStats(),
+      ]);
+      setPlazas(plazaRes.data.plazas);
+      setTotal(plazaRes.data.total);
+      if (!stats) setStats(statsRes.data);
+    } catch { }
+    setLoading(false);
+  }, [q, stateFilter, page, stats]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Debounce search
+  useEffect(() => {
+    const t = setTimeout(() => { setPage(0); load(); }, 400);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line
+  }, [q, stateFilter]);
+
+  const openAdd = () => { setForm({}); setSaveErr(""); setModal("add"); };
+  const openEdit = (p) => { setEditing(p); setForm({ ...p }); setSaveErr(""); setModal("edit"); };
+  const closeModal = () => { setModal(null); setEditing(null); setForm({}); setImportResult(null); setImportText(""); };
+
+  const save = async () => {
+    setSaving(true); setSaveErr("");
+    try {
+      if (modal === "add") {
+        await adminApi.createPlaza(form);
+      } else {
+        await adminApi.updatePlaza(editing.slug, form);
+      }
+      closeModal(); load();
+    } catch (e) {
+      setSaveErr(e?.response?.data?.detail || "Save failed");
+    }
+    setSaving(false);
+  };
+
+  const deletePlaza = async (slug) => {
+    try { await adminApi.deletePlaza(slug); setDeleteConfirm(null); load(); } catch { }
+  };
+
+  const runImport = async () => {
+    setImporting(true); setImportResult(null);
+    try {
+      let list;
+      try { list = JSON.parse(importText); } catch { setImportResult({ error: "Invalid JSON" }); setImporting(false); return; }
+      if (!Array.isArray(list)) { setImportResult({ error: "JSON must be an array of plaza objects" }); setImporting(false); return; }
+      const res = await adminApi.importPlazas(list);
+      setImportResult(res.data);
+      setStats(null); // refresh stats
+      load();
+    } catch (e) { setImportResult({ error: e?.response?.data?.detail || "Import failed" }); }
+    setImporting(false);
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setImportText(ev.target.result);
+    reader.readAsText(file);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Stats bar */}
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white border-2 border-[#0A0A0A] rounded-2xl p-4">
+            <p className="text-xs font-bold uppercase text-[#9CA3AF]">Total Plazas</p>
+            <p className="text-3xl font-black mt-1">{stats.total.toLocaleString("en-IN")}</p>
+          </div>
+          <div className="bg-white border-2 border-[#0A0A0A] rounded-2xl p-4">
+            <p className="text-xs font-bold uppercase text-[#9CA3AF]">States Covered</p>
+            <p className="text-3xl font-black mt-1">{stats.by_state?.length || 0}</p>
+          </div>
+          <div className="bg-white border-2 border-[#0A0A0A] rounded-2xl p-4 md:col-span-2">
+            <p className="text-xs font-bold uppercase text-[#9CA3AF] mb-2">Top Highways</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(stats.by_highway || []).slice(0, 6).map((h) => (
+                <span key={h._id} className="text-xs font-bold bg-[#F3F4F6] px-2 py-1 rounded-full">
+                  {h._id} <span className="text-[#FF6B00]">{h.count}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toolbar */}
+      <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
+        <div className="flex gap-2 flex-1 flex-wrap">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />
+            <input
+              value={q} onChange={(e) => setQ(e.target.value)}
+              placeholder="Search name, city, highway…"
+              className="w-full pl-9 pr-4 py-2 border-2 border-[#E5E7EB] focus:border-[#FF6B00] rounded-xl outline-none text-sm"
+            />
+          </div>
+          <input
+            value={stateFilter} onChange={(e) => setStateFilter(e.target.value)}
+            placeholder="Filter by state slug…"
+            className="px-4 py-2 border-2 border-[#E5E7EB] focus:border-[#FF6B00] rounded-xl outline-none text-sm w-48"
+          />
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => setModal("import")} className="flex items-center gap-1.5 text-sm font-bold border-2 border-[#0A0A0A] px-4 py-2 rounded-xl hover:bg-[#F3F4F6] transition-colors">
+            <Plus className="w-4 h-4" /> Import JSON
+          </button>
+          <button onClick={openAdd} className="flex items-center gap-1.5 text-sm font-bold bg-[#FF6B00] text-white px-4 py-2 rounded-xl hover:bg-[#E66000] transition-colors shadow-[0_3px_0_#0A0A0A]">
+            <Plus className="w-4 h-4" /> Add Plaza
+          </button>
+          <RefreshBtn onClick={load} />
+        </div>
+      </div>
+
+      {/* Count */}
+      <p className="text-sm text-[#6B7280]">Showing {plazas.length} of {total} plazas{q ? ` matching "${q}"` : ""}</p>
+
+      {/* Table */}
+      {loading ? <Spinner /> : plazas.length === 0 ? <Empty label="No plazas found" /> : (
+        <div className="overflow-x-auto rounded-2xl border-2 border-[#0A0A0A]">
+          <table className="w-full text-sm">
+            <thead className="bg-[#0A0A0A] text-white">
+              <tr>
+                {["Name", "Highway", "State", "City", "Lat", "Lng", "Car ₹", "Truck ₹", "Avg Wait", "Top Issue", "Actions"].map((h) => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#F3F4F6]">
+              {plazas.map((p) => (
+                <tr key={p.slug} className="hover:bg-[#FFFBEB] transition-colors">
+                  <td className="px-4 py-3 font-semibold whitespace-nowrap max-w-[180px] truncate" title={p.name}>{p.name}</td>
+                  <td className="px-4 py-3 text-[#FF6B00] font-bold">{p.highway}</td>
+                  <td className="px-4 py-3 text-[#4B5563] capitalize">{p.state}</td>
+                  <td className="px-4 py-3">{p.city}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{p.lat?.toFixed(4)}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{p.lng?.toFixed(4)}</td>
+                  <td className="px-4 py-3">{p.carRate ? `₹${p.carRate}` : "—"}</td>
+                  <td className="px-4 py-3">{p.truckRate ? `₹${p.truckRate}` : "—"}</td>
+                  <td className="px-4 py-3 text-[#4B5563]">{p.avgWait || "—"}</td>
+                  <td className="px-4 py-3 text-[#4B5563] max-w-[160px] truncate" title={p.topIssue}>{p.topIssue || "—"}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1">
+                      <button onClick={() => openEdit(p)} className="text-xs font-bold border border-[#E5E7EB] px-2 py-1 rounded-lg hover:border-[#FF6B00] hover:text-[#FF6B00] transition-colors">Edit</button>
+                      <button onClick={() => setDeleteConfirm(p.slug)} className="text-xs font-bold border border-[#E5E7EB] px-2 py-1 rounded-lg hover:border-red-500 hover:text-red-500 transition-colors">Del</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {total > PAGE && (
+        <div className="flex items-center justify-between">
+          <button disabled={page === 0} onClick={() => setPage(p => p - 1)} className="text-sm font-bold border-2 border-[#E5E7EB] px-4 py-2 rounded-xl disabled:opacity-40 hover:border-[#0A0A0A] transition-colors">← Prev</button>
+          <span className="text-sm text-[#6B7280]">Page {page + 1} of {Math.ceil(total / PAGE)}</span>
+          <button disabled={(page + 1) * PAGE >= total} onClick={() => setPage(p => p + 1)} className="text-sm font-bold border-2 border-[#E5E7EB] px-4 py-2 rounded-xl disabled:opacity-40 hover:border-[#0A0A0A] transition-colors">Next →</button>
+        </div>
+      )}
+
+      {/* Add / Edit Modal */}
+      {(modal === "add" || modal === "edit") && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={closeModal}>
+          <div className="bg-white rounded-3xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="font-display font-black text-2xl">{modal === "add" ? "Add New Plaza" : `Edit: ${editing?.name}`}</h2>
+              <button onClick={closeModal} className="text-[#4B5563] hover:text-[#0A0A0A]"><XCircle className="w-6 h-6" /></button>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {PLAZA_FIELDS.map((f) => (
+                <label key={f.key} className={`block text-xs font-bold uppercase tracking-widest text-[#4B5563] ${f.key === "name" || f.key === "topIssue" ? "col-span-2" : ""}`}>
+                  {f.label}{f.required && <span className="text-red-500 ml-0.5">*</span>}
+                  <input
+                    type={f.type}
+                    value={form[f.key] ?? ""}
+                    onChange={(e) => setForm((p) => ({ ...p, [f.key]: f.type === "number" ? +e.target.value : e.target.value }))}
+                    placeholder={f.placeholder || ""}
+                    className="mt-1 w-full bg-[#F8F9FA] border-2 border-[#E5E7EB] focus:border-[#FF6B00] rounded-xl px-3 py-2 outline-none font-normal text-sm"
+                  />
+                </label>
+              ))}
+            </div>
+            {saveErr && <p className="text-red-500 text-sm mt-3">{saveErr}</p>}
+            <div className="flex gap-3 mt-6">
+              <button onClick={save} disabled={saving} className="flex-1 bg-[#FF6B00] text-white font-bold py-3 rounded-xl hover:bg-[#E66000] disabled:opacity-50 flex items-center justify-center gap-2">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : modal === "add" ? "Create Plaza" : "Save Changes"}
+              </button>
+              <button onClick={closeModal} className="px-6 py-3 border-2 border-[#E5E7EB] rounded-xl font-bold hover:border-[#0A0A0A] transition-colors">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Modal */}
+      {modal === "import" && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={closeModal}>
+          <div className="bg-white rounded-3xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="font-display font-black text-2xl">Import Plazas (JSON)</h2>
+              <button onClick={closeModal}><XCircle className="w-6 h-6 text-[#4B5563]" /></button>
+            </div>
+            <p className="text-sm text-[#6B7280] mb-4">Paste a JSON array or upload a file. Each object needs at minimum: <code className="bg-[#F3F4F6] px-1 rounded">name, state, city, lat, lng</code></p>
+
+            <div className="mb-3">
+              <label className="text-xs font-bold uppercase tracking-widest text-[#4B5563]">Upload JSON file</label>
+              <input type="file" accept=".json" onChange={handleFileUpload} className="mt-1 w-full text-sm border-2 border-dashed border-[#E5E7EB] rounded-xl px-3 py-2 cursor-pointer hover:border-[#FF6B00]" />
+            </div>
+
+            <label className="text-xs font-bold uppercase tracking-widest text-[#4B5563]">Or paste JSON</label>
+            <textarea
+              value={importText} onChange={(e) => setImportText(e.target.value)}
+              rows={10} placeholder='[{"name":"Khalapur Plaza","highway":"NH-48","state":"maharashtra","city":"Khalapur","lat":18.81,"lng":73.27}]'
+              className="mt-1 w-full bg-[#F8F9FA] border-2 border-[#E5E7EB] focus:border-[#FF6B00] rounded-xl px-3 py-2 outline-none text-xs font-mono resize-none"
+            />
+
+            {importResult && (
+              <div className={`mt-3 p-3 rounded-xl text-sm font-semibold ${importResult.error ? "bg-red-50 text-red-600 border border-red-200" : "bg-green-50 text-green-700 border border-green-200"}`}>
+                {importResult.error ? `❌ ${importResult.error}` : `✅ Imported ${importResult.imported} plazas · ${importResult.skipped} skipped`}
+              </div>
+            )}
+
+            <div className="flex gap-3 mt-5">
+              <button onClick={runImport} disabled={importing || !importText.trim()} className="flex-1 bg-[#0A0A0A] text-white font-bold py-3 rounded-xl hover:bg-[#FF6B00] disabled:opacity-40 flex items-center justify-center gap-2 transition-colors">
+                {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Run Import"}
+              </button>
+              <button onClick={closeModal} className="px-6 py-3 border-2 border-[#E5E7EB] rounded-xl font-bold hover:border-[#0A0A0A] transition-colors">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirm */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 className="font-bold text-lg mb-2">Delete plaza?</h3>
+            <p className="text-sm text-[#4B5563] mb-5">This will permanently remove <strong>{deleteConfirm}</strong> from the database.</p>
+            <div className="flex gap-3">
+              <button onClick={() => deletePlaza(deleteConfirm)} className="flex-1 bg-red-600 text-white font-bold py-2.5 rounded-xl hover:bg-red-700 transition-colors">Delete</button>
+              <button onClick={() => setDeleteConfirm(null)} className="flex-1 border-2 border-[#E5E7EB] font-bold py-2.5 rounded-xl hover:border-[#0A0A0A] transition-colors">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 }

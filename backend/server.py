@@ -789,6 +789,92 @@ async def admin_settlements():
         })
     return result
 
+# ─── Admin: Plaza Management ─────────────────────────────────────────────────
+
+class PlazaIn(BaseModel):
+    slug: Optional[str] = None
+    name: str
+    highway: str
+    state: str
+    city: str
+    lat: float
+    lng: float
+    carRate: Optional[int] = None
+    truckRate: Optional[int] = None
+    monthlyComplaints: Optional[int] = 0
+    avgWait: Optional[str] = None
+    topIssue: Optional[str] = None
+
+@admin_router.get("/plazas", dependencies=[Depends(_check_admin)])
+async def admin_list_plazas(q: Optional[str] = None, state: Optional[str] = None, skip: int = 0, limit: int = 100):
+    filt = {}
+    if state:
+        filt["state"] = state
+    if q:
+        filt["$or"] = [
+            {"name":    {"$regex": q, "$options": "i"}},
+            {"city":    {"$regex": q, "$options": "i"}},
+            {"highway": {"$regex": q, "$options": "i"}},
+        ]
+    total = await db.plazas.count_documents(filt)
+    docs = await db.plazas.find(filt, {"_id": 0}).sort("name", 1).skip(skip).limit(limit).to_list(limit)
+    return {"total": total, "plazas": docs}
+
+@admin_router.post("/plazas", dependencies=[Depends(_check_admin)])
+async def admin_create_plaza(body: PlazaIn):
+    slug = body.slug or re.sub(r"[^a-z0-9]+", "-", body.name.lower()).strip("-")
+    doc = body.model_dump()
+    doc["slug"] = slug
+    existing = await db.plazas.find_one({"slug": slug})
+    if existing:
+        raise HTTPException(400, "Plaza with this slug already exists")
+    await db.plazas.insert_one({**doc, "_id": str(uuid.uuid4())})
+    await db.plazas.update_one({"slug": slug}, {"$unset": {"_id": ""}})
+    return {"ok": True, "slug": slug}
+
+@admin_router.patch("/plazas/{slug}", dependencies=[Depends(_check_admin)])
+async def admin_update_plaza(slug: str, body: dict):
+    body.pop("slug", None); body.pop("_id", None)
+    res = await db.plazas.update_one({"slug": slug}, {"$set": body})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Plaza not found")
+    return {"ok": True}
+
+@admin_router.delete("/plazas/{slug}", dependencies=[Depends(_check_admin)])
+async def admin_delete_plaza(slug: str):
+    res = await db.plazas.delete_one({"slug": slug})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Plaza not found")
+    return {"ok": True}
+
+@admin_router.post("/plazas/import", dependencies=[Depends(_check_admin)])
+async def admin_import_plazas(plazas: List[dict]):
+    """Bulk upsert plaza list. Each item must have at least name, state, city, lat, lng."""
+    imported = skipped = 0
+    for p in plazas:
+        if not p.get("name") or p.get("lat") is None or p.get("lng") is None:
+            skipped += 1
+            continue
+        slug = p.get("slug") or re.sub(r"[^a-z0-9]+", "-", p["name"].lower()).strip("-")
+        p["slug"] = slug
+        await db.plazas.update_one({"slug": slug}, {"$set": p}, upsert=True)
+        imported += 1
+    return {"ok": True, "imported": imported, "skipped": skipped}
+
+@admin_router.get("/plazas/stats", dependencies=[Depends(_check_admin)])
+async def admin_plaza_stats():
+    total = await db.plazas.count_documents({})
+    by_state = await db.plazas.aggregate([
+        {"$group": {"_id": "$state", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+    ]).to_list(50)
+    by_highway = await db.plazas.aggregate([
+        {"$group": {"_id": "$highway", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 10},
+    ]).to_list(10)
+    return {"total": total, "by_state": by_state, "by_highway": by_highway}
+
 @admin_router.post("/seed", dependencies=[Depends(_check_admin)])
 async def seed_db():
     for s in SATHI_SEED:
