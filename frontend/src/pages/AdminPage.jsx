@@ -1514,4 +1514,3 @@ function PlazasTab() {
     </div>
   );
 }
-}
