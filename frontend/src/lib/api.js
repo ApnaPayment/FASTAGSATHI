@@ -25,6 +25,7 @@ export const authApi = {
 export const sathiApi = {
   list: () => api.get("/api/sathis"),
   get: (slug) => api.get(`/api/sathis/${slug}`),
+  submitReview: (slug, data) => api.post(`/api/sathis/${slug}/review`, data),
 };
 
 export const plazaApi = {

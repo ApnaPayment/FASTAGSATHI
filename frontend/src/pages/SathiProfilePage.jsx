@@ -8,13 +8,13 @@ import MapView from "@/components/map/MapView";
 import { motion } from "framer-motion";
 import {
   BadgeCheck, Star, Clock, MapPin, Phone, MessageSquare, Languages,
-  Shield, Calendar, Send, CheckCircle2, ArrowRight, Loader2, Images, Building2,
+  Shield, Calendar, Send, CheckCircle2, ArrowRight, Loader2, Images, Building2, Tag,
 } from "lucide-react";
 import { getSathiBySlug } from "@/data/sathis";
 import { PLAZAS, STATES } from "@/data/seed";
 import { track } from "@/lib/analytics";
 import { sathiApi, paymentsApi } from "@/lib/api";
-import { Tag } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const CF_MODE = process.env.REACT_APP_CASHFREE_MODE || "sandbox";
 const ISSUE_FEES = { dispute: 99, kyc: 149, recharge: 49, sos: 199 };
@@ -60,6 +60,7 @@ const DAYS = [["mon","Mon"],["tue","Tue"],["wed","Wed"],["thu","Thu"],["fri","Fr
 
 export default function SathiProfilePage() {
   const { slug } = useParams();
+  const { user } = useAuth();
   const [s, setS] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -333,8 +334,16 @@ export default function SathiProfilePage() {
           <h2 className="font-display font-black text-3xl md:text-4xl mb-2 flex items-center gap-3">
             <Star className="w-7 h-7 fill-[#F59E0B] text-[#F59E0B]" />{s.rating} · {s.reviewCount} reviews
           </h2>
-          <p className="text-[#4B5563] mb-6">Verified after on-platform resolutions. No paid reviews.</p>
-          <div className="space-y-4">
+          <p className="text-[#4B5563] mb-8">Real reviews from customers. No paid or fake reviews.</p>
+
+          {/* Review submission form */}
+          <ReviewForm slug={s.slug} user={user} onSubmitted={(updated) => setS(updated)} />
+
+          {/* Review list */}
+          <div className="space-y-4 mt-10">
+            {(s.reviews || []).length === 0 && (
+              <p className="text-[#9CA3AF] text-sm">No reviews yet — be the first to rate this Sathi.</p>
+            )}
             {(s.reviews || []).map((r, i) => (
               <div key={i} data-testid={`review-${i}`} className="bg-[#F8F9FA] border-2 border-[#0A0A0A] rounded-2xl p-5">
                 <div className="flex items-center justify-between">
@@ -344,9 +353,9 @@ export default function SathiProfilePage() {
                 <div className="flex mt-1">{Array.from({ length: r.stars }).map((_, k) => <Star key={k} className="w-4 h-4 fill-[#F59E0B] text-[#F59E0B]" />)}</div>
                 {(r.speed || r.communication || r.resolution) && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    {r.speed        && <span className="text-[10px] font-bold text-[#4B5563] bg-[#F3F4F6] rounded-full px-2 py-0.5">Speed {r.speed}/5</span>}
+                    {r.speed         && <span className="text-[10px] font-bold text-[#4B5563] bg-[#F3F4F6] rounded-full px-2 py-0.5">Speed {r.speed}/5</span>}
                     {r.communication && <span className="text-[10px] font-bold text-[#4B5563] bg-[#F3F4F6] rounded-full px-2 py-0.5">Comm {r.communication}/5</span>}
-                    {r.resolution   && <span className="text-[10px] font-bold text-[#4B5563] bg-[#F3F4F6] rounded-full px-2 py-0.5">Resolution {r.resolution}/5</span>}
+                    {r.resolution    && <span className="text-[10px] font-bold text-[#4B5563] bg-[#F3F4F6] rounded-full px-2 py-0.5">Resolution {r.resolution}/5</span>}
                   </div>
                 )}
                 <p className="text-[#0A0A0A] mt-3 leading-relaxed">{r.text}</p>
@@ -358,6 +367,136 @@ export default function SathiProfilePage() {
 
       <PageCTA primary="Back to map" secondary="Find another Sathi" primaryTo="/find" secondaryTo="/find" note="Need a different language or city? Search again with one click." />
     </>
+  );
+}
+
+/* ─── Review Form ─────────────────────────────────────────────────────────── */
+function StarPicker({ value, onChange }) {
+  const [hover, setHover] = useState(0);
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n} type="button"
+          onClick={() => onChange(n)}
+          onMouseEnter={() => setHover(n)}
+          onMouseLeave={() => setHover(0)}
+          aria-label={`${n} star`}
+        >
+          <Star className={`w-8 h-8 transition-colors ${n <= (hover || value) ? "fill-[#F59E0B] text-[#F59E0B]" : "text-[#E5E7EB]"}`} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function SubRow({ label, value, onChange }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-xs text-[#4B5563] w-28 flex-shrink-0">{label}</span>
+      <div className="flex gap-0.5">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button key={n} type="button" onClick={() => onChange(n)} aria-label={`${label} ${n} star`}>
+            <Star className={`w-5 h-5 transition-colors ${n <= value ? "fill-[#F59E0B] text-[#F59E0B]" : "text-[#E5E7EB]"}`} />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ReviewForm({ slug, user, onSubmitted }) {
+  const [stars, setStars] = useState(0);
+  const [text, setText] = useState("");
+  const [sub, setSub] = useState({ speed: 0, communication: 0, resolution: 0 });
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState("");
+
+  const submit = async () => {
+    if (!stars) { setErr("Please select a star rating."); return; }
+    if (!text.trim()) { setErr("Please write a short review."); return; }
+    setErr(""); setSubmitting(true);
+    try {
+      const payload = { stars, text: text.trim() };
+      if (sub.speed)         payload.speed         = sub.speed;
+      if (sub.communication) payload.communication = sub.communication;
+      if (sub.resolution)    payload.resolution    = sub.resolution;
+      await sathiApi.submitReview(slug, payload);
+      // Reload sathi data so rating + reviews update immediately
+      const fresh = await sathiApi.get(slug);
+      onSubmitted(fresh.data);
+      setDone(true);
+    } catch (e) {
+      setErr(e?.response?.data?.detail || "Could not submit review. Try again.");
+    } finally { setSubmitting(false); }
+  };
+
+  if (!user) {
+    return (
+      <div className="border-2 border-dashed border-[#E5E7EB] rounded-2xl p-6 text-center">
+        <Star className="w-8 h-8 text-[#F59E0B] mx-auto mb-2" />
+        <p className="font-bold text-[#0A0A0A] mb-1">Rate this Sathi</p>
+        <p className="text-sm text-[#4B5563] mb-4">Log in to leave a review — takes 30 seconds.</p>
+        <Link
+          to={`/login?returnTo=${encodeURIComponent(window.location.pathname)}`}
+          className="inline-flex items-center gap-2 bg-[#FF6B00] text-white font-bold px-5 py-2.5 rounded-xl text-sm"
+        >
+          Log in to review
+        </Link>
+      </div>
+    );
+  }
+
+  if (done) {
+    return (
+      <div className="border-2 border-[#059669] bg-[#ECFDF5] rounded-2xl p-6 flex items-center gap-4">
+        <CheckCircle2 className="w-8 h-8 text-[#059669] flex-shrink-0" />
+        <div>
+          <p className="font-bold text-[#059669]">Review submitted!</p>
+          <p className="text-sm text-[#065F46]">Thanks — your rating is now live and has updated the overall score.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-2 border-[#0A0A0A] rounded-2xl p-6 shadow-[4px_4px_0_#FF6B00]">
+      <p className="font-display font-black text-lg mb-4">Write a review</p>
+      {err && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-4">{err}</p>}
+
+      {/* Overall stars */}
+      <div className="mb-4">
+        <p className="text-xs font-bold uppercase tracking-widest text-[#9CA3AF] mb-2">Overall rating</p>
+        <StarPicker value={stars} onChange={setStars} />
+      </div>
+
+      {/* Review text */}
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="How was your experience? What did this Sathi help you with?"
+        rows={3}
+        className="w-full border-2 border-[#E5E7EB] rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:border-[#FF6B00] transition-colors mb-4"
+      />
+
+      {/* Optional sub-ratings */}
+      <div className="border-t border-[#F3F4F6] pt-4 space-y-2 mb-5">
+        <p className="text-[10px] uppercase tracking-widest font-bold text-[#9CA3AF] mb-3">Optional breakdown</p>
+        <SubRow label="Speed"         value={sub.speed}         onChange={(v) => setSub((p) => ({ ...p, speed: v }))} />
+        <SubRow label="Communication" value={sub.communication} onChange={(v) => setSub((p) => ({ ...p, communication: v }))} />
+        <SubRow label="Resolution"    value={sub.resolution}    onChange={(v) => setSub((p) => ({ ...p, resolution: v }))} />
+      </div>
+
+      <button
+        onClick={submit}
+        disabled={submitting}
+        className="w-full bg-[#FF6B00] text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-60"
+      >
+        {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+        {submitting ? "Submitting…" : "Submit review"}
+      </button>
+    </div>
   );
 }
 

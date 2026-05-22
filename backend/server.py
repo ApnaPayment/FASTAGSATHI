@@ -388,6 +388,75 @@ async def submit_review(job_id: str, body: ReviewIn, current: dict = Depends(_re
 
     return {"ok": True}
 
+
+class PublicReviewIn(BaseModel):
+    stars: int
+    text: str
+    speed: Optional[int] = None
+    communication: Optional[int] = None
+    resolution: Optional[int] = None
+
+@sathis_router.post("/{slug}/review", dependencies=[Depends(_require_user)])
+async def submit_public_review(slug: str, body: PublicReviewIn, current: dict = Depends(_require_user)):
+    """Any logged-in customer can leave one review per Sathi from their profile page."""
+    sathi = await db.sathis.find_one({"slug": slug}, {"_id": 0, "reviews": 1})
+    if not sathi:
+        raise HTTPException(status_code=404, detail="Sathi not found")
+
+    # One review per user per Sathi
+    existing = await db.sathis.find_one(
+        {"slug": slug, "reviews.user_id": current["user_id"]}, {"_id": 1}
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="You have already reviewed this Sathi")
+
+    stars = max(1, min(5, body.stars))
+    def _clamp(v): return max(1, min(5, v)) if v is not None else None
+
+    review = {
+        "user_id": current["user_id"],
+        "stars": stars,
+        "text": body.text.strip(),
+        "date": datetime.now().strftime("%b %d · %Y"),
+    }
+    if body.speed         is not None: review["speed"]         = _clamp(body.speed)
+    if body.communication is not None: review["communication"] = _clamp(body.communication)
+    if body.resolution    is not None: review["resolution"]    = _clamp(body.resolution)
+
+    # Resolve author name
+    user = await db.users.find_one({"user_id": current["user_id"]}, {"_id": 0, "phone": 1, "name": 1})
+    phone = (user or {}).get("phone", "")
+    author = (user or {}).get("name") or (f"User ••{phone[-4:]}" if len(phone) >= 4 else "Anonymous")
+    review_pub = {**review, "author": author}
+
+    await db.sathis.update_one(
+        {"slug": slug},
+        {"$push": {"reviews": {"$each": [review_pub], "$position": 0, "$slice": 50}}}
+    )
+
+    # Recompute rating from all reviews stored on the sathi doc
+    agg = await db.sathis.aggregate([
+        {"$match": {"slug": slug}},
+        {"$unwind": "$reviews"},
+        {"$group": {
+            "_id": None,
+            "avg":       {"$avg": "$reviews.stars"},
+            "count":     {"$sum": 1},
+            "avg_speed": {"$avg": "$reviews.speed"},
+            "avg_comm":  {"$avg": "$reviews.communication"},
+            "avg_res":   {"$avg": "$reviews.resolution"},
+        }},
+    ]).to_list(1)
+    if agg:
+        row = agg[0]
+        upd = {"rating": round(row["avg"], 1), "reviewCount": row["count"]}
+        if row.get("avg_speed") is not None: upd["avg_speed"]         = round(row["avg_speed"], 1)
+        if row.get("avg_comm")  is not None: upd["avg_communication"] = round(row["avg_comm"],  1)
+        if row.get("avg_res")   is not None: upd["avg_resolution"]    = round(row["avg_res"],   1)
+        await db.sathis.update_one({"slug": slug}, {"$set": upd})
+
+    return {"ok": True}
+
 # ─── Admin / seed ─────────────────────────────────────────────────────────────
 
 from fastapi import Header as FHeader
