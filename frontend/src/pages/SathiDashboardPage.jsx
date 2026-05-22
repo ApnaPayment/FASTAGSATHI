@@ -217,7 +217,7 @@ export default function SathiDashboardPage() {
   const cancelledJobs = jobs.filter((j) => j.status === "cancelled");
   const tabJobs = tab === "pending" ? pendingJobs : tab === "active" ? activeJobs : tab === "resolved" ? resolvedJobs : cancelledJobs;
 
-  const pendingActions = getPendingActions(profile, available);
+  const pendingActions = getPendingActions(profile, available, () => setShowEditor(true));
 
   return (
     <>
@@ -400,12 +400,12 @@ export default function SathiDashboardPage() {
 
 /* ─── Pending actions ─────────────────────────────────────────────────────── */
 
-function getPendingActions(profile, available) {
+function getPendingActions(profile, available, openEditor) {
   if (!profile) return [];
   const actions = [];
   if (!profile.avatar || profile.avatar === "") actions.push({ label: "Add a profile photo", action: () => document.getElementById("avatar-upload-input")?.click() });
-  if (!profile.bio || profile.bio.length < 20) actions.push({ label: "Complete your bio" });
-  if (!profile.banks || profile.banks.length === 0) actions.push({ label: "Add supported banks" });
+  if (!profile.bio || profile.bio.length < 20) actions.push({ label: "Complete your bio", action: openEditor });
+  if (!profile.banks || profile.banks.length === 0) actions.push({ label: "Add supported banks", action: openEditor });
   if (!profile.verified) actions.push({ label: "Verification pending — admin will review", action: null });
   if (!available) actions.push({ label: "Go online to receive jobs" });
   return actions;
@@ -416,34 +416,56 @@ function getPendingActions(profile, available) {
 function AvatarUpload({ profile, onUploaded }) {
   const inputRef = useRef();
   const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState("");
+  // Track a cache-bust version so the browser re-fetches after each upload
+  const [version, setVersion] = useState(1);
+  // Track whether the img element itself failed to load
+  const [imgError, setImgError] = useState(false);
 
   const handle = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
+    setUploadErr("");
+    setImgError(false);
     try {
       const res = await sathiDashApi.uploadAvatar(file);
+      setVersion((v) => v + 1); // force cache-bust on success
       onUploaded(res.data.url);
-    } catch {}
-    finally { setUploading(false); }
+    } catch (err) {
+      setUploadErr(err?.response?.data?.detail || "Upload failed. Try again.");
+    } finally { setUploading(false); }
   };
 
-  const avatarUrl = fullUrl(profile?.avatar);
+  const rawUrl = fullUrl(profile?.avatar);
+  // Append cache-bust param for relative (local) uploads; Unsplash URLs get versioned too but that's harmless
+  const avatarUrl = rawUrl ? `${rawUrl}?v=${version}` : "";
+  const showImage = avatarUrl && !imgError;
 
   return (
     <div className="relative flex-shrink-0">
       <div className="w-16 h-16 rounded-2xl border-2 border-[#FF6B00] overflow-hidden bg-[#FF6B00]/20 flex items-center justify-center">
-        {avatarUrl ? (
-          <img src={avatarUrl} alt={profile?.name} className="w-full h-full object-cover" />
+        {showImage ? (
+          <img
+            src={avatarUrl}
+            alt=""
+            className="w-full h-full object-cover"
+            onError={() => setImgError(true)}
+          />
         ) : (
           <span className="font-display font-black text-2xl text-[#FF6B00]">{(profile?.name || "S")[0]}</span>
         )}
       </div>
-      <button onClick={() => inputRef.current?.click()} title="Change photo"
+      <button onClick={() => { setUploadErr(""); inputRef.current?.click(); }} title="Change photo"
         className="absolute -bottom-1.5 -right-1.5 w-6 h-6 bg-[#FF6B00] rounded-full flex items-center justify-center border-2 border-[#0A0A0A] hover:scale-110 transition-transform">
         {uploading ? <Loader2 className="w-3 h-3 text-white animate-spin" /> : <Camera className="w-3 h-3 text-white" />}
       </button>
       <input id="avatar-upload-input" ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handle} />
+      {uploadErr && (
+        <div className="absolute top-full mt-2 left-0 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg whitespace-nowrap z-10">
+          {uploadErr}
+        </div>
+      )}
     </div>
   );
 }
@@ -527,18 +549,21 @@ function ProfileEditor({ profile, onClose, onSaved }) {
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved]   = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const toggle = (k, id) => set(k, form[k].includes(id) ? form[k].filter((x) => x !== id) : [...form[k], id]);
 
   const save = async () => {
     setSaving(true);
+    setSaveError("");
     try {
       await sathiDashApi.updateProfile(form);
       setSaved(true);
       setTimeout(() => { onSaved(form); }, 800);
-    } catch {}
-    finally { setSaving(false); }
+    } catch (err) {
+      setSaveError(err?.response?.data?.detail || "Failed to save. Please try again.");
+    } finally { setSaving(false); }
   };
 
   return (
@@ -635,6 +660,9 @@ function ProfileEditor({ profile, onClose, onSaved }) {
 
         {/* Footer */}
         <div className="px-6 py-4 border-t-2 border-[#E5E7EB] flex-shrink-0">
+          {saveError && (
+            <p className="text-xs text-red-600 font-semibold mb-3 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{saveError}</p>
+          )}
           <button onClick={save} disabled={saving || saved}
             className="w-full bg-[#FF6B00] text-white font-bold py-4 rounded-full shadow-[0_4px_0_#0A0A0A] disabled:opacity-70 flex items-center justify-center gap-2">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
