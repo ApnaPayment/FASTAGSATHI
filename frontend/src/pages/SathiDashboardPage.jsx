@@ -443,8 +443,10 @@ function AvatarUpload({ profile, onUploaded }) {
   };
 
   const rawUrl = fullUrl(profile?.avatar);
-  // Append cache-bust param for relative (local) uploads; Unsplash URLs get versioned too but that's harmless
-  const avatarUrl = rawUrl ? `${rawUrl}?v=${version}` : "";
+  // Only append cache-bust param for non-data URLs (appending ?v=N to a data: URL corrupts it)
+  const avatarUrl = rawUrl
+    ? rawUrl.startsWith("data:") ? rawUrl : `${rawUrl}?v=${version}`
+    : "";
   const showImage = avatarUrl && !imgError;
 
   return (
