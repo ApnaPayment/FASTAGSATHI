@@ -875,6 +875,34 @@ async def admin_plaza_stats():
     ]).to_list(10)
     return {"total": total, "by_state": by_state, "by_highway": by_highway}
 
+@admin_router.post("/cleanup-uploads", dependencies=[Depends(_check_admin)])
+async def cleanup_stale_uploads():
+    """Remove file-path avatars and gallery URLs left over from the old filesystem-based storage."""
+    import re
+    pattern = re.compile(r"^/uploads/|^https?://[^/]+/uploads/")
+    # Clear stale avatars (file-path → empty string)
+    avatar_result = await db.sathis.update_many(
+        {"avatar": {"$regex": "(^/uploads/|/uploads/)"}},
+        {"$set": {"avatar": ""}}
+    )
+    # Pull stale gallery entries (file-path URLs) from every sathi
+    sathis = await db.sathis.find({}, {"_id": 0, "slug": 1, "gallery": 1}).to_list(None)
+    gallery_cleaned = 0
+    for s in sathis:
+        stale = [u for u in (s.get("gallery") or []) if u and pattern.search(u)]
+        if stale:
+            await db.sathis.update_one(
+                {"slug": s["slug"]},
+                {"$pull": {"gallery": {"$in": stale}}}
+            )
+            gallery_cleaned += len(stale)
+    logger.info(f"cleanup-uploads: {avatar_result.modified_count} avatars cleared, {gallery_cleaned} gallery items removed")
+    return {
+        "ok": True,
+        "avatars_cleared": avatar_result.modified_count,
+        "gallery_items_removed": gallery_cleaned,
+    }
+
 @admin_router.post("/seed", dependencies=[Depends(_check_admin)])
 async def seed_db():
     for s in SATHI_SEED:
@@ -1190,18 +1218,33 @@ async def upload_gallery(file: UploadFile = File(...), ctx: dict = Depends(_requ
     if ext not in {".jpg", ".jpeg", ".png", ".webp"}:
         raise HTTPException(status_code=400, detail="Only jpg/png/webp allowed")
     contents = await file.read()
-    if len(contents) > 10 * 1024 * 1024:  # 10 MB limit
+    if len(contents) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Image must be under 10 MB")
     if len(contents) == 0:
         raise HTTPException(status_code=400, detail="Empty file received")
     slug = ctx["sathi"]["slug"]
-    filename = f"{slug}-{uuid.uuid4().hex[:8]}{ext}"
-    dest = UPLOAD_DIR / "gallery" / filename
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_bytes(contents)
-    url = f"{BACKEND_URL}/uploads/gallery/{filename}"
-    await db.sathis.update_one({"slug": slug}, {"$push": {"gallery": url}})
-    return {"ok": True, "url": url}
+    # Resize and encode as base64 data URL — no filesystem, survives Railway redeploys
+    try:
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(contents))
+        img = img.convert("RGB")
+        img.thumbnail((800, 800), Image.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=82, optimize=True)
+        buf.seek(0)
+        data_url = "data:image/jpeg;base64," + base64.b64encode(buf.read()).decode()
+    except Exception as e:
+        logger.warning(f"Pillow resize failed for gallery ({e}), storing original")
+        mime = "image/png" if ext == ".png" else "image/webp" if ext == ".webp" else "image/jpeg"
+        data_url = f"data:{mime};base64," + base64.b64encode(contents).decode()
+    # Cap gallery at 10 images
+    sathi = ctx["sathi"]
+    if len(sathi.get("gallery", [])) >= 10:
+        raise HTTPException(status_code=400, detail="Gallery limit is 10 images")
+    await db.sathis.update_one({"slug": slug}, {"$push": {"gallery": data_url}})
+    logger.info(f"Gallery image stored as base64 for {slug} ({len(data_url)} chars)")
+    return {"ok": True, "url": data_url}
 
 def _compute_tier(resolved: int) -> tuple[str, float]:
     """Return (tier_name, progress_to_next_tier_pct)."""
