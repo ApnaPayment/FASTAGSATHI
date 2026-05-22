@@ -23,8 +23,8 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 # ─── Config ──────────────────────────────────────────────────────────────────
 
-MONGO_URL = os.environ["MONGO_URL"]
-DB_NAME = os.environ["DB_NAME"]
+MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
+DB_NAME = os.environ.get("DB_NAME", "apnafastag")
 JWT_SECRET = os.environ.get("JWT_SECRET", "sathi-dev-secret-change-in-prod")
 ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "sathi-admin-2026")
 JWT_ALGORITHM = "HS256"
