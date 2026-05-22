@@ -8,6 +8,9 @@ import {
 
 const TABS = ["Dashboard", "Applications", "Jobs", "Sathis", "Promo Codes", "Settlements", "Plazas"];
 
+const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+const fullUrl = (url) => (!url ? "" : url.startsWith("http") ? url : `${BACKEND}${url}`);
+
 const STATUS_COLORS = {
   pending:    "bg-yellow-100 text-yellow-800",
   reviewing:  "bg-blue-100 text-blue-800",
@@ -682,10 +685,14 @@ function SathisTab() {
           {sathis.map((s) => (
             <div key={s.slug} className="bg-white border-2 border-[#E5E7EB] rounded-2xl p-5">
               <div className="flex items-start gap-3">
-                {s.avatar
-                ? <img src={s.avatar} alt={s.name} className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
-                : <div className="w-12 h-12 rounded-full bg-[#FF6B00]/20 flex-shrink-0 flex items-center justify-center font-display font-black text-lg text-[#FF6B00]">{(s.name || "S")[0]}</div>
-              }
+                <div className="w-12 h-12 rounded-full border-2 border-[#E5E7EB] flex-shrink-0 bg-[#FF6B00]/20 relative overflow-hidden">
+                  {fullUrl(s.avatar) ? (
+                    <img src={fullUrl(s.avatar)} alt="" className="absolute inset-0 w-full h-full object-cover block"
+                      onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextSibling.style.display = "flex"; }} />
+                  ) : null}
+                  <div className="absolute inset-0 flex items-center justify-center font-display font-black text-lg text-[#FF6B00]"
+                    style={{ display: fullUrl(s.avatar) ? "none" : "flex" }}>{(s.name || "S")[0]}</div>
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-display font-bold text-base">{s.name}</span>

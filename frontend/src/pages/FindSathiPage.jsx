@@ -191,12 +191,21 @@ function SathiCard({ s }) {
       className="group block bg-white border-2 border-[#0A0A0A] rounded-2xl p-4 hover:-translate-y-1 transition-transform shadow-[4px_4px_0_#0A0A0A] hover:shadow-[6px_6px_0_#FF6B00]"
     >
       <div className="flex items-center gap-4">
-        {fullUrl(s.avatar)
-          ? <img src={fullUrl(s.avatar)} alt="" className="w-14 h-14 rounded-full object-cover border-2 border-[#0A0A0A] flex-shrink-0" loading="lazy"
-              onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextSibling.style.display = "flex"; }} />
-          : null}
-        <div className="w-14 h-14 rounded-full bg-[#FF6B00]/20 border-2 border-[#0A0A0A] flex-shrink-0 items-center justify-center font-display font-black text-xl text-[#FF6B00]"
-          style={{ display: fullUrl(s.avatar) ? "none" : "flex" }}>{(s.name || "S")[0]}</div>
+        {/* Avatar — use relative container + absolute img so flex never squishes it */}
+        <div className="w-14 h-14 rounded-full border-2 border-[#0A0A0A] flex-shrink-0 bg-[#FF6B00]/20 relative overflow-hidden">
+          {fullUrl(s.avatar) ? (
+            <img
+              src={fullUrl(s.avatar)}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover block"
+              onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextSibling.style.display = "flex"; }}
+            />
+          ) : null}
+          <div className="absolute inset-0 flex items-center justify-center font-display font-black text-xl text-[#FF6B00]"
+            style={{ display: fullUrl(s.avatar) ? "none" : "flex" }}>
+            {(s.name || "S")[0]}
+          </div>
+        </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-display font-bold text-lg text-[#0A0A0A]">{s.name}</h3>

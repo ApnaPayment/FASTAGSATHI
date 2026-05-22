@@ -264,12 +264,14 @@ function JobCard({ job, onRefresh }) {
       {/* Top row: avatar + info + badge */}
       <div className="flex items-start gap-4">
         {/* Sathi avatar */}
-        <div className="flex-shrink-0 w-12 h-12 rounded-xl overflow-hidden border-2 border-[#E5E7EB] bg-[#F3F4F6] flex items-center justify-center">
+        <div className="flex-shrink-0 w-12 h-12 rounded-xl overflow-hidden border-2 border-[#E5E7EB] bg-[#F3F4F6] relative">
           {avatarSrc ? (
-            <img src={avatarSrc} alt={job.sathi_name || "Sathi"} className="w-full h-full object-cover" />
-          ) : (
+            <img src={avatarSrc} alt="" className="absolute inset-0 w-full h-full object-cover block"
+              onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextSibling.style.display = "flex"; }} />
+          ) : null}
+          <div className="absolute inset-0 flex items-center justify-center" style={{ display: avatarSrc ? "none" : "flex" }}>
             <User className="w-6 h-6 text-[#9CA3AF]" />
-          )}
+          </div>
         </div>
 
         {/* Job details */}
