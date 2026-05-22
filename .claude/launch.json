@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Frontend (React / CRACO)",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd /Users/ankitsharma/Documents/Claude/workspace/frontend && HOST=0.0.0.0 npm run start"],
+      "port": 3000
+    },
+    {
+      "name": "Backend (FastAPI / uvicorn)",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd /Users/ankitsharma/Documents/Claude/workspace/backend && python3 -m uvicorn server:app --reload --host 0.0.0.0 --port ${PORT:-8000}"],
+      "port": 8000
+    }
+  ]
+}

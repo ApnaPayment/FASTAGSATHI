@@ -1,0 +1,135 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Work+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --apna-bg: #F8F9FA;
+    --apna-surface: #FFFFFF;
+    --apna-primary: #FF6B00;
+    --apna-primary-hover: #E66000;
+    --apna-secondary: #059669;
+    --apna-secondary-hover: #047857;
+    --apna-ink: #0A0A0A;
+    --apna-muted: #4B5563;
+    --apna-border: #E5E7EB;
+    --apna-error: #DC2626;
+    --apna-warning: #F59E0B;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--apna-bg);
+    color: var(--apna-ink);
+    font-family: 'Work Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+}
+
+h1, h2, h3, h4, h5, h6, .font-display {
+    font-family: 'Outfit', sans-serif;
+    letter-spacing: -0.02em;
+}
+
+.font-hindi {
+    font-family: 'Noto Sans Devanagari', 'Work Sans', sans-serif;
+}
+
+/* Road marking dashed line */
+.road-divider {
+    background-image: repeating-linear-gradient(
+        90deg,
+        #0A0A0A 0,
+        #0A0A0A 24px,
+        transparent 24px,
+        transparent 44px
+    );
+    height: 4px;
+    width: 100%;
+}
+
+.road-divider-vertical {
+    background-image: repeating-linear-gradient(
+        180deg,
+        #FF6B00 0,
+        #FF6B00 16px,
+        transparent 16px,
+        transparent 32px
+    );
+    width: 4px;
+}
+
+/* Dot grid bg */
+.dot-grid {
+    background-image: radial-gradient(circle, rgba(10, 10, 10, 0.08) 1px, transparent 1px);
+    background-size: 24px 24px;
+}
+
+.dot-grid-dark {
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-size: 24px 24px;
+}
+
+/* Sticker / Yellow Tape Texture - kilometer sign style */
+.km-sign {
+    background: #FFD60A;
+    color: #0A0A0A;
+    border: 3px solid #0A0A0A;
+    box-shadow: 4px 4px 0 #0A0A0A;
+}
+
+/* Custom selection */
+::selection {
+    background: #FF6B00;
+    color: #fff;
+}
+
+/* Marquee */
+@keyframes marquee-x {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+.marquee-track {
+    animation: marquee-x 40s linear infinite;
+    will-change: transform;
+}
+
+.marquee-track:hover {
+    animation-play-state: paused;
+}
+
+/* Scanner laser */
+@keyframes scanner-pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+}
+
+/* Radar conic gradient sweep */
+.radar-sweep {
+    background: conic-gradient(
+        from 0deg,
+        transparent 0deg,
+        rgba(255, 107, 0, 0) 270deg,
+        rgba(255, 107, 0, 0.5) 340deg,
+        rgba(255, 107, 0, 0.9) 360deg
+    );
+}
+
+/* Pill button focus */
+button:focus-visible, a:focus-visible {
+    outline: 3px solid #FF6B00;
+    outline-offset: 3px;
+}
+
+/* Custom Cursor on interactive */
+a, button { cursor: pointer; }
+
+/* Hide scrollbar for marquee */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

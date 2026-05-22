@@ -1,0 +1,1552 @@
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, UploadFile, File, Query, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.staticfiles import StaticFiles
+from dotenv import load_dotenv
+from starlette.middleware.cors import CORSMiddleware
+from motor.motor_asyncio import AsyncIOMotorClient
+from jose import jwt, JWTError
+from pydantic import BaseModel, Field, ConfigDict
+from typing import List, Optional, Literal
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+import asyncio, os, uuid, logging, random, shutil, httpx, re, json, hmac, hashlib, base64
+from bs4 import BeautifulSoup
+from sse_starlette.sse import EventSourceResponse
+
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / ".env")
+
+UPLOAD_DIR = ROOT_DIR / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
+(UPLOAD_DIR / "avatars").mkdir(exist_ok=True)
+(UPLOAD_DIR / "gallery").mkdir(exist_ok=True)
+
+# ─── Config ──────────────────────────────────────────────────────────────────
+
+MONGO_URL = os.environ["MONGO_URL"]
+DB_NAME = os.environ["DB_NAME"]
+JWT_SECRET = os.environ.get("JWT_SECRET", "sathi-dev-secret-change-in-prod")
+ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "sathi-admin-2026")
+JWT_ALGORITHM = "HS256"
+# When True any 4-digit OTP is accepted (dev / demo mode)
+OTP_BYPASS = os.environ.get("OTP_BYPASS", "true").lower() == "true"
+
+# ─── Cashfree config ──────────────────────────────────────────────────────────
+CF_APP_ID = os.environ.get("CASHFREE_APP_ID", "")
+CF_SECRET_KEY = os.environ.get("CASHFREE_SECRET_KEY", "")
+CF_ENV = os.environ.get("CASHFREE_ENV", "sandbox")
+CF_BASE = "https://sandbox.cashfree.com/pg" if CF_ENV == "sandbox" else "https://api.cashfree.com/pg"
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
+
+client = AsyncIOMotorClient(MONGO_URL)
+db = client[DB_NAME]
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger(__name__)
+
+app = FastAPI(title="Sathi API")
+api = APIRouter(prefix="/api")
+bearer = HTTPBearer(auto_error=False)
+
+# ─── SSE subscriber registry ──────────────────────────────────────────────────
+# Maps sathi_slug -> list of asyncio.Queue (one per open connection)
+sathi_subscribers: dict[str, list[asyncio.Queue]] = {}
+
+
+async def notify_sathi(slug: str, event_type: str, data: dict):
+    """Push a JSON event to all open SSE connections for the given sathi slug."""
+    queues = sathi_subscribers.get(slug, [])
+    if not queues:
+        return
+    payload = json.dumps({"type": event_type, "data": data})
+    for q in queues:
+        await q.put(payload)
+
+# ─── Auth helpers ─────────────────────────────────────────────────────────────
+
+def _make_token(user_id: str, phone: str) -> str:
+    exp = datetime.now(timezone.utc) + timedelta(days=30)
+    return jwt.encode({"sub": phone, "user_id": user_id, "exp": exp}, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+async def _optional_user(creds: Optional[HTTPAuthorizationCredentials] = Depends(bearer)) -> Optional[dict]:
+    if not creds:
+        return None
+    try:
+        return jwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except JWTError:
+        return None
+
+async def _require_user(creds: Optional[HTTPAuthorizationCredentials] = Depends(bearer)) -> dict:
+    user = await _optional_user(creds)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return user
+
+# ─── Models ───────────────────────────────────────────────────────────────────
+
+class OTPRequestIn(BaseModel):
+    phone: str
+
+class OTPVerifyIn(BaseModel):
+    phone: str
+    otp: str
+
+class UserOut(BaseModel):
+    id: str
+    phone: str
+    name: Optional[str] = None
+    created_at: str
+
+class TokenOut(BaseModel):
+    token: str
+    user: UserOut
+
+class JobCreateIn(BaseModel):
+    sathi_slug: str
+    issue: str
+    vehicle_number: str
+    note: Optional[str] = ""
+
+class JobStatusUpdateIn(BaseModel):
+    status: Literal["accepted", "in_progress", "resolved", "cancelled"]
+
+class ReviewIn(BaseModel):
+    stars: int
+    text: str
+    speed: Optional[int] = None          # 1–5, optional
+    communication: Optional[int] = None  # 1–5, optional
+    resolution: Optional[int] = None     # 1–5, optional
+
+class ApplicationStatusIn(BaseModel):
+    status: Literal["pending", "reviewing", "approved", "rejected"]
+    note: Optional[str] = ""
+
+class SathiApplicationIn(BaseModel):
+    phone: str
+    name: str
+    state: str
+    plaza_slug: str
+    hours_per_week: int
+    languages: List[str]
+    bio: Optional[str] = ""
+    experience: Optional[str] = ""
+    vehicle_types: Optional[List[str]] = []
+    services: Optional[List[str]] = ["dispute", "recharge"]
+    banks: Optional[List[str]] = []
+    active_hours: Optional[dict] = {}
+    whatsapp: Optional[str] = ""
+
+class StatusCheckCreate(BaseModel):
+    client_name: str
+
+class StatusCheck(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    client_name: str
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# ─── Auth routes ──────────────────────────────────────────────────────────────
+
+auth_router = APIRouter(prefix="/auth", tags=["auth"])
+
+@auth_router.post("/request-otp")
+async def request_otp(body: OTPRequestIn):
+    phone = body.phone.strip()
+    if not phone.isdigit() or len(phone) != 10:
+        raise HTTPException(status_code=400, detail="Enter a 10-digit Indian mobile number")
+    otp = str(random.randint(1000, 9999))
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+    await db.otps.update_one(
+        {"phone": phone},
+        {"$set": {"otp": otp, "expires_at": expires_at}},
+        upsert=True,
+    )
+    logger.info(f"[OTP] +91-XXXXXX{phone[-4:]}: {otp}")
+    return {"ok": True, "masked": phone[-4:]}
+
+@auth_router.post("/verify-otp", response_model=TokenOut)
+async def verify_otp(body: OTPVerifyIn):
+    phone = body.phone.strip()
+    otp = body.otp.strip()
+    if not otp or len(otp) != 4 or not otp.isdigit():
+        raise HTTPException(status_code=400, detail="Enter a 4-digit code")
+
+    if not OTP_BYPASS:
+        record = await db.otps.find_one({"phone": phone})
+        if not record or record["otp"] != otp:
+            raise HTTPException(status_code=401, detail="Invalid OTP")
+        exp = datetime.fromisoformat(record["expires_at"])
+        if exp.tzinfo is None:
+            exp = exp.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) > exp:
+            raise HTTPException(status_code=401, detail="OTP expired — request a new one")
+
+    user_doc = await db.users.find_one({"phone": phone}, {"_id": 0})
+    if not user_doc:
+        user_doc = {
+            "id": str(uuid.uuid4()),
+            "phone": phone,
+            "name": None,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.users.insert_one({**user_doc})
+
+    token = _make_token(user_doc["id"], phone)
+    return TokenOut(
+        token=token,
+        user=UserOut(id=user_doc["id"], phone=phone, name=user_doc.get("name"), created_at=user_doc["created_at"]),
+    )
+
+# ─── User routes ──────────────────────────────────────────────────────────────
+
+users_router = APIRouter(prefix="/users", tags=["users"])
+
+@users_router.get("/me", response_model=UserOut)
+async def get_me(current: dict = Depends(_require_user)):
+    doc = await db.users.find_one({"phone": current["sub"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    return UserOut(id=doc["id"], phone=doc["phone"], name=doc.get("name"), created_at=doc["created_at"])
+
+# ─── Sathi routes ─────────────────────────────────────────────────────────────
+
+states_router = APIRouter(prefix="/states", tags=["states"])
+
+@states_router.get("")
+async def list_states():
+    return await db.states.find({}, {"_id": 0}).sort("name", 1).to_list(100)
+
+@states_router.get("/{slug}")
+async def get_state(slug: str):
+    doc = await db.states.find_one({"slug": slug}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="State not found")
+    return doc
+
+sathis_router = APIRouter(prefix="/sathis", tags=["sathis"])
+
+@sathis_router.get("")
+async def list_sathis():
+    return await db.sathis.find({}, {"_id": 0}).to_list(1000)
+
+@sathis_router.get("/{slug}")
+async def get_sathi(slug: str):
+    doc = await db.sathis.find_one({"slug": slug}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Sathi not found")
+    return doc
+
+# ─── Plaza routes ─────────────────────────────────────────────────────────────
+
+plazas_router = APIRouter(prefix="/plazas", tags=["plazas"])
+
+@plazas_router.get("")
+async def list_plazas(state: Optional[str] = None):
+    query = {"state": state} if state else {}
+    return await db.plazas.find(query, {"_id": 0}).to_list(1000)
+
+@plazas_router.get("/{slug}")
+async def get_plaza(slug: str):
+    doc = await db.plazas.find_one({"slug": slug}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Plaza not found")
+    return doc
+
+# ─── Job routes ───────────────────────────────────────────────────────────────
+
+jobs_router = APIRouter(prefix="/jobs", tags=["jobs"])
+
+def _gen_ref(state: str) -> str:
+    code = (state or "IN")[:2].upper()
+    year = datetime.now().year
+    uid = str(uuid.uuid4())[:6].upper()
+    return f"DSP-{code}-{year}-{uid}"
+
+@jobs_router.post("")
+async def create_job(body: JobCreateIn, current: dict = Depends(_require_user)):
+    sathi = await db.sathis.find_one({"slug": body.sathi_slug}, {"_id": 0})
+    if not sathi:
+        raise HTTPException(status_code=404, detail="Sathi not found")
+    now = datetime.now(timezone.utc).isoformat()
+    job = {
+        "id": str(uuid.uuid4()),
+        "ref_code": _gen_ref(sathi.get("state", "IN")),
+        "user_id": current["user_id"],
+        "user_phone": current["sub"],
+        "sathi_slug": body.sathi_slug,
+        "sathi_name": sathi["name"],
+        "sathi_city": sathi.get("city", ""),
+        "sathi_avatar": sathi.get("avatar", ""),
+        "issue": body.issue,
+        "vehicle_number": body.vehicle_number,
+        "note": body.note or "",
+        "platform_fee": ISSUE_RATES.get(body.issue, 99),
+        "status": "pending",
+        "created_at": now,
+        "updated_at": now,
+        "resolved_at": None,
+        "review": None,
+    }
+    await db.jobs.insert_one({**job})
+    # Notify the Sathi in real-time via SSE
+    await notify_sathi(body.sathi_slug, "new_job", job)
+    return job
+
+# /me must come before /{job_id} so FastAPI doesn't treat "me" as an id
+@jobs_router.get("/me")
+async def my_jobs(current: dict = Depends(_require_user)):
+    return await db.jobs.find(
+        {"user_id": current["user_id"]}, {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+
+@jobs_router.get("/ref/{ref_code}")
+async def job_by_ref(ref_code: str):
+    doc = await db.jobs.find_one({"ref_code": ref_code.upper()}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="No dispute found with this reference number")
+    return doc
+
+@jobs_router.get("/{job_id}")
+async def get_job(job_id: str, current: dict = Depends(_require_user)):
+    doc = await db.jobs.find_one({"id": job_id, "user_id": current["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return doc
+
+@jobs_router.patch("/{job_id}/status")
+async def update_job_status(job_id: str, body: JobStatusUpdateIn, current: dict = Depends(_require_user)):
+    doc = await db.jobs.find_one({"id": job_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Job not found")
+    now = datetime.now(timezone.utc).isoformat()
+    update: dict = {"status": body.status, "updated_at": now}
+    if body.status == "resolved":
+        update["resolved_at"] = now
+    await db.jobs.update_one({"id": job_id}, {"$set": update})
+    return {**doc, **update}
+
+@jobs_router.post("/{job_id}/review")
+async def submit_review(job_id: str, body: ReviewIn, current: dict = Depends(_require_user)):
+    doc = await db.jobs.find_one({"id": job_id, "user_id": current["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if doc["status"] != "resolved":
+        raise HTTPException(status_code=400, detail="Can only review a resolved job")
+    stars = max(1, min(5, body.stars))
+    def _clamp_sub(val):
+        return max(1, min(5, val)) if val is not None else None
+    speed         = _clamp_sub(body.speed)
+    communication = _clamp_sub(body.communication)
+    resolution    = _clamp_sub(body.resolution)
+
+    review = {
+        "stars": stars,
+        "text": body.text,
+        "date": datetime.now().strftime("%b %d · %Y"),
+    }
+    if speed is not None:         review["speed"] = speed
+    if communication is not None: review["communication"] = communication
+    if resolution is not None:    review["resolution"] = resolution
+
+    await db.jobs.update_one({"id": job_id}, {"$set": {"review": review}})
+
+    # Propagate review to the Sathi document so it appears on their public profile
+    user = await db.users.find_one({"user_id": current["user_id"]}, {"_id": 0, "phone": 1, "name": 1})
+    phone = (user or {}).get("phone", "")
+    author = (user or {}).get("name") or (f"User ••{phone[-4:]}" if len(phone) >= 4 else "Anonymous")
+    review_pub = {**review, "author": author}
+    await db.sathis.update_one(
+        {"slug": doc["sathi_slug"]},
+        {"$push": {"reviews": {"$each": [review_pub], "$position": 0, "$slice": 50}}}
+    )
+    # Recompute aggregate rating and sub-scores from all reviewed jobs for this Sathi
+    agg = await db.jobs.aggregate([
+        {"$match": {"sathi_slug": doc["sathi_slug"], "review": {"$ne": None}}},
+        {"$group": {
+            "_id":       None,
+            "avg":       {"$avg": "$review.stars"},
+            "count":     {"$sum": 1},
+            "avg_speed": {"$avg": "$review.speed"},
+            "avg_comm":  {"$avg": "$review.communication"},
+            "avg_res":   {"$avg": "$review.resolution"},
+        }},
+    ]).to_list(1)
+    if agg:
+        row = agg[0]
+        upd = {"rating": round(row["avg"], 1), "reviewCount": row["count"]}
+        if row["avg_speed"] is not None: upd["avg_speed"] = round(row["avg_speed"], 1)
+        if row["avg_comm"]  is not None: upd["avg_communication"] = round(row["avg_comm"], 1)
+        if row["avg_res"]   is not None: upd["avg_resolution"] = round(row["avg_res"], 1)
+        await db.sathis.update_one({"slug": doc["sathi_slug"]}, {"$set": upd})
+
+    return {"ok": True}
+
+# ─── Admin / seed ─────────────────────────────────────────────────────────────
+
+from fastapi import Header as FHeader
+
+async def _check_admin(x_admin_secret: Optional[str] = FHeader(default=None)) -> None:
+    if x_admin_secret != ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid admin secret")
+
+AdminDep = Depends(_check_admin)
+
+admin_router = APIRouter(prefix="/admin", tags=["admin"])
+
+SATHI_SEED = [
+    {
+        "slug": "ravi-shinde-khalapur", "name": "Ravi Shinde", "city": "Khalapur", "state": "maharashtra",
+        "homePlaza": "khalapur-nh48", "lat": 18.812, "lng": 73.274,
+        "avatar": "https://images.unsplash.com/photo-1632999863880-034c5f73c779?w=400&q=70",
+        "verified": True, "premium": True, "rating": 4.9, "reviewCount": 412, "jobsResolved": 1180,
+        "avg_speed": 4.8, "avg_communication": 4.7, "avg_resolution": 4.9,
+        "avgResponseSec": 78, "languages": ["Marathi", "Hindi", "English"],
+        "services": ["dispute", "kyc", "recharge", "sos"],
+        "banks": ["sbi-fastag", "paytm-fastag", "icici-fastag", "hdfc-fastag", "axis-fastag"],
+        "bio": "Born and raised next to NH-48. Spent 6 years as a toll lane supervisor at Khalapur before going independent. Specialises in mischarge reversal and night-time SOS.",
+        "activeHours": {"mon": "5am-11pm", "tue": "5am-11pm", "wed": "5am-11pm", "thu": "5am-11pm", "fri": "5am-12am", "sat": "5am-12am", "sun": "6am-10pm"},
+        "contact": {"phone": "+91 98XXX XX012", "whatsapp": "+91 98XXX XX012"},
+        "reviews": [
+            {"author": "Suresh K.", "date": "Jan 11 · 2026", "stars": 5, "speed": 5, "communication": 5, "resolution": 5, "text": "₹450 mischarge reversed in 4 minutes. Ravi bhai literally walked into the plaza office with me."},
+            {"author": "Anjali T.", "date": "Jan 02 · 2026", "stars": 5, "text": "Was stuck at 11pm with tag not reading. Sathi reached in 90 seconds, swapped me to manual lane, handled bank later."},
+            {"author": "Trucker AS Logistics", "date": "Dec 28 · 2025", "stars": 4, "text": "Helped with KYC re-verification. Took 2 days but resolved. Honest about timeline."},
+        ],
+    },
+    {
+        "slug": "anil-bhau-lonavla", "name": "Anil Bhau", "city": "Lonavla", "state": "maharashtra",
+        "homePlaza": "lonavla-nh48", "lat": 18.752, "lng": 73.413,
+        "avatar": "https://images.unsplash.com/photo-1695395860103-38d172403a46?w=400&q=70",
+        "verified": True, "premium": False, "rating": 4.8, "reviewCount": 287, "jobsResolved": 690,
+        "avg_speed": 4.6, "avg_communication": 4.9, "avg_resolution": 4.7,
+        "avgResponseSec": 102, "languages": ["Marathi", "Hindi"],
+        "services": ["dispute", "recharge", "sos"],
+        "banks": ["sbi-fastag", "paytm-fastag", "hdfc-fastag"],
+        "bio": "Tea-stall owner outside Lonavla Plaza for 12 years. Knows every plaza supervisor on first-name basis. Best for stuck trucks and lane reroutes.",
+        "activeHours": {"mon": "6am-10pm", "tue": "6am-10pm", "wed": "6am-10pm", "thu": "6am-10pm", "fri": "6am-10pm", "sat": "6am-11pm", "sun": "Off"},
+        "contact": {"phone": "+91 99XXX XX341", "whatsapp": "+91 99XXX XX341"},
+        "reviews": [
+            {"author": "Priya N.", "date": "Jan 08 · 2026", "stars": 5, "speed": 4, "communication": 5, "resolution": 5, "text": "Truck driver husband had FASTag fail on Saturday night. Anil bhau was the only one who picked up and fixed it."},
+            {"author": "Sandeep G.", "date": "Dec 19 · 2025", "stars": 5, "text": "Recharge was failing at the plaza. Sathi did UPI on the spot and got us moving."},
+        ],
+    },
+    {
+        "slug": "priya-pawar-vashi", "name": "Priya Pawar", "city": "Vashi", "state": "maharashtra",
+        "homePlaza": "vashi-mmrda", "lat": 19.072, "lng": 73.002,
+        "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&q=70",
+        "verified": True, "premium": True, "rating": 5.0, "reviewCount": 156, "jobsResolved": 412,
+        "avg_speed": 4.9, "avg_communication": 5.0, "avg_resolution": 5.0,
+        "avgResponseSec": 64, "languages": ["Marathi", "Hindi", "English"],
+        "services": ["dispute", "kyc", "recharge"],
+        "banks": ["sbi-fastag", "paytm-fastag", "icici-fastag", "hdfc-fastag"],
+        "bio": "Ex-bank operations executive who switched to Sathi work to be closer to home. Goes deep on bank-side escalations and class-mismatch disputes.",
+        "activeHours": {"mon": "9am-7pm", "tue": "9am-7pm", "wed": "9am-7pm", "thu": "9am-7pm", "fri": "9am-7pm", "sat": "10am-4pm", "sun": "Off"},
+        "contact": {"phone": "+91 97XXX XX204", "whatsapp": "+91 97XXX XX204"},
+        "reviews": [
+            {"author": "Rohan M.", "date": "Jan 05 · 2026", "stars": 5, "speed": 5, "communication": 5, "resolution": 5, "text": "Car was being charged as LCV — Priya got the class-correction approved in 2 visits. Saved me ₹3,200/month on commute."},
+            {"author": "Fleet Op", "date": "Dec 22 · 2025", "stars": 5, "text": "Handled 18 disputes for our fleet in one week. Professional, fast."},
+        ],
+    },
+    {
+        "slug": "vikram-sharma-manesar", "name": "Vikram Sharma", "city": "Manesar", "state": "haryana",
+        "homePlaza": "manesar-nh48", "lat": 28.362, "lng": 76.942,
+        "avatar": "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=400&q=70",
+        "verified": True, "premium": True, "rating": 4.7, "reviewCount": 340, "jobsResolved": 980,
+        "avg_speed": 4.5, "avg_communication": 4.8, "avg_resolution": 4.7,
+        "avgResponseSec": 88, "languages": ["Hindi", "English", "Haryanvi"],
+        "services": ["dispute", "kyc", "recharge", "sos"],
+        "banks": ["sbi-fastag", "paytm-fastag", "icici-fastag", "hdfc-fastag", "axis-fastag"],
+        "bio": "Was an Uber driver on NH-48 corridor for 5 years. Knows where every bank office is between Manesar and Jaipur. SOS specialist.",
+        "activeHours": {"mon": "5am-12am", "tue": "5am-12am", "wed": "5am-12am", "thu": "5am-12am", "fri": "5am-12am", "sat": "5am-12am", "sun": "5am-12am"},
+        "contact": {"phone": "+91 98XXX XX771", "whatsapp": "+91 98XXX XX771"},
+        "reviews": [
+            {"author": "Manmeet K.", "date": "Jan 10 · 2026", "stars": 5, "speed": 5, "communication": 5, "resolution": 4, "text": "Was stranded at 2am with FASTag blacklisted. Vikram bhai came within 8 minutes."},
+            {"author": "Aman G.", "date": "Dec 30 · 2025", "stars": 4, "text": "Solid. Took longer than expected for NHAI escalation but kept me updated."},
+        ],
+    },
+    {
+        "slug": "lakshmi-iyer-bengaluru", "name": "Lakshmi Iyer", "city": "Bengaluru", "state": "karnataka",
+        "homePlaza": "electronic-city-nh44", "lat": 12.842, "lng": 77.663,
+        "avatar": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&q=70",
+        "verified": True, "premium": False, "rating": 4.8, "reviewCount": 198, "jobsResolved": 521,
+        "avg_speed": 4.7, "avg_communication": 5.0, "avg_resolution": 4.8,
+        "avgResponseSec": 92, "languages": ["Kannada", "Tamil", "English", "Hindi"],
+        "services": ["dispute", "kyc", "recharge"],
+        "banks": ["sbi-fastag", "icici-fastag", "hdfc-fastag", "axis-fastag"],
+        "bio": "Bilingual tech-graduate who runs Sathi services part-time. Best for digital-first commuters who want WhatsApp updates throughout.",
+        "activeHours": {"mon": "7am-9pm", "tue": "7am-9pm", "wed": "7am-9pm", "thu": "7am-9pm", "fri": "7am-9pm", "sat": "8am-2pm", "sun": "Off"},
+        "contact": {"phone": "+91 99XXX XX842", "whatsapp": "+91 99XXX XX842"},
+        "reviews": [{"author": "Karthik R.", "date": "Jan 12 · 2026", "stars": 5, "speed": 5, "communication": 5, "resolution": 5, "text": "Resolved the mischarge over WhatsApp without me even leaving the car."}],
+    },
+    {
+        "slug": "rajesh-kumar-zirakpur", "name": "Rajesh Kumar", "city": "Zirakpur", "state": "haryana",
+        "homePlaza": "zirakpur-nh44", "lat": 30.642, "lng": 76.823,
+        "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=70",
+        "verified": True, "premium": False, "rating": 4.6, "reviewCount": 121, "jobsResolved": 290,
+        "avg_speed": 4.3, "avg_communication": 4.6, "avg_resolution": 4.9,
+        "avgResponseSec": 134, "languages": ["Punjabi", "Hindi", "English"],
+        "services": ["dispute", "recharge", "sos"],
+        "banks": ["sbi-fastag", "paytm-fastag", "icici-fastag"],
+        "bio": "Truck mechanic by day, Sathi at night. Best for vehicle-related FASTag issues (RC mismatch, class disputes).",
+        "activeHours": {"mon": "10am-9pm", "tue": "10am-9pm", "wed": "10am-9pm", "thu": "10am-9pm", "fri": "10am-9pm", "sat": "10am-9pm", "sun": "11am-6pm"},
+        "contact": {"phone": "+91 98XXX XX509", "whatsapp": "+91 98XXX XX509"},
+        "reviews": [{"author": "Jaspreet S.", "date": "Dec 27 · 2025", "stars": 5, "speed": 4, "communication": 5, "resolution": 5, "text": "Helped reverse RC mismatch which two other Sathis had given up on."}],
+    },
+    {
+        "slug": "sanjana-rao-athur", "name": "Sanjana Rao", "city": "Athur", "state": "tamil-nadu",
+        "homePlaza": "athur-nh44", "lat": 12.592, "lng": 77.943,
+        "avatar": "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&q=70",
+        "verified": True, "premium": False, "rating": 4.9, "reviewCount": 87, "jobsResolved": 198,
+        "avg_speed": 4.8, "avg_communication": 4.9, "avg_resolution": 4.9,
+        "avgResponseSec": 78, "languages": ["Tamil", "English", "Kannada"],
+        "services": ["dispute", "kyc"],
+        "banks": ["sbi-fastag", "icici-fastag", "hdfc-fastag"],
+        "bio": "College senior who works Sathi shifts to fund engineering. Detail-oriented; ideal for KYC paperwork that needs a steady hand.",
+        "activeHours": {"mon": "4pm-10pm", "tue": "4pm-10pm", "wed": "4pm-10pm", "thu": "4pm-10pm", "fri": "4pm-11pm", "sat": "10am-10pm", "sun": "11am-8pm"},
+        "contact": {"phone": "+91 99XXX XX330", "whatsapp": "+91 99XXX XX330"},
+        "reviews": [{"author": "Murugan S.", "date": "Jan 04 · 2026", "stars": 5, "speed": 5, "communication": 5, "resolution": 5, "text": "Patient. Explained the process in Tamil, paperwork was correct first try."}],
+    },
+    {
+        "slug": "deepak-patel-vadodara", "name": "Deepak Patel", "city": "Vadodara", "state": "gujarat",
+        "homePlaza": "vadodara-nh48", "lat": 22.302, "lng": 73.203,
+        "avatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&q=70",
+        "verified": True, "premium": True, "rating": 4.8, "reviewCount": 264, "jobsResolved": 712,
+        "avg_speed": 4.8, "avg_communication": 4.9, "avg_resolution": 4.8,
+        "avgResponseSec": 71, "languages": ["Gujarati", "Hindi", "English"],
+        "services": ["dispute", "kyc", "recharge", "sos"],
+        "banks": ["sbi-fastag", "paytm-fastag", "icici-fastag", "hdfc-fastag", "axis-fastag"],
+        "bio": "Senior Sathi covering Vadodara-Bharuch corridor. Trained 18 other Sathis. Goes hard on fleet-grade disputes.",
+        "activeHours": {"mon": "6am-10pm", "tue": "6am-10pm", "wed": "6am-10pm", "thu": "6am-10pm", "fri": "6am-10pm", "sat": "6am-10pm", "sun": "7am-6pm"},
+        "contact": {"phone": "+91 98XXX XX918", "whatsapp": "+91 98XXX XX918"},
+        "reviews": [{"author": "Bharat T.", "date": "Jan 07 · 2026", "stars": 5, "speed": 5, "communication": 5, "resolution": 5, "text": "Fleet of 22 trucks. Deepak ji handles all our disputes. Reliable."}],
+    },
+]
+
+PLAZA_SEED = [
+    {"slug": "khalapur-nh48",        "name": "Khalapur Plaza",        "highway": "NH-48", "state": "maharashtra", "city": "Khalapur",  "lat": 18.81, "lng": 73.27, "carRate": 95,  "truckRate": 410, "monthlyComplaints": 1240, "avgWait": "4 min", "topIssue": "Mischarge double-deduction"},
+    {"slug": "vashi-mmrda",           "name": "Vashi MMRDA Plaza",     "highway": "MMRDA", "state": "maharashtra", "city": "Vashi",     "lat": 19.07, "lng": 73.00, "carRate": 45,  "truckRate": 175, "monthlyComplaints": 890,  "avgWait": "3 min", "topIssue": "Tag not reading"},
+    {"slug": "lonavla-nh48",          "name": "Lonavla Plaza",         "highway": "NH-48", "state": "maharashtra", "city": "Lonavla",   "lat": 18.75, "lng": 73.41, "carRate": 95,  "truckRate": 410, "monthlyComplaints": 760,  "avgWait": "5 min", "topIssue": "Low balance failure"},
+    {"slug": "manesar-nh48",          "name": "Manesar Plaza",         "highway": "NH-48", "state": "haryana",     "city": "Manesar",   "lat": 28.36, "lng": 76.94, "carRate": 85,  "truckRate": 380, "monthlyComplaints": 1430, "avgWait": "6 min", "topIssue": "Tag blacklisted"},
+    {"slug": "kherki-daula-nh48",     "name": "Kherki Daula Plaza",    "highway": "NH-48", "state": "haryana",     "city": "Gurugram",  "lat": 28.39, "lng": 76.93, "carRate": 27,  "truckRate": 145, "monthlyComplaints": 1180, "avgWait": "5 min", "topIssue": "Mischarge"},
+    {"slug": "zirakpur-nh44",         "name": "Zirakpur Plaza",        "highway": "NH-44", "state": "haryana",     "city": "Zirakpur",  "lat": 30.64, "lng": 76.82, "carRate": 110, "truckRate": 480, "monthlyComplaints": 540,  "avgWait": "4 min", "topIssue": "Recharge failure"},
+    {"slug": "athur-nh44",            "name": "Athur Plaza",           "highway": "NH-44", "state": "tamil-nadu",  "city": "Athur",     "lat": 12.59, "lng": 77.94, "carRate": 75,  "truckRate": 320, "monthlyComplaints": 410,  "avgWait": "3 min", "topIssue": "Tag not reading"},
+    {"slug": "electronic-city-nh44",  "name": "Electronic City Plaza", "highway": "NH-44", "state": "karnataka",   "city": "Bengaluru", "lat": 12.84, "lng": 77.66, "carRate": 40,  "truckRate": 165, "monthlyComplaints": 680,  "avgWait": "4 min", "topIssue": "Mischarge"},
+    {"slug": "vadodara-nh48",         "name": "Vadodara Plaza",        "highway": "NH-48", "state": "gujarat",     "city": "Vadodara",  "lat": 22.30, "lng": 73.20, "carRate": 95,  "truckRate": 410, "monthlyComplaints": 380,  "avgWait": "3 min", "topIssue": "KYC pending"},
+    {"slug": "palwal-nh19",           "name": "Palwal Plaza",          "highway": "NH-19", "state": "haryana",     "city": "Palwal",    "lat": 28.14, "lng": 77.33, "carRate": 85,  "truckRate": 380, "monthlyComplaints": 510,  "avgWait": "5 min", "topIssue": "Tag blacklisted"},
+]
+
+@admin_router.post("/login")
+async def admin_login(body: dict):
+    if body.get("secret") != ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid admin secret")
+    return {"ok": True, "secret": ADMIN_SECRET}
+
+@admin_router.get("/stats", dependencies=[Depends(_check_admin)])
+async def admin_stats():
+    users_count = await db.users.count_documents({})
+    sathis_count = await db.sathis.count_documents({})
+    jobs_count = await db.jobs.count_documents({})
+    apps_count = await db.sathi_applications.count_documents({})
+    pending_apps = await db.sathi_applications.count_documents({"status": "pending"})
+    pending_jobs = await db.jobs.count_documents({"status": "pending"})
+    active_jobs = await db.jobs.count_documents({"status": {"$in": ["accepted", "in_progress"]}})
+    resolved_jobs = await db.jobs.count_documents({"status": "resolved"})
+    plazas_count = await db.plazas.count_documents({})
+    states_count = await db.states.count_documents({})
+    return {
+        "users": users_count,
+        "sathis": sathis_count,
+        "jobs": jobs_count,
+        "applications": apps_count,
+        "pending_applications": pending_apps,
+        "pending_jobs": pending_jobs,
+        "active_jobs": active_jobs,
+        "resolved_jobs": resolved_jobs,
+        "plazas": plazas_count,
+        "states": states_count,
+    }
+
+@admin_router.get("/applications", dependencies=[Depends(_check_admin)])
+async def admin_list_applications(
+    status: Optional[str] = None,
+    search: Optional[str] = None,
+    page: int = 1,
+    limit: int = 25,
+):
+    limit = min(limit, 100)
+    skip = (max(page, 1) - 1) * limit
+
+    query: dict = {}
+    if status:
+        query["status"] = status
+    if search:
+        pattern = {"$regex": search.strip(), "$options": "i"}
+        query["$or"] = [{"name": pattern}, {"phone": pattern}, {"ref": pattern}]
+
+    total = await db.sathi_applications.count_documents(query)
+    apps = await db.sathi_applications.find(query, {"_id": 0}).sort("submitted_at", -1).skip(skip).limit(limit).to_list(limit)
+
+    for a in apps:
+        if "admin_note" in a:
+            a["note"] = a.pop("admin_note")
+        if a.get("status") == "approved":
+            sathi = await db.sathis.find_one({"application_ref": a["ref"]}, {"_id": 0, "slug": 1})
+            if sathi:
+                a["sathi_slug"] = sathi["slug"]
+
+    return {"items": apps, "total": total, "page": page, "pages": max(1, -(-total // limit))}
+
+@admin_router.patch("/applications/{ref}/status", dependencies=[Depends(_check_admin)])
+async def admin_update_application(ref: str, body: ApplicationStatusIn):
+    app = await db.sathi_applications.find_one({"ref": ref}, {"_id": 0})
+    if not app:
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    await db.sathi_applications.update_one(
+        {"ref": ref},
+        {"$set": {"status": body.status, "admin_note": body.note, "reviewed_at": datetime.now(timezone.utc).isoformat()}},
+    )
+
+    if body.status == "approved":
+        import re as _re
+        name = app["name"]
+        slug_base = _re.sub(r"[^a-z0-9]+", "-", name.lower().strip()).strip("-")
+        slug = f"{slug_base}-{app['state'][:3]}"
+        # Ensure slug is unique
+        existing = await db.sathis.find_one({"slug": slug})
+        if existing and existing.get("registered_phone") != app["phone"]:
+            slug = f"{slug}-{str(uuid.uuid4())[:4]}"
+
+        whatsapp = app.get("whatsapp") or app["phone"]
+        plaza = await db.plazas.find_one({"slug": app["plaza_slug"]}, {"_id": 0, "lat": 1, "lng": 1, "name": 1})
+        sathi_lat = plaza["lat"] if plaza and plaza.get("lat") else 0.0
+        sathi_lng = plaza["lng"] if plaza and plaza.get("lng") else 0.0
+        sathi_doc = {
+            "slug":             slug,
+            "name":             name,
+            "city":             (plaza and plaza.get("name")) or app.get("plaza_name", app["state"]),
+            "state":            app["state"],
+            "homePlaza":        app["plaza_slug"],
+            "languages":        app.get("languages", []),
+            "services":         app.get("services") or ["dispute", "recharge"],
+            "banks":            app.get("banks") or [],
+            "bio":              app.get("bio") or app.get("experience") or f"Sathi covering {app.get('plaza_name', app['state'])}.",
+            "verified":         False,
+            "premium":          False,
+            "is_available":     False,
+            "rating":           0.0,
+            "reviewCount":      0,
+            "jobsResolved":     0,
+            "avgResponseSec":   0,
+            "registered_phone": app["phone"],
+            "avatar":           "",
+            "lat":              sathi_lat,
+            "lng":              sathi_lng,
+            "activeHours":      app.get("active_hours") or {},
+            "contact":          {"phone": app["phone"], "whatsapp": whatsapp},
+            "reviews":          [],
+            "vehicle_types":    app.get("vehicle_types") or [],
+            "hours_per_week":   app.get("hours_per_week", 0),
+            "application_ref":  ref,
+            "joined_at":        datetime.now(timezone.utc).isoformat(),
+        }
+        await db.sathis.update_one(
+            {"registered_phone": app["phone"]},
+            {"$set": sathi_doc},
+            upsert=True,
+        )
+        logger.info(f"Created Sathi profile for {name} ({slug}) from application {ref}")
+
+    return {"ok": True}
+
+@admin_router.get("/jobs", dependencies=[Depends(_check_admin)])
+async def admin_list_jobs(status: Optional[str] = None):
+    query = {"status": status} if status else {}
+    jobs = await db.jobs.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return jobs
+
+@admin_router.get("/sathis", dependencies=[Depends(_check_admin)])
+async def admin_list_sathis():
+    sathis = await db.sathis.find({}, {"_id": 0}).sort("name", 1).to_list(500)
+    return sathis
+
+@admin_router.get("/sathis/{slug}/stats", dependencies=[Depends(_check_admin)])
+async def admin_sathi_stats(slug: str):
+    sathi = await db.sathis.find_one({"slug": slug}, {"_id": 0})
+    if not sathi:
+        raise HTTPException(status_code=404, detail="Sathi not found")
+    return await _build_sathi_stats(slug, sathi)
+
+@admin_router.patch("/sathis/{slug}/verified", dependencies=[Depends(_check_admin)])
+async def admin_toggle_verified(slug: str, body: dict):
+    await db.sathis.update_one({"slug": slug}, {"$set": {"verified": body.get("verified", True)}})
+    return {"ok": True}
+
+@admin_router.post("/sathis/backfill-coords", dependencies=[Depends(_check_admin)])
+async def admin_backfill_coords():
+    sathis = await db.sathis.find({"$or": [{"lat": 0}, {"lat": 0.0}, {"lat": {"$exists": False}}]}, {"_id": 0, "slug": 1, "homePlaza": 1}).to_list(500)
+    updated = 0
+    for s in sathis:
+        plaza = await db.plazas.find_one({"slug": s.get("homePlaza")}, {"_id": 0, "lat": 1, "lng": 1})
+        if plaza and plaza.get("lat"):
+            await db.sathis.update_one({"slug": s["slug"]}, {"$set": {"lat": plaza["lat"], "lng": plaza["lng"]}})
+            updated += 1
+    return {"ok": True, "updated": updated}
+
+# ─── Promo code admin ─────────────────────────────────────────────────────────
+
+class PromoCodeIn(BaseModel):
+    code: str
+    label: str = ""
+    discount_type: Literal["flat", "percent"]
+    discount_value: float
+    applicable_services: List[str] = []
+    applicable_user_phones: List[str] = []
+    max_uses: int = 0
+    valid_until: Optional[str] = None
+
+@admin_router.get("/promo-codes", dependencies=[Depends(_check_admin)])
+async def list_promo_codes():
+    return await db.promo_codes.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+
+@admin_router.post("/promo-codes", dependencies=[Depends(_check_admin)])
+async def create_promo_code(body: PromoCodeIn):
+    code = body.code.strip().upper()
+    if not code:
+        raise HTTPException(status_code=400, detail="Code is required")
+    existing = await db.promo_codes.find_one({"code": code})
+    if existing:
+        raise HTTPException(status_code=409, detail="Promo code already exists")
+    doc = {
+        "code": code,
+        "label": body.label.strip(),
+        "discount_type": body.discount_type,
+        "discount_value": body.discount_value,
+        "applicable_services": body.applicable_services,
+        "applicable_user_phones": [p.strip() for p in body.applicable_user_phones if p.strip()],
+        "max_uses": body.max_uses,
+        "used_count": 0,
+        "valid_until": body.valid_until,
+        "is_active": True,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.promo_codes.insert_one(doc)
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+@admin_router.patch("/promo-codes/{code}/toggle", dependencies=[Depends(_check_admin)])
+async def toggle_promo_code(code: str):
+    doc = await db.promo_codes.find_one({"code": code.upper()}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Promo code not found")
+    new_state = not doc["is_active"]
+    await db.promo_codes.update_one({"code": code.upper()}, {"$set": {"is_active": new_state}})
+    return {"code": code.upper(), "is_active": new_state}
+
+@admin_router.delete("/promo-codes/{code}", dependencies=[Depends(_check_admin)])
+async def delete_promo_code(code: str):
+    result = await db.promo_codes.delete_one({"code": code.upper()})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Promo code not found")
+    return {"ok": True}
+
+@admin_router.get("/settlements", dependencies=[Depends(_check_admin)])
+async def admin_settlements():
+    pipeline = [
+        {"$match": {"status": "resolved"}},
+        {"$group": {
+            "_id": "$sathi_slug",
+            "resolved_jobs":      {"$sum": 1},
+            "gross_earnings":     {"$sum": "$platform_fee"},
+            "platform_commission":{"$sum": "$sathi_platform_fee"},
+            "net_earnings":       {"$sum": {"$subtract": ["$platform_fee", "$sathi_platform_fee"]}},
+            "last_job_at":        {"$max": "$updated_at"},
+        }},
+        {"$sort": {"net_earnings": -1}},
+    ]
+    rows = await db.jobs.aggregate(pipeline).to_list(500)
+    slugs = [r["_id"] for r in rows if r["_id"]]
+    sathis = {s["slug"]: s for s in await db.sathis.find(
+        {"slug": {"$in": slugs}}, {"_id": 0, "slug": 1, "name": 1, "registered_phone": 1}
+    ).to_list(500)}
+    result = []
+    for r in rows:
+        s = sathis.get(r["_id"], {})
+        result.append({
+            "sathi_slug":         r["_id"],
+            "sathi_name":         s.get("name", r["_id"] or "—"),
+            "phone":              s.get("registered_phone") or "—",
+            "resolved_jobs":      r["resolved_jobs"],
+            "gross_earnings":     round(r["gross_earnings"] or 0, 2),
+            "platform_commission":round(r["platform_commission"] or 0, 2),
+            "net_earnings":       round(r["net_earnings"] or 0, 2),
+            "last_job_at":        r["last_job_at"],
+        })
+    return result
+
+@admin_router.post("/seed", dependencies=[Depends(_check_admin)])
+async def seed_db():
+    for s in SATHI_SEED:
+        doc = {**s, "is_available": True}
+        await db.sathis.update_one(
+            {"slug": s["slug"]},
+            {"$set": doc, "$setOnInsert": {"registered_phone": None}},
+            upsert=True,
+        )
+    for p in PLAZA_SEED:
+        await db.plazas.update_one({"slug": p["slug"]}, {"$set": p}, upsert=True)
+    logger.info(f"Seeded {len(SATHI_SEED)} sathis + {len(PLAZA_SEED)} plazas")
+    return {"ok": True, "sathis": len(SATHI_SEED), "plazas": len(PLAZA_SEED)}
+
+# ─── Legacy status check (keep for compatibility) ─────────────────────────────
+
+legacy_router = APIRouter(tags=["legacy"])
+
+@legacy_router.get("/")
+async def root():
+    return {"message": "Sathi API v2"}
+
+@legacy_router.post("/status", response_model=StatusCheck)
+async def create_status_check(body: StatusCheckCreate):
+    obj = StatusCheck(client_name=body.client_name)
+    doc = obj.model_dump()
+    doc["timestamp"] = doc["timestamp"].isoformat()
+    await db.status_checks.insert_one(doc)
+    return obj
+
+@legacy_router.get("/status", response_model=List[StatusCheck])
+async def get_status_checks():
+    checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
+    for c in checks:
+        if isinstance(c["timestamp"], str):
+            c["timestamp"] = datetime.fromisoformat(c["timestamp"])
+    return checks
+
+# ─── Sathi dashboard routes ───────────────────────────────────────────────────
+
+ISSUE_RATES = {"dispute": 99, "kyc": 149, "recharge": 49, "sos": 199}
+SATHI_PLATFORM_FEE = 199  # platform commission charged to Sathi per resolved job
+
+class ClaimSathiIn(BaseModel):
+    sathi_slug: str
+
+class AvailabilityIn(BaseModel):
+    is_available: bool
+
+async def _decode_token(token: str) -> Optional[dict]:
+    """Decode a raw JWT string; returns payload or None."""
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except JWTError:
+        return None
+
+async def _require_sathi_ctx(current: dict = Depends(_require_user)) -> dict:
+    doc = await db.sathis.find_one({"registered_phone": current["sub"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=403, detail="No Sathi profile linked to this account")
+    return {"user": current, "sathi": doc}
+
+sathi_dash = APIRouter(prefix="/sathi-dashboard", tags=["sathi-dashboard"])
+
+@sathi_dash.get("/check")
+async def check_sathi_status(current: dict = Depends(_require_user)):
+    doc = await db.sathis.find_one(
+        {"registered_phone": current["sub"]}, {"_id": 0, "name": 1, "slug": 1, "is_available": 1}
+    )
+    if doc:
+        return {"is_sathi": True, "name": doc["name"], "slug": doc["slug"]}
+    app = await db.sathi_applications.find_one(
+        {"phone": current["sub"]}, {"_id": 0, "status": 1, "name": 1, "ref": 1}
+    )
+    return {
+        "is_sathi": False,
+        "application_status": app["status"] if app else None,
+        "application_ref": app["ref"] if app else None,
+        "name": app["name"] if app else None,
+    }
+
+@sathi_dash.post("/claim")
+async def claim_sathi(body: ClaimSathiIn, current: dict = Depends(_require_user)):
+    sathi = await db.sathis.find_one({"slug": body.sathi_slug}, {"_id": 0})
+    if not sathi:
+        raise HTTPException(status_code=404, detail="Sathi profile not found — check the slug")
+    existing_phone = sathi.get("registered_phone")
+    if existing_phone and existing_phone != current["sub"]:
+        raise HTTPException(status_code=409, detail="This Sathi profile is already claimed by another account")
+    await db.sathis.update_one(
+        {"slug": body.sathi_slug},
+        {"$set": {"registered_phone": current["sub"]}},
+    )
+    return {"ok": True, "sathi_slug": body.sathi_slug, "sathi_name": sathi["name"]}
+
+@sathi_dash.get("/profile")
+async def my_sathi_profile(ctx: dict = Depends(_require_sathi_ctx)):
+    return ctx["sathi"]
+
+@sathi_dash.get("/jobs")
+async def sathi_job_queue(ctx: dict = Depends(_require_sathi_ctx)):
+    return await db.jobs.find(
+        {"sathi_slug": ctx["sathi"]["slug"]}, {"_id": 0}
+    ).sort("created_at", -1).to_list(200)
+
+@sathi_dash.patch("/jobs/{job_id}/accept")
+async def accept_job(job_id: str, ctx: dict = Depends(_require_sathi_ctx)):
+    job = await db.jobs.find_one({"id": job_id, "sathi_slug": ctx["sathi"]["slug"]}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    now = datetime.now(timezone.utc).isoformat()
+    await db.jobs.update_one({"id": job_id}, {"$set": {"status": "accepted", "updated_at": now}})
+    updated = {**job, "status": "accepted", "updated_at": now}
+    await notify_sathi(ctx["sathi"]["slug"], "job_status", updated)
+    return updated
+
+@sathi_dash.patch("/jobs/{job_id}/start")
+async def start_job(job_id: str, ctx: dict = Depends(_require_sathi_ctx)):
+    job = await db.jobs.find_one({"id": job_id, "sathi_slug": ctx["sathi"]["slug"]}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    now = datetime.now(timezone.utc).isoformat()
+    await db.jobs.update_one({"id": job_id}, {"$set": {"status": "in_progress", "updated_at": now}})
+    updated = {**job, "status": "in_progress", "updated_at": now}
+    await notify_sathi(ctx["sathi"]["slug"], "job_status", updated)
+    return updated
+
+@sathi_dash.patch("/jobs/{job_id}/resolve")
+async def resolve_job(job_id: str, ctx: dict = Depends(_require_sathi_ctx)):
+    job = await db.jobs.find_one({"id": job_id, "sathi_slug": ctx["sathi"]["slug"]}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    now = datetime.now(timezone.utc).isoformat()
+    await db.jobs.update_one(
+        {"id": job_id},
+        {"$set": {"status": "resolved", "updated_at": now, "resolved_at": now}},
+    )
+    updated = {**job, "status": "resolved", "updated_at": now, "resolved_at": now}
+    await notify_sathi(ctx["sathi"]["slug"], "job_status", updated)
+    return updated
+
+@sathi_dash.patch("/jobs/{job_id}/cancel")
+async def cancel_job_sathi(job_id: str, ctx: dict = Depends(_require_sathi_ctx)):
+    job = await db.jobs.find_one({"id": job_id, "sathi_slug": ctx["sathi"]["slug"]}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    now = datetime.now(timezone.utc).isoformat()
+    await db.jobs.update_one({"id": job_id}, {"$set": {"status": "cancelled", "updated_at": now}})
+    updated = {**job, "status": "cancelled", "updated_at": now}
+    await notify_sathi(ctx["sathi"]["slug"], "job_status", updated)
+    return updated
+
+@sathi_dash.patch("/availability")
+async def toggle_availability(body: AvailabilityIn, ctx: dict = Depends(_require_sathi_ctx)):
+    await db.sathis.update_one(
+        {"slug": ctx["sathi"]["slug"]},
+        {"$set": {"is_available": body.is_available}},
+    )
+    return {"ok": True, "is_available": body.is_available}
+
+@sathi_dash.get("/earnings")
+async def sathi_earnings(ctx: dict = Depends(_require_sathi_ctx)):
+    resolved = await db.jobs.find(
+        {"sathi_slug": ctx["sathi"]["slug"], "status": "resolved"},
+        {"_id": 0, "platform_fee": 1, "sathi_platform_fee": 1, "issue": 1, "created_at": 1, "vehicle_number": 1, "ref_code": 1},
+    ).sort("created_at", -1).to_list(1000)
+
+    def net(j):
+        return j.get("platform_fee", 99) - j.get("sathi_platform_fee", SATHI_PLATFORM_FEE)
+
+    total = sum(net(j) for j in resolved)
+    now = datetime.now(timezone.utc)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    this_month_jobs = [
+        j for j in resolved
+        if datetime.fromisoformat(j["created_at"]).replace(tzinfo=timezone.utc) >= month_start
+    ]
+    month_total = sum(net(j) for j in this_month_jobs)
+
+    return {
+        "total_earnings": total,
+        "this_month": month_total,
+        "resolved_count": len(resolved),
+        "sathi_platform_fee": SATHI_PLATFORM_FEE,
+        "recent": resolved[:10],
+    }
+
+@sathi_dash.get("/events")
+async def sathi_events(request: Request, token: Optional[str] = Query(default=None)):
+    """SSE stream — Sathi receives real-time job notifications."""
+    # Accept token from query param (EventSource can't set custom headers)
+    user = None
+    if token:
+        user = await _decode_token(token)
+    if not user:
+        # Fallback: try Authorization header
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            user = await _decode_token(auth[7:])
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    sathi = await db.sathis.find_one({"registered_phone": user["sub"]}, {"_id": 0, "slug": 1})
+    if not sathi:
+        raise HTTPException(status_code=403, detail="No Sathi profile linked to this account")
+
+    slug = sathi["slug"]
+    queue: asyncio.Queue = asyncio.Queue()
+
+    # Register
+    if slug not in sathi_subscribers:
+        sathi_subscribers[slug] = []
+    sathi_subscribers[slug].append(queue)
+
+    async def event_generator():
+        try:
+            # Send an initial ping so the client knows the connection is live
+            yield {"data": json.dumps({"type": "connected", "slug": slug})}
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    # Poll with a timeout so we can check disconnect periodically
+                    payload = await asyncio.wait_for(queue.get(), timeout=15.0)
+                    yield {"data": payload}
+                except asyncio.TimeoutError:
+                    # Send a keepalive comment so proxies don't close the connection
+                    yield {"comment": "keepalive"}
+        finally:
+            # Cleanup on disconnect
+            try:
+                sathi_subscribers[slug].remove(queue)
+                if not sathi_subscribers[slug]:
+                    del sathi_subscribers[slug]
+            except (ValueError, KeyError):
+                pass
+
+    return EventSourceResponse(event_generator())
+
+
+class SathiProfileUpdateIn(BaseModel):
+    bio: Optional[str] = None
+    languages: Optional[List[str]] = None
+    services: Optional[List[str]] = None
+    banks: Optional[List[str]] = None
+    active_hours: Optional[dict] = None
+    whatsapp: Optional[str] = None
+
+@sathi_dash.patch("/profile")
+async def update_sathi_profile(body: SathiProfileUpdateIn, ctx: dict = Depends(_require_sathi_ctx)):
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    if "whatsapp" in updates:
+        sathi = ctx["sathi"]
+        contact = sathi.get("contact", {})
+        contact["whatsapp"] = updates.pop("whatsapp")
+        updates["contact"] = contact
+    if not updates:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    await db.sathis.update_one({"slug": ctx["sathi"]["slug"]}, {"$set": updates})
+    return {"ok": True}
+
+@sathi_dash.post("/upload-avatar")
+async def upload_avatar(file: UploadFile = File(...), ctx: dict = Depends(_require_sathi_ctx)):
+    ext = Path(file.filename).suffix.lower() if file.filename else ".jpg"
+    if ext not in {".jpg", ".jpeg", ".png", ".webp"}:
+        raise HTTPException(status_code=400, detail="Only jpg/png/webp allowed")
+    slug = ctx["sathi"]["slug"]
+    filename = f"{slug}{ext}"
+    dest = UPLOAD_DIR / "avatars" / filename
+    with dest.open("wb") as f:
+        shutil.copyfileobj(file.file, f)
+    url = f"/uploads/avatars/{filename}"
+    await db.sathis.update_one({"slug": slug}, {"$set": {"avatar": url}})
+    return {"ok": True, "url": url}
+
+@sathi_dash.post("/upload-gallery")
+async def upload_gallery(file: UploadFile = File(...), ctx: dict = Depends(_require_sathi_ctx)):
+    ext = Path(file.filename).suffix.lower() if file.filename else ".jpg"
+    if ext not in {".jpg", ".jpeg", ".png", ".webp"}:
+        raise HTTPException(status_code=400, detail="Only jpg/png/webp allowed")
+    slug = ctx["sathi"]["slug"]
+    filename = f"{slug}-{uuid.uuid4().hex[:8]}{ext}"
+    dest = UPLOAD_DIR / "gallery" / filename
+    with dest.open("wb") as f:
+        shutil.copyfileobj(file.file, f)
+    url = f"/uploads/gallery/{filename}"
+    await db.sathis.update_one({"slug": slug}, {"$push": {"gallery": url}})
+    return {"ok": True, "url": url}
+
+def _compute_tier(resolved: int) -> tuple[str, float]:
+    """Return (tier_name, progress_to_next_tier_pct)."""
+    if resolved < 10:
+        return "Rising", round(resolved / 10 * 100, 1)
+    elif resolved < 50:
+        return "Verified", round((resolved - 10) / 40 * 100, 1)
+    elif resolved < 200:
+        return "Pro", round((resolved - 50) / 150 * 100, 1)
+    else:
+        return "Elite", 100.0
+
+async def _build_sathi_stats(sathi_slug: str, sathi_doc: dict) -> dict:
+    all_jobs = await db.jobs.find({"sathi_slug": sathi_slug}, {"_id": 0}).to_list(10000)
+
+    total_jobs     = len(all_jobs)
+    resolved_jobs  = sum(1 for j in all_jobs if j.get("status") == "resolved")
+    cancelled_jobs = sum(1 for j in all_jobs if j.get("status") == "cancelled")
+
+    # acceptance_rate: (accepted+resolved) / total that were ever pending
+    accepted_count = sum(1 for j in all_jobs if j.get("status") in ("accepted", "in_progress", "resolved"))
+    acceptance_rate = round(accepted_count / total_jobs * 100, 1) if total_jobs else 0.0
+
+    # avg_response_sec: seconds from created_at to updated_at for accepted/in_progress/resolved jobs
+    response_deltas = []
+    for j in all_jobs:
+        if j.get("status") in ("accepted", "in_progress", "resolved"):
+            try:
+                created  = datetime.fromisoformat(j["created_at"]).replace(tzinfo=timezone.utc)
+                accepted = datetime.fromisoformat(j["updated_at"]).replace(tzinfo=timezone.utc)
+                delta = (accepted - created).total_seconds()
+                if 0 < delta < 86400:  # sanity: ignore negatives or >1 day
+                    response_deltas.append(delta)
+            except Exception:
+                pass
+    avg_response_sec = round(sum(response_deltas) / len(response_deltas), 1) if response_deltas else 0.0
+
+    # resolution_rate: resolved / (resolved + cancelled)
+    closed = resolved_jobs + cancelled_jobs
+    resolution_rate = round(resolved_jobs / closed * 100, 1) if closed else 0.0
+
+    # ratings from sathi doc
+    avg_rating   = sathi_doc.get("rating", 0.0)
+    total_reviews = sathi_doc.get("reviewCount", 0)
+
+    tier, tier_progress = _compute_tier(resolved_jobs)
+
+    return {
+        "total_jobs":       total_jobs,
+        "resolved_jobs":    resolved_jobs,
+        "cancelled_jobs":   cancelled_jobs,
+        "acceptance_rate":  acceptance_rate,
+        "avg_response_sec": avg_response_sec,
+        "resolution_rate":  resolution_rate,
+        "avg_rating":       avg_rating,
+        "total_reviews":    total_reviews,
+        "tier":             tier,
+        "tier_progress":    tier_progress,
+    }
+
+@sathi_dash.get("/stats")
+async def sathi_stats(ctx: dict = Depends(_require_sathi_ctx)):
+    return await _build_sathi_stats(ctx["sathi"]["slug"], ctx["sathi"])
+
+@sathi_dash.delete("/gallery")
+async def delete_gallery_image(body: dict, ctx: dict = Depends(_require_sathi_ctx)):
+    url = body.get("url", "")
+    await db.sathis.update_one({"slug": ctx["sathi"]["slug"]}, {"$pull": {"gallery": url}})
+    # Remove file
+    rel = url.lstrip("/")
+    path = ROOT_DIR / rel
+    if path.exists():
+        path.unlink()
+    return {"ok": True}
+
+# ─── Sathi Applications ───────────────────────────────────────────────────────
+
+applications_router = APIRouter(prefix="/sathi-applications", tags=["applications"])
+
+@applications_router.post("")
+async def submit_sathi_application(body: SathiApplicationIn):
+    plaza = await db.plazas.find_one({"slug": body.plaza_slug}, {"_id": 0, "name": 1, "state_name": 1})
+    if not plaza:
+        raise HTTPException(status_code=404, detail="Plaza not found")
+
+    existing = await db.sathi_applications.find_one({"phone": body.phone})
+    if existing:
+        raise HTTPException(status_code=409, detail="Application already submitted for this phone number")
+
+    ref = f"APP-{body.state.upper()[:2]}-{datetime.now().year}-{str(uuid.uuid4())[:6].upper()}"
+    doc = {
+        "ref": ref,
+        "phone": body.phone,
+        "name": body.name,
+        "state": body.state,
+        "plaza_slug": body.plaza_slug,
+        "plaza_name": plaza["name"],
+        "hours_per_week": body.hours_per_week,
+        "languages": body.languages,
+        "experience": body.experience,
+        "vehicle_types": body.vehicle_types,
+        "status": "pending",
+        "submitted_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.sathi_applications.insert_one(doc)
+    logger.info(f"New Sathi application: {ref} from {body.phone}")
+    return {"ref": ref, "message": "Application submitted successfully"}
+
+@applications_router.get("/check/{phone}")
+async def check_application(phone: str):
+    doc = await db.sathi_applications.find_one({"phone": phone}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="No application found")
+    return doc
+
+# ─── FASTag status proxy ──────────────────────────────────────────────────────
+
+tools_router = APIRouter(prefix="/tools", tags=["tools"])
+
+APNA_BASE = "https://www.apnapayment.com"
+UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
+
+@tools_router.get("/fastag-status")
+async def fastag_status(vehicle: str):
+    vehicle = vehicle.strip().upper().replace(" ", "")
+    if not re.match(r"^[A-Z]{2}\d{1,2}[A-Z]{1,3}\d{1,4}$", vehicle):
+        raise HTTPException(status_code=400, detail="Invalid vehicle number format")
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
+            # Step 1: GET the page to obtain CSRF token + session cookies
+            r1 = await client.get(f"{APNA_BASE}/fastagstatus", headers={"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9"})
+            soup1 = BeautifulSoup(r1.text, "html.parser")
+            token_input = soup1.find("input", {"name": "_token"})
+            if not token_input:
+                raise HTTPException(status_code=502, detail="Could not fetch CSRF token from upstream")
+            csrf = token_input["value"]
+            cookies = dict(r1.cookies)
+
+            # Step 2: POST with vehicle number
+            r2 = await client.post(
+                f"{APNA_BASE}/fetchDataFromAPI",
+                data={"_token": csrf, "vehicle_number": vehicle},
+                cookies=cookies,
+                headers={"User-Agent": UA, "Referer": f"{APNA_BASE}/fastagstatus", "Accept-Language": "en-US,en;q=0.9"},
+            )
+            soup2 = BeautifulSoup(r2.text, "html.parser")
+            rows = soup2.select("tbody tr")
+            results = []
+            for row in rows:
+                cells = row.find_all(["th", "td"])
+                if len(cells) < 6:
+                    continue
+                status_cell = cells[5]
+                status_text = status_cell.get_text(strip=True)
+                status_bg = ""
+                div = status_cell.find("div")
+                if div and div.get("style"):
+                    m = re.search(r"background:\s*([^;]+)", div["style"])
+                    if m: status_bg = m.group(1).strip()
+                is_active = "active" in status_text.lower() or status_bg == "#b7edc5"
+                results.append({
+                    "bank":       cells[1].get_text(strip=True),
+                    "tag_id":     cells[2].get_text(strip=True),
+                    "vehicle_class": cells[3].get_text(strip=True),
+                    "issue_date": cells[4].get_text(strip=True),
+                    "status":     "Active" if is_active else status_text or "Inactive",
+                    "is_active":  is_active,
+                })
+            return {"vehicle": vehicle, "tags": results}
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=f"Upstream error: {str(e)}")
+
+# ─── Payments ─────────────────────────────────────────────────────────────────
+
+payments_router = APIRouter(prefix="/payments", tags=["payments"])
+
+class BookingIntentIn(BaseModel):
+    sathi_slug: str
+    issue: str
+    vehicle_number: str
+    note: Optional[str] = ""
+    promo_code: Optional[str] = None
+
+
+async def _cf_create_order(order_id: str, amount: float, user_id: str, phone: str, return_path: str) -> dict:
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        r = await client.post(
+            f"{CF_BASE}/orders",
+            headers={
+                "x-client-id": CF_APP_ID,
+                "x-client-secret": CF_SECRET_KEY,
+                "x-api-version": "2023-08-01",
+                "Content-Type": "application/json",
+            },
+            json={
+                "order_id": order_id,
+                "order_amount": amount,
+                "order_currency": "INR",
+                "customer_details": {
+                    "customer_id": user_id,
+                    "customer_phone": phone,
+                    "customer_name": "Customer",
+                    "customer_email": f"customer{phone[-4:]}@apnafastag.in",
+                },
+                "order_meta": {
+                    "return_url": f"{FRONTEND_URL}{return_path}",
+                    "notify_url": f"{BACKEND_URL}/api/payments/webhook",
+                },
+            },
+        )
+    if r.status_code not in (200, 201):
+        logger.error(f"Cashfree create order failed: {r.status_code} {r.text}")
+        raise HTTPException(status_code=502, detail="Payment gateway error. Please try again.")
+    return r.json()
+
+
+async def _create_job_from_intent(intent: dict) -> Optional[dict]:
+    """Idempotent: creates job from a paid booking intent. Returns existing job if already created."""
+    existing = await db.jobs.find_one({"cashfree_order_id": intent["order_id"]}, {"_id": 0})
+    if existing:
+        return existing
+
+    sathi = await db.sathis.find_one({"slug": intent["sathi_slug"]}, {"_id": 0})
+    if not sathi:
+        return None
+
+    now = datetime.now(timezone.utc).isoformat()
+    job = {
+        "id": str(uuid.uuid4()),
+        "ref_code": _gen_ref(sathi.get("state", "IN")),
+        "user_id": intent["user_id"],
+        "user_phone": intent["user_phone"],
+        "sathi_slug": intent["sathi_slug"],
+        "sathi_name": sathi["name"],
+        "sathi_city": sathi.get("city", ""),
+        "sathi_avatar": sathi.get("avatar", ""),
+        "issue": intent["issue"],
+        "vehicle_number": intent["vehicle_number"],
+        "note": intent.get("note", ""),
+        "platform_fee": intent["amount"],
+        "original_fee": intent.get("original_amount", intent["amount"]),
+        "discount_amount": intent.get("discount_amount", 0),
+        "promo_code": intent.get("promo_code"),
+        "sathi_platform_fee": SATHI_PLATFORM_FEE,
+        "status": "pending",
+        "payment_status": "paid",
+        "cashfree_order_id": intent["order_id"],
+        "paid_at": now,
+        "created_at": now,
+        "updated_at": now,
+        "resolved_at": None,
+        "review": None,
+    }
+    await db.jobs.insert_one({**job})
+    await db.payment_intents.update_one(
+        {"order_id": intent["order_id"]},
+        {"$set": {"status": "completed", "job_id": job["id"]}},
+    )
+    await notify_sathi(intent["sathi_slug"], "new_job", job)
+    logger.info(f"[BOOKING] {job['ref_code']} created from intent {intent['order_id']}")
+    return job
+
+
+async def _apply_promo(code: str, issue: str, user_phone: str, base_amount: float) -> dict:
+    """Validate a promo code and compute discount. Returns dict with valid, discount_amount, final_amount, message."""
+    doc = await db.promo_codes.find_one({"code": code.upper()}, {"_id": 0})
+    if not doc or not doc.get("is_active"):
+        return {"valid": False, "message": "Invalid or inactive promo code"}
+    if doc.get("applicable_services") and issue not in doc["applicable_services"]:
+        return {"valid": False, "message": f"This code is not valid for {issue} service"}
+    if doc.get("applicable_user_phones") and user_phone not in doc["applicable_user_phones"]:
+        return {"valid": False, "message": "This code is not valid for your account"}
+    if doc.get("max_uses") and doc["used_count"] >= doc["max_uses"]:
+        return {"valid": False, "message": "This promo code has reached its usage limit"}
+    if doc.get("valid_until"):
+        try:
+            expiry = datetime.fromisoformat(doc["valid_until"])
+            if expiry.tzinfo is None:
+                expiry = expiry.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) > expiry:
+                return {"valid": False, "message": "This promo code has expired"}
+        except Exception:
+            pass
+    if doc["discount_type"] == "flat":
+        discount = min(doc["discount_value"], base_amount - 1)
+    else:
+        discount = round(base_amount * doc["discount_value"] / 100, 2)
+        discount = min(discount, base_amount - 1)
+    final = max(1.0, base_amount - discount)
+    return {"valid": True, "discount_amount": round(discount, 2), "final_amount": round(final, 2),
+            "message": f"{'₹' + str(int(discount)) if doc['discount_type'] == 'flat' else str(int(doc['discount_value'])) + '%'} off applied!"}
+
+
+@payments_router.get("/validate-promo")
+async def validate_promo(code: str, issue: str, current: dict = Depends(_require_user)):
+    amount = float(ISSUE_RATES.get(issue, 99))
+    result = await _apply_promo(code, issue, current["sub"], amount)
+    return {**result, "base_amount": amount}
+
+
+@payments_router.post("/initiate-booking")
+async def initiate_booking(body: BookingIntentIn, current: dict = Depends(_require_user)):
+    if not CF_APP_ID or not CF_SECRET_KEY:
+        raise HTTPException(status_code=503, detail="Payment gateway not configured")
+
+    sathi = await db.sathis.find_one({"slug": body.sathi_slug}, {"_id": 0})
+    if not sathi:
+        raise HTTPException(status_code=404, detail="Sathi not found")
+
+    base_amount = float(ISSUE_RATES.get(body.issue, 99))
+    final_amount = base_amount
+    discount_amount = 0.0
+    promo_applied = None
+
+    if body.promo_code:
+        promo_result = await _apply_promo(body.promo_code, body.issue, current["sub"], base_amount)
+        if not promo_result["valid"]:
+            raise HTTPException(status_code=400, detail=promo_result["message"])
+        final_amount = promo_result["final_amount"]
+        discount_amount = promo_result["discount_amount"]
+        promo_applied = body.promo_code.upper()
+        await db.promo_codes.update_one({"code": promo_applied}, {"$inc": {"used_count": 1}})
+
+    order_id = f"BK-{str(uuid.uuid4())[:12].upper()}"
+
+    intent = {
+        "order_id": order_id,
+        "user_id": current["user_id"],
+        "user_phone": current["sub"],
+        "sathi_slug": body.sathi_slug,
+        "issue": body.issue,
+        "vehicle_number": body.vehicle_number.strip().upper(),
+        "note": body.note or "",
+        "amount": final_amount,
+        "original_amount": base_amount,
+        "discount_amount": discount_amount,
+        "promo_code": promo_applied,
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.payment_intents.insert_one({**intent})
+
+    cf_data = await _cf_create_order(
+        order_id, final_amount, current["user_id"], current["sub"],
+        f"/my-jobs?payment_id={order_id}",
+    )
+    return {
+        "order_id": order_id,
+        "payment_session_id": cf_data["payment_session_id"],
+        "amount": final_amount,
+        "original_amount": base_amount,
+        "discount_amount": discount_amount,
+        "promo_code": promo_applied,
+    }
+
+
+@payments_router.post("/webhook")
+async def payment_webhook(request: Request):
+    body_bytes = await request.body()
+    sig = request.headers.get("x-webhook-signature", "")
+    ts = request.headers.get("x-webhook-timestamp", "")
+
+    if CF_SECRET_KEY and sig:
+        message = ts + body_bytes.decode()
+        expected = base64.b64encode(
+            hmac.new(CF_SECRET_KEY.encode(), message.encode(), hashlib.sha256).digest()
+        ).decode()
+        if not hmac.compare_digest(sig, expected):
+            raise HTTPException(status_code=403, detail="Invalid webhook signature")
+
+    try:
+        payload = json.loads(body_bytes)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+    order_id = payload.get("data", {}).get("order", {}).get("order_id", "")
+    payment_status = payload.get("data", {}).get("payment", {}).get("payment_status", "")
+
+    if order_id and payment_status == "SUCCESS":
+        intent = await db.payment_intents.find_one({"order_id": order_id}, {"_id": 0})
+        if intent:
+            await _create_job_from_intent(intent)
+        logger.info(f"[WEBHOOK] {order_id} payment SUCCESS")
+
+    return {"ok": True}
+
+
+@payments_router.get("/verify/{order_id}")
+async def verify_payment(order_id: str, current: dict = Depends(_require_user)):
+    intent = await db.payment_intents.find_one(
+        {"order_id": order_id, "user_id": current["user_id"]}, {"_id": 0}
+    )
+    if not intent:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    # Already completed — return existing job info
+    if intent.get("status") == "completed":
+        job = await db.jobs.find_one({"cashfree_order_id": order_id}, {"_id": 0})
+        return {"payment_status": "paid", "job_ref": job["ref_code"] if job else None, "job_id": job["id"] if job else None}
+
+    if not CF_APP_ID or not CF_SECRET_KEY:
+        return {"payment_status": "pending", "job_ref": None, "job_id": None}
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        r = await client.get(
+            f"{CF_BASE}/orders/{order_id}/payments",
+            headers={
+                "x-client-id": CF_APP_ID,
+                "x-client-secret": CF_SECRET_KEY,
+                "x-api-version": "2023-08-01",
+            },
+        )
+
+    if r.status_code == 200:
+        payments_list = r.json()
+        if isinstance(payments_list, list) and payments_list:
+            if payments_list[0].get("payment_status") == "SUCCESS":
+                job = await _create_job_from_intent(intent)
+                return {
+                    "payment_status": "paid",
+                    "job_ref": job["ref_code"] if job else None,
+                    "job_id": job["id"] if job else None,
+                }
+
+    return {"payment_status": "pending", "job_ref": None, "job_id": None}
+
+# ─── Wire up ──────────────────────────────────────────────────────────────────
+
+api.include_router(auth_router)
+api.include_router(users_router)
+api.include_router(states_router)
+api.include_router(sathis_router)
+api.include_router(plazas_router)
+api.include_router(jobs_router)
+api.include_router(admin_router)
+api.include_router(applications_router)
+api.include_router(sathi_dash)
+api.include_router(tools_router)
+api.include_router(payments_router)
+api.include_router(legacy_router)
+app.include_router(api)
+
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+async def create_indexes():
+    """Create MongoDB indexes on startup for query performance at scale."""
+    # jobs
+    await db.jobs.create_index([("sathi_slug", 1), ("status", 1)])
+    await db.jobs.create_index([("user_id", 1), ("created_at", -1)])
+    await db.jobs.create_index([("cashfree_order_id", 1)], sparse=True)
+    await db.jobs.create_index([("ref", 1)], unique=True, sparse=True)
+    # sathis
+    await db.sathis.create_index([("state", 1), ("is_available", 1)])
+    await db.sathis.create_index([("slug", 1)], unique=True)
+    # applications
+    await db.sathi_applications.create_index([("phone", 1)], unique=True)
+    await db.sathi_applications.create_index([("status", 1), ("submitted_at", -1)])
+    await db.sathi_applications.create_index([("name", 1)])
+    # payment_intents
+    await db.payment_intents.create_index([("cashfree_order_id", 1)], unique=True, sparse=True)
+    # promo_codes
+    await db.promo_codes.create_index([("code", 1)], unique=True)
+    logger.info("MongoDB indexes ensured")
+
+@app.on_event("startup")
+async def startup_db():
+    await create_indexes()
+
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    client.close()

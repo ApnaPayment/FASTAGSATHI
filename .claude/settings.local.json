@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import ast, sys; ast.parse\\(open\\('backend/server.py'\\).read\\(\\)\\); print\\('server.py syntax OK'\\)\")",
+      "Bash(PORT=3002 /opt/homebrew/opt/node@20/bin/node node_modules/.bin/craco start)",
+      "Bash(echo \"Sathi frontend starting, PID $!\")",
+      "Read(//private/tmp/**)",
+      "Bash(python3 -c \"import cashfree_pg\")",
+      "Bash(pip3 install *)",
+      "Bash(python3 -m py_compile server.py)",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('server.py'\\).read\\(\\)\\); print\\('Syntax OK'\\)\")",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s -X POST http://localhost:8000/api/admin/seed)",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s -X POST http://localhost:8000/api/admin/seed -H 'x-admin-secret: sathi-admin-2026')",
+      "Bash(curl -s http://localhost:8000/api/sathis/ravi-shinde-khalapur)",
+      "Bash(python3 -c ' *)"
+    ]
+  }
+}

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  STATIC seed sitemap. In production, generate this from your routes + Firestore plaza/bank/blog data.
+  See /app/plan/04_SITEMAP_AND_ROUTES.md §6 for the build-time generator pattern.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://apnafastag.in/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://apnafastag.in/how-it-works</loc><priority>0.9</priority></url>
+  <url><loc>https://apnafastag.in/features</loc><priority>0.9</priority></url>
+  <url><loc>https://apnafastag.in/pricing</loc><priority>0.9</priority></url>
+  <url><loc>https://apnafastag.in/become-a-sathi</loc><priority>0.9</priority></url>
+  <url><loc>https://apnafastag.in/coverage</loc><priority>0.9</priority></url>
+  <url><loc>https://apnafastag.in/about</loc><priority>0.6</priority></url>
+  <url><loc>https://apnafastag.in/blog</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://apnafastag.in/help</loc><priority>0.7</priority></url>
+  <url><loc>https://apnafastag.in/contact</loc><priority>0.5</priority></url>
+  <url><loc>https://apnafastag.in/careers</loc><priority>0.5</priority></url>
+  <url><loc>https://apnafastag.in/press</loc><priority>0.4</priority></url>
+  <url><loc>https://apnafastag.in/tools/fastag-balance-check</loc><priority>0.95</priority></url>
+  <url><loc>https://apnafastag.in/tools/toll-calculator</loc><priority>0.95</priority></url>
+  <url><loc>https://apnafastag.in/tools/dispute-tracker</loc><priority>0.9</priority></url>
+  <url><loc>https://apnafastag.in/privacy</loc><priority>0.2</priority></url>
+  <url><loc>https://apnafastag.in/terms</loc><priority>0.2</priority></url>
+  <url><loc>https://apnafastag.in/refund-policy</loc><priority>0.2</priority></url>
+
+  <!-- Programmatic SEO: toll plazas (seed) -->
+  <url><loc>https://apnafastag.in/toll/khalapur-nh48</loc><priority>0.85</priority></url>
+  <url><loc>https://apnafastag.in/toll/vashi-mmrda</loc><priority>0.85</priority></url>
+  <url><loc>https://apnafastag.in/toll/lonavla-nh48</loc><priority>0.85</priority></url>
+  <url><loc>https://apnafastag.in/toll/manesar-nh48</loc><priority>0.85</priority></url>
+  <url><loc>https://apnafastag.in/toll/kherki-daula-nh48</loc><priority>0.85</priority></url>
+  <url><loc>https://apnafastag.in/toll/zirakpur-nh44</loc><priority>0.85</priority></url>
+  <url><loc>https://apnafastag.in/toll/athur-nh44</loc><priority>0.85</priority></url>
+  <url><loc>https://apnafastag.in/toll/electronic-city-nh44</loc><priority>0.85</priority></url>
+  <url><loc>https://apnafastag.in/toll/vadodara-nh48</loc><priority>0.85</priority></url>
+  <url><loc>https://apnafastag.in/toll/palwal-nh19</loc><priority>0.85</priority></url>
+
+  <!-- States -->
+  <url><loc>https://apnafastag.in/state/maharashtra</loc><priority>0.7</priority></url>
+  <url><loc>https://apnafastag.in/state/karnataka</loc><priority>0.7</priority></url>
+  <url><loc>https://apnafastag.in/state/haryana</loc><priority>0.7</priority></url>
+  <url><loc>https://apnafastag.in/state/tamil-nadu</loc><priority>0.7</priority></url>
+  <url><loc>https://apnafastag.in/state/gujarat</loc><priority>0.7</priority></url>
+
+  <!-- Banks -->
+  <url><loc>https://apnafastag.in/bank/sbi-fastag</loc><priority>0.8</priority></url>
+  <url><loc>https://apnafastag.in/bank/paytm-fastag</loc><priority>0.8</priority></url>
+  <url><loc>https://apnafastag.in/bank/icici-fastag</loc><priority>0.8</priority></url>
+  <url><loc>https://apnafastag.in/bank/hdfc-fastag</loc><priority>0.8</priority></url>
+  <url><loc>https://apnafastag.in/bank/axis-fastag</loc><priority>0.8</priority></url>
+
+  <!-- Blog (seed) -->
+  <url><loc>https://apnafastag.in/blog/fastag-mischarge-refund-2026</loc><priority>0.75</priority></url>
+  <url><loc>https://apnafastag.in/blog/fastag-blacklisted-fix</loc><priority>0.75</priority></url>
+  <url><loc>https://apnafastag.in/blog/toll-charges-nh48-2026</loc><priority>0.75</priority></url>
+  <url><loc>https://apnafastag.in/blog/how-to-become-fastag-sathi</loc><priority>0.75</priority></url>
+</urlset>

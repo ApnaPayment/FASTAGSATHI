@@ -1,0 +1,11 @@
+# ApnaFastag — robots.txt
+User-agent: *
+Allow: /
+
+# Disallow auth + private app routes
+Disallow: /app/
+Disallow: /api/
+Disallow: /admin/
+
+# Public sitemap
+Sitemap: https://apnafastag.in/sitemap.xml
