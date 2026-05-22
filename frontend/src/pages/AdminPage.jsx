@@ -6,8 +6,8 @@ import {
   Tag, Percent, Trash2, ToggleLeft, ToggleRight, Plus, Search,
   FileText, Edit2, Download,
 } from "lucide-react";
-import ReactQuill from "react-quill";
-import "react-quill/dist/quill.snow.css";
+import ReactQuill from "react-quill-new";
+import "react-quill-new/dist/quill.snow.css";
 import { BANKS as SEED_BANKS, STATES as SEED_STATES } from "@/data/seed";
 
 const TABS = ["Dashboard", "Applications", "Jobs", "Sathis", "Promo Codes", "Settlements", "Plazas", "Content"];
