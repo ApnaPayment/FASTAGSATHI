@@ -81,7 +81,7 @@ export default function SathiDashboardPage() {
   useEffect(() => {
     const token = getToken();
     if (!token) return;
-    const url = `/api/sathi-dashboard/events?token=${encodeURIComponent(token)}`;
+    const url = `${BACKEND}/api/sathi-dashboard/events?token=${encodeURIComponent(token)}`;
     const es = new EventSource(url);
 
     es.onmessage = (e) => {
