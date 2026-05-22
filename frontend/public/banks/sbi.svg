@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40">
+  <rect width="120" height="40" rx="4" fill="#22409A"/>
+  <!-- SBI key mark (simplified) -->
+  <circle cx="20" cy="20" r="8" fill="none" stroke="white" stroke-width="2.5"/>
+  <line x1="20" y1="28" x2="20" y2="33" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="17" y1="31" x2="23" y2="31" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="17" y1="34" x2="23" y2="34" stroke="white" stroke-width="2" stroke-linecap="round"/>
+  <!-- SBI text -->
+  <text x="70" y="27" font-family="Arial,sans-serif" font-weight="900" font-size="18" fill="white" text-anchor="middle" letter-spacing="2">SBI</text>
+</svg>
