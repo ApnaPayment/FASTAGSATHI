@@ -1156,13 +1156,20 @@ async def upload_avatar(file: UploadFile = File(...), ctx: dict = Depends(_requi
     ext = Path(file.filename).suffix.lower() if file.filename else ".jpg"
     if ext not in {".jpg", ".jpeg", ".png", ".webp"}:
         raise HTTPException(status_code=400, detail="Only jpg/png/webp allowed")
+    contents = await file.read()
+    if len(contents) > 8 * 1024 * 1024:  # 8 MB limit
+        raise HTTPException(status_code=400, detail="Image must be under 8 MB")
+    if len(contents) == 0:
+        raise HTTPException(status_code=400, detail="Empty file received")
     slug = ctx["sathi"]["slug"]
-    filename = f"{slug}{ext}"
+    # Always save as .jpg to avoid slug+old-ext orphan files
+    filename = f"{slug}.jpg"
     dest = UPLOAD_DIR / "avatars" / filename
-    with dest.open("wb") as f:
-        shutil.copyfileobj(file.file, f)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(contents)
     url = f"{BACKEND_URL}/uploads/avatars/{filename}"
     await db.sathis.update_one({"slug": slug}, {"$set": {"avatar": url}})
+    logger.info(f"Avatar saved: {dest} ({len(contents)} bytes) → {url}")
     return {"ok": True, "url": url}
 
 @sathi_dash.post("/upload-gallery")
@@ -1170,11 +1177,16 @@ async def upload_gallery(file: UploadFile = File(...), ctx: dict = Depends(_requ
     ext = Path(file.filename).suffix.lower() if file.filename else ".jpg"
     if ext not in {".jpg", ".jpeg", ".png", ".webp"}:
         raise HTTPException(status_code=400, detail="Only jpg/png/webp allowed")
+    contents = await file.read()
+    if len(contents) > 10 * 1024 * 1024:  # 10 MB limit
+        raise HTTPException(status_code=400, detail="Image must be under 10 MB")
+    if len(contents) == 0:
+        raise HTTPException(status_code=400, detail="Empty file received")
     slug = ctx["sathi"]["slug"]
     filename = f"{slug}-{uuid.uuid4().hex[:8]}{ext}"
     dest = UPLOAD_DIR / "gallery" / filename
-    with dest.open("wb") as f:
-        shutil.copyfileobj(file.file, f)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(contents)
     url = f"{BACKEND_URL}/uploads/gallery/{filename}"
     await db.sathis.update_one({"slug": slug}, {"$push": {"gallery": url}})
     return {"ok": True, "url": url}
