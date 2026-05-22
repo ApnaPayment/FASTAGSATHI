@@ -22,11 +22,54 @@ export const PLAZAS = [
 ];
 
 export const BANKS = [
-  { slug: "sbi-fastag",    name: "SBI FASTag",    color: "#22409A", smsCode: "FTBAL", helpline: "1800-11-0018", marketShare: 18 },
-  { slug: "paytm-fastag",  name: "Paytm FASTag",  color: "#00BAF2", smsCode: "FT BAL", helpline: "1800-120-4210", marketShare: 28 },
-  { slug: "icici-fastag",  name: "ICICI FASTag",  color: "#F58220", smsCode: "FASTAG", helpline: "1800-2100-104", marketShare: 14 },
-  { slug: "hdfc-fastag",   name: "HDFC FASTag",   color: "#004C8F", smsCode: "FASTAG", helpline: "1800-120-1243", marketShare: 12 },
-  { slug: "axis-fastag",   name: "Axis FASTag",   color: "#97144D", smsCode: "FASTAG", helpline: "1860-419-8585", marketShare: 9 },
+  {
+    slug: "sbi-fastag",    name: "SBI FASTag",    shortName: "SBI",
+    color: "#22409A",
+    logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/SBI-logo.svg/200px-SBI-logo.svg.png",
+    smsCode: "FTBAL",    helpline: "1800-11-0018",  marketShare: 18,
+  },
+  {
+    slug: "paytm-fastag",  name: "Paytm FASTag",  shortName: "Paytm",
+    color: "#00BAF2",
+    logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Paytm_Logo_%28standalone%29.svg/200px-Paytm_Logo_%28standalone%29.svg.png",
+    smsCode: "FT BAL",   helpline: "1800-120-4210", marketShare: 28,
+  },
+  {
+    slug: "icici-fastag",  name: "ICICI FASTag",  shortName: "ICICI",
+    color: "#F58220",
+    logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/ICICI_Bank_Logo.svg/200px-ICICI_Bank_Logo.svg.png",
+    smsCode: "FASTAG",   helpline: "1800-2100-104", marketShare: 14,
+  },
+  {
+    slug: "hdfc-fastag",   name: "HDFC FASTag",   shortName: "HDFC",
+    color: "#004C8F",
+    logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/HDFC_Bank_Logo.svg/200px-HDFC_Bank_Logo.svg.png",
+    smsCode: "FASTAG",   helpline: "1800-120-1243", marketShare: 12,
+  },
+  {
+    slug: "axis-fastag",   name: "Axis FASTag",   shortName: "Axis",
+    color: "#97144D",
+    logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Axis_Bank_logo.svg/200px-Axis_Bank_logo.svg.png",
+    smsCode: "FASTAG",   helpline: "1860-419-8585", marketShare: 9,
+  },
+  {
+    slug: "kotak-fastag",  name: "Kotak FASTag",  shortName: "Kotak",
+    color: "#ED1C24",
+    logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Kotak_Mahindra_Bank_Logo.svg/200px-Kotak_Mahindra_Bank_Logo.svg.png",
+    smsCode: "FASTAG",   helpline: "1800-209-0000", marketShare: 6,
+  },
+  {
+    slug: "yes-fastag",    name: "Yes Bank FASTag", shortName: "Yes",
+    color: "#003087",
+    logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Yes_Bank_Logo.svg/200px-Yes_Bank_Logo.svg.png",
+    smsCode: "FASTAG",   helpline: "1800-1200",     marketShare: 5,
+  },
+  {
+    slug: "idfc-fastag",   name: "IDFC First FASTag", shortName: "IDFC",
+    color: "#6B2D8B",
+    logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/IDFC_FIRST_Bank_Logo.svg/200px-IDFC_FIRST_Bank_Logo.svg.png",
+    smsCode: "FASTAG",   helpline: "1800-10-888",   marketShare: 4,
+  },
 ];
 
 export const BLOG_POSTS = [

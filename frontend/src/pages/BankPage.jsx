@@ -27,7 +27,16 @@ export default function BankPage() {
       />
       <PageHero
         eyebrow="Bank guide"
-        title={<>{bank.name} <span className="text-[#FF6B00]">help center</span></>}
+        title={
+          <span className="inline-flex items-center gap-4">
+            {bank.logo && (
+              <span className="inline-flex w-14 h-14 rounded-2xl bg-white border-2 border-white/20 items-center justify-center overflow-hidden flex-shrink-0 shadow-lg">
+                <img src={bank.logo} alt={bank.shortName} className="w-11 h-11 object-contain" />
+              </span>
+            )}
+            {bank.name} <span className="text-[#FF6B00]">help center</span>
+          </span>
+        }
         sub={`Balance check, helpline, dispute filing and on-spot rescue for ${bank.name} users — managed by Sathis at the toll plaza.`}
         breadcrumb={[{ label: "Banks", to: "/" }, { label: bank.name }]}
       />

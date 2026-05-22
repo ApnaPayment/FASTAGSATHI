@@ -11,7 +11,7 @@ import {
   Shield, Calendar, Send, CheckCircle2, ArrowRight, Loader2, Images, Building2, Tag,
 } from "lucide-react";
 import { getSathiBySlug } from "@/data/sathis";
-import { PLAZAS, STATES } from "@/data/seed";
+import { PLAZAS, STATES, BANKS } from "@/data/seed";
 import { track } from "@/lib/analytics";
 import { sathiApi, paymentsApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -38,16 +38,8 @@ function fullUrl(url) {
   return `${BACKEND}${url}`;
 }
 
-const ALL_BANKS = [
-  { slug: "sbi-fastag",    name: "SBI FASTag",    color: "#22409A" },
-  { slug: "paytm-fastag",  name: "Paytm FASTag",  color: "#00BAF2" },
-  { slug: "icici-fastag",  name: "ICICI FASTag",  color: "#F58220" },
-  { slug: "hdfc-fastag",   name: "HDFC FASTag",   color: "#004C8F" },
-  { slug: "axis-fastag",   name: "Axis FASTag",   color: "#97144D" },
-  { slug: "kotak-fastag",  name: "Kotak FASTag",  color: "#ED1C24" },
-  { slug: "yes-fastag",    name: "Yes Bank",      color: "#003087" },
-  { slug: "idfc-fastag",   name: "IDFC FASTag",   color: "#6B2D8B" },
-];
+// Use centralized BANKS from seed.js
+const ALL_BANKS = BANKS;
 
 const SERVICE_LABELS = {
   dispute: "Mischarge / Dispute filing",
@@ -260,8 +252,14 @@ export default function SathiProfilePage() {
             <h3 className="font-display font-bold text-xl">Supported banks</h3>
             <div className="mt-3 flex flex-wrap gap-2">
               {supportedBanks.map((b) => (
-                <span key={b.slug} className="inline-flex items-center gap-1.5 bg-white border-2 border-[#E5E7EB] rounded-full px-3 py-1.5 text-xs font-bold">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: b.color }} />{b.name}
+                <span key={b.slug} className="inline-flex items-center gap-1.5 bg-white border-2 border-[#E5E7EB] rounded-full pl-1.5 pr-3 py-1 text-xs font-bold">
+                  <span className="w-6 h-6 rounded-full bg-white border border-[#E5E7EB] flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img src={b.logo} alt={b.shortName} className="w-5 h-5 object-contain"
+                      onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextSibling.style.display = "flex"; }}
+                    />
+                    <span className="hidden items-center justify-center w-full h-full text-[8px] font-black" style={{ color: b.color }}>{b.shortName?.[0]}</span>
+                  </span>
+                  {b.name}
                 </span>
               ))}
             </div>

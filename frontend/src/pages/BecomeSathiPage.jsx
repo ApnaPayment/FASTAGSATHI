@@ -11,6 +11,7 @@ import {
 import { track } from "@/lib/analytics";
 import BecomeSathi from "@/components/landing/BecomeSathi";
 import { authApi, stateApi, plazaApi, applicationApi } from "@/lib/api";
+import { BANKS as SEED_BANKS } from "@/data/seed";
 
 const PERKS = [
   { Icon: IndianRupee, t: "₹25k–₹60k monthly", s: "Top Sathis at NH-48 plazas clear ₹60k+. Median Sathi ₹32k." },
@@ -34,16 +35,7 @@ const SERVICES = [
   { id: "recharge", label: "Recharge & low-balance fixes",     desc: "UPI recharge, failed top-ups, balance issues" },
   { id: "sos",      label: "Emergency / SOS dispatch",         desc: "Stuck at lane, vehicle breakdown, urgent help" },
 ];
-const BANKS = [
-  { id: "sbi-fastag",    label: "SBI FASTag",    color: "#2563EB" },
-  { id: "paytm-fastag",  label: "Paytm FASTag",  color: "#00BAF2" },
-  { id: "icici-fastag",  label: "ICICI FASTag",  color: "#F97316" },
-  { id: "hdfc-fastag",   label: "HDFC FASTag",   color: "#1E3A8A" },
-  { id: "axis-fastag",   label: "Axis FASTag",   color: "#9333EA" },
-  { id: "kotak-fastag",  label: "Kotak FASTag",  color: "#EF4444" },
-  { id: "yes-fastag",    label: "Yes Bank FASTag",color: "#059669" },
-  { id: "idfc-fastag",   label: "IDFC FASTag",   color: "#6B7280" },
-];
+const BANKS = SEED_BANKS.map((b) => ({ id: b.slug, label: b.name, color: b.color, logo: b.logo, shortName: b.shortName }));
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const DAY_LABELS = { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" };
 
@@ -419,13 +411,21 @@ function ServicesStep({ form, setForm, onNext, onBack }) {
         <div>
           <p className="text-sm font-semibold text-[#0A0A0A] mb-2">Banks you support <span className="font-normal text-[#4B5563]">(select all you know)</span></p>
           <div className="flex flex-wrap gap-2">
-            {BANKS.map((b) => (
-              <button key={b.id} type="button" onClick={() => toggleBank(b.id)}
-                className={`px-3 py-2 rounded-full text-xs font-semibold border-2 transition-all ${form.banks.includes(b.id) ? "text-white" : "bg-white border-[#E5E7EB] text-[#4B5563] hover:border-current"}`}
-                style={form.banks.includes(b.id) ? { backgroundColor: b.color, borderColor: b.color } : { color: b.color }}>
-                {b.label}
-              </button>
-            ))}
+            {BANKS.map((b) => {
+              const active = form.banks.includes(b.id);
+              return (
+                <button key={b.id} type="button" onClick={() => toggleBank(b.id)}
+                  className={`inline-flex items-center gap-1.5 pl-1.5 pr-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all ${active ? "text-white" : "bg-white border-[#E5E7EB] text-[#4B5563] hover:border-current"}`}
+                  style={active ? { backgroundColor: b.color, borderColor: b.color } : { color: b.color }}>
+                  <span className="w-5 h-5 rounded-full bg-white flex items-center justify-center overflow-hidden flex-shrink-0 border border-white/30">
+                    <img src={b.logo} alt="" className="w-4 h-4 object-contain"
+                      onError={(e) => { e.currentTarget.style.display = "none"; }}
+                    />
+                  </span>
+                  {b.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 

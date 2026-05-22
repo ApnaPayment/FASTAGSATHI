@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import SEO from "@/components/seo/SEO";
 import { sathiDashApi, applicationApi, getToken } from "@/lib/api";
+import { BANKS as SEED_BANKS } from "@/data/seed";
 import { track } from "@/lib/analytics";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -26,16 +27,8 @@ const ALL_SERVICES = [
   { id: "recharge", label: "Recharge fix" },
   { id: "sos",      label: "Emergency SOS" },
 ];
-const ALL_BANKS = [
-  { id: "sbi-fastag",   label: "SBI FASTag" },
-  { id: "paytm-fastag", label: "Paytm FASTag" },
-  { id: "icici-fastag", label: "ICICI FASTag" },
-  { id: "hdfc-fastag",  label: "HDFC FASTag" },
-  { id: "axis-fastag",  label: "Axis FASTag" },
-  { id: "kotak-fastag", label: "Kotak FASTag" },
-  { id: "yes-fastag",   label: "Yes Bank" },
-  { id: "idfc-fastag",  label: "IDFC FASTag" },
-];
+// Map from centralized BANKS (slug → id for toggle logic)
+const ALL_BANKS = SEED_BANKS.map((b) => ({ id: b.slug, label: b.name, logo: b.logo, color: b.color, shortName: b.shortName }));
 const ALL_LANGS = ["Hindi","English","Marathi","Tamil","Kannada","Telugu","Bengali","Gujarati","Punjabi","Malayalam","Odia","Urdu"];
 const DAYS = ["mon","tue","wed","thu","fri","sat","sun"];
 const DAY_LABELS = { mon:"Mon",tue:"Tue",wed:"Wed",thu:"Thu",fri:"Fri",sat:"Sat",sun:"Sun" };
@@ -781,12 +774,20 @@ function ProfileEditor({ profile, onClose, onSaved }) {
           <div>
             <label className="block text-sm font-bold text-[#0A0A0A] mb-2">Supported banks</label>
             <div className="flex flex-wrap gap-2">
-              {ALL_BANKS.map((b) => (
-                <button key={b.id} type="button" onClick={() => toggle("banks", b.id)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all ${form.banks.includes(b.id) ? "bg-[#0A0A0A] border-[#0A0A0A] text-white" : "border-[#E5E7EB] text-[#4B5563] hover:border-[#0A0A0A]"}`}>
-                  {b.label}
-                </button>
-              ))}
+              {ALL_BANKS.map((b) => {
+                const active = form.banks.includes(b.id);
+                return (
+                  <button key={b.id} type="button" onClick={() => toggle("banks", b.id)}
+                    className={`inline-flex items-center gap-1.5 pl-1.5 pr-3 py-1 rounded-full text-xs font-semibold border-2 transition-all ${active ? "bg-[#0A0A0A] border-[#0A0A0A] text-white" : "border-[#E5E7EB] text-[#4B5563] hover:border-[#0A0A0A]"}`}>
+                    <span className="w-5 h-5 rounded-full bg-white flex items-center justify-center overflow-hidden flex-shrink-0 border border-white/20">
+                      <img src={b.logo} alt="" className="w-4 h-4 object-contain"
+                        onError={(e) => { e.currentTarget.style.display = "none"; }}
+                      />
+                    </span>
+                    {b.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
