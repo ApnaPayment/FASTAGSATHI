@@ -13,7 +13,7 @@ import { track } from "@/lib/analytics";
 import { sathiApi, plazaApi } from "@/lib/api";
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
-const fullUrl = (url) => (!url ? "" : url.startsWith("http") ? url : `${BACKEND}${url}`);
+const fullUrl = (url) => { if (!url) return ""; if (url.startsWith("http")) return url; if (BACKEND.includes("localhost") && !window.location.hostname.includes("localhost")) return ""; return `${BACKEND}${url}`; };
 
 const CITY_FALLBACKS = [
   { label: "Mumbai",    lat: 19.07, lng: 72.87 },

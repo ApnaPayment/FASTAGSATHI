@@ -4,7 +4,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
-const fullUrl = (url) => (!url ? "" : url.startsWith("http") ? url : `${BACKEND}${url}`);
+const fullUrl = (url) => { if (!url) return ""; if (url.startsWith("http")) return url; if (BACKEND.includes("localhost") && !window.location.hostname.includes("localhost")) return ""; return `${BACKEND}${url}`; };
 
 const sathiIcon = (sathi) => {
   const avatar = fullUrl(sathi.avatar);

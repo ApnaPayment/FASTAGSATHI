@@ -34,6 +34,7 @@ const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 function fullUrl(url) {
   if (!url) return "";
   if (url.startsWith("http")) return url;
+  if (BACKEND.includes("localhost") && !window.location.hostname.includes("localhost")) return "";
   return `${BACKEND}${url}`;
 }
 

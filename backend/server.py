@@ -1161,7 +1161,7 @@ async def upload_avatar(file: UploadFile = File(...), ctx: dict = Depends(_requi
     dest = UPLOAD_DIR / "avatars" / filename
     with dest.open("wb") as f:
         shutil.copyfileobj(file.file, f)
-    url = f"/uploads/avatars/{filename}"
+    url = f"{BACKEND_URL}/uploads/avatars/{filename}"
     await db.sathis.update_one({"slug": slug}, {"$set": {"avatar": url}})
     return {"ok": True, "url": url}
 
@@ -1175,7 +1175,7 @@ async def upload_gallery(file: UploadFile = File(...), ctx: dict = Depends(_requ
     dest = UPLOAD_DIR / "gallery" / filename
     with dest.open("wb") as f:
         shutil.copyfileobj(file.file, f)
-    url = f"/uploads/gallery/{filename}"
+    url = f"{BACKEND_URL}/uploads/gallery/{filename}"
     await db.sathis.update_one({"slug": slug}, {"$push": {"gallery": url}})
     return {"ok": True, "url": url}
 
