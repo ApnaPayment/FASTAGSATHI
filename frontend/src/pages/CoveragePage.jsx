@@ -11,7 +11,8 @@ import { track } from "@/lib/analytics";
 export default function CoveragePage() {
   const [q, setQ] = useState("");
   const [states, setStates] = useState(STATES);
-  const [plazas, setPlazas] = useState(PLAZAS);
+  const [plazas, setPlazas] = useState(null); // null = loading, avoids flashing stale count
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     track("page_view", { page: "coverage" });
@@ -22,32 +23,39 @@ export default function CoveragePage() {
           plazaApi.list(),
         ]);
         if (statesRes.data?.length) setStates(statesRes.data);
-        if (plazasRes.data?.length) setPlazas(plazasRes.data);
+        setPlazas(plazasRes.data?.length ? plazasRes.data : PLAZAS);
       } catch {
-        // keep seed fallbacks
+        setPlazas(PLAZAS); // fall back to seed on error
+        setLoadError(true);
       }
     }
     load();
   }, []);
 
-  const filtered = plazas.filter((p) =>
+  const list = plazas || [];
+  const filtered = list.filter((p) =>
     !q ||
     p.name.toLowerCase().includes(q.toLowerCase()) ||
     p.city.toLowerCase().includes(q.toLowerCase()) ||
     p.highway.toLowerCase().includes(q.toLowerCase())
   );
 
+  // Animated count display — shows skeleton while loading
+  const CountDisplay = plazas === null
+    ? <span className="inline-block w-24 h-10 bg-[#FF6B00]/20 rounded-lg animate-pulse align-middle" />
+    : <span className="text-[#FF6B00]">{plazas.length}+</span>;
+
   return (
     <>
       <SEO
-        title={`Coverage — ${plazas.length}+ toll plazas across India · ApnaFastag`}
+        title={`Coverage — ${plazas ? plazas.length + "+" : "689+"} toll plazas across India · ApnaFastag`}
         description="Browse every toll plaza covered by ApnaFastag. Live Sathi counts, current rates per vehicle class, and instant rescue at NH-48, NH-44, NH-19 and more."
         path="/coverage"
         keywords="toll plaza coverage, fastag help locations, all toll plazas india, nh48 toll, nh44 toll"
       />
       <PageHero
         eyebrow="Where we're live"
-        title={<>Sathis at <span className="text-[#FF6B00]">{plazas.length}+ plazas</span> across India — and growing weekly.</>}
+        title={<>Sathis at {CountDisplay} plazas across India — and growing weekly.</>}
         sub="Search any toll plaza, city or highway. We show live Sathi count, average response time, and current toll charges per vehicle class."
         breadcrumb={[{ label: "Coverage" }]}
       />
