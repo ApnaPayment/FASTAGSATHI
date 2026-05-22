@@ -1574,10 +1574,12 @@ function ContentTab() {
       if (s) params.search = s;
       if (c) params.category = c;
       const res = await adminApi.articles(params);
-      const d = res.data;
-      const list = d.articles || d.items || (Array.isArray(d) ? d : []);
+      const d = res.data || {};
+      const list = Array.isArray(d.articles) ? d.articles
+                 : Array.isArray(d.items)    ? d.items
+                 : Array.isArray(d)          ? d : [];
       setArticles(list);
-      setTotal(typeof d.total === "number" ? d.total : list.length);
+      setTotal(d.total != null ? Number(d.total) : list.length);
       setPage(p);
     } catch (e) {
       setErr(e?.response?.data?.detail || "Failed to load articles");
@@ -1690,7 +1692,7 @@ function ContentTab() {
     <div>
       {/* Header row */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h2 className="font-display font-black text-2xl">Content · {(total ?? 0).toLocaleString()} articles</h2>
+        <h2 className="font-display font-black text-2xl">Content · {Number(total ?? 0).toLocaleString()} articles</h2>
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={seedArticles} disabled={seeding}
