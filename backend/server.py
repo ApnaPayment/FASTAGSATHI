@@ -39,7 +39,13 @@ CF_BASE = "https://sandbox.cashfree.com/pg" if CF_ENV == "sandbox" else "https:/
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
 
-client = AsyncIOMotorClient(MONGO_URL)
+# Use TLS with relaxed cert validation for Atlas on Railway (avoids SSL handshake errors)
+_is_atlas = "mongodb+srv://" in MONGO_URL or "mongodb.net" in MONGO_URL
+client = AsyncIOMotorClient(
+    MONGO_URL,
+    tls=True,
+    tlsAllowInvalidCertificates=True,
+) if _is_atlas else AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
