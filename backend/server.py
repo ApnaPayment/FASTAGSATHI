@@ -1157,20 +1157,32 @@ async def upload_avatar(file: UploadFile = File(...), ctx: dict = Depends(_requi
     if ext not in {".jpg", ".jpeg", ".png", ".webp"}:
         raise HTTPException(status_code=400, detail="Only jpg/png/webp allowed")
     contents = await file.read()
-    if len(contents) > 8 * 1024 * 1024:  # 8 MB limit
-        raise HTTPException(status_code=400, detail="Image must be under 8 MB")
     if len(contents) == 0:
         raise HTTPException(status_code=400, detail="Empty file received")
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image must be under 10 MB")
+
+    # Resize + compress with Pillow → store as base64 data URL in MongoDB
+    # (no filesystem needed — survives Railway redeploys and any hosting)
+    try:
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(contents))
+        img = img.convert("RGB")  # strip alpha / EXIF modes
+        img.thumbnail((400, 400), Image.LANCZOS)  # max 400×400, preserve ratio
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=82, optimize=True)
+        buf.seek(0)
+        data_url = "data:image/jpeg;base64," + base64.b64encode(buf.read()).decode()
+    except Exception as e:
+        logger.warning(f"Pillow resize failed ({e}), storing original as-is")
+        mime = "image/png" if ext == ".png" else "image/webp" if ext == ".webp" else "image/jpeg"
+        data_url = f"data:{mime};base64," + base64.b64encode(contents).decode()
+
     slug = ctx["sathi"]["slug"]
-    # Always save as .jpg to avoid slug+old-ext orphan files
-    filename = f"{slug}.jpg"
-    dest = UPLOAD_DIR / "avatars" / filename
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_bytes(contents)
-    url = f"{BACKEND_URL}/uploads/avatars/{filename}"
-    await db.sathis.update_one({"slug": slug}, {"$set": {"avatar": url}})
-    logger.info(f"Avatar saved: {dest} ({len(contents)} bytes) → {url}")
-    return {"ok": True, "url": url}
+    await db.sathis.update_one({"slug": slug}, {"$set": {"avatar": data_url}})
+    logger.info(f"Avatar stored as base64 for {slug} ({len(data_url)} chars)")
+    return {"ok": True, "url": data_url}
 
 @sathi_dash.post("/upload-gallery")
 async def upload_gallery(file: UploadFile = File(...), ctx: dict = Depends(_require_sathi_ctx)):
