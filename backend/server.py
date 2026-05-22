@@ -128,6 +128,22 @@ class ApplicationStatusIn(BaseModel):
     status: Literal["pending", "reviewing", "approved", "rejected"]
     note: Optional[str] = ""
 
+class ArticleIn(BaseModel):
+    slug: str
+    title: str
+    excerpt: str
+    body: str
+    category: str = "General"           # Disputes|Balance|KYC|Blacklist|Installation|General
+    tags: List[str] = []
+    related_bank: Optional[str] = None
+    related_state: Optional[str] = None
+    meta_description: Optional[str] = None
+    meta_keywords: Optional[str] = None
+    faq_pairs: List[dict] = []          # [{q: str, a: str}, …]
+    cover: Optional[str] = None
+    is_published: bool = True
+    read_min: int = 4
+
 class SathiApplicationIn(BaseModel):
     phone: str
     name: str
@@ -241,6 +257,40 @@ async def get_sathi(slug: str):
     doc = await db.sathis.find_one({"slug": slug}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Sathi not found")
+    return doc
+
+# ─── Help / Content public routes ────────────────────────────────────────────
+
+help_router = APIRouter(prefix="/help", tags=["help"])
+
+@help_router.get("")
+async def list_help(
+    category: Optional[str] = None,
+    search:   Optional[str] = None,
+    page:     int = 1,
+    limit:    int = 20,
+):
+    query: dict = {"is_published": True}
+    if category and category != "all":
+        query["category"] = category
+    if search:
+        import re as _re
+        query["$or"] = [
+            {"title":   {"$regex": _re.escape(search), "$options": "i"}},
+            {"excerpt": {"$regex": _re.escape(search), "$options": "i"}},
+        ]
+    skip = (max(page, 1) - 1) * limit
+    total = await db.articles.count_documents(query)
+    docs  = await db.articles.find(query, {"_id": 0, "body": 0}).sort(
+        "created_at", -1
+    ).skip(skip).limit(limit).to_list(limit)
+    return {"total": total, "page": page, "limit": limit, "articles": docs}
+
+@help_router.get("/{slug}")
+async def get_help_article(slug: str):
+    doc = await db.articles.find_one({"slug": slug, "is_published": True}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Article not found")
     return doc
 
 # ─── Plaza routes ─────────────────────────────────────────────────────────────
@@ -971,6 +1021,450 @@ async def cleanup_stale_uploads():
         "avatars_cleared": avatar_result.modified_count,
         "gallery_items_removed": gallery_cleaned,
     }
+
+# ─── Admin: Article CRUD ──────────────────────────────────────────────────────
+
+@admin_router.get("/articles", dependencies=[Depends(_check_admin)])
+async def admin_list_articles(
+    category: Optional[str] = None,
+    search:   Optional[str] = None,
+    page:     int = 1,
+    limit:    int = 50,
+):
+    query: dict = {}
+    if category and category != "all":
+        query["category"] = category
+    if search:
+        import re as _re
+        query["$or"] = [
+            {"title":   {"$regex": _re.escape(search), "$options": "i"}},
+            {"excerpt": {"$regex": _re.escape(search), "$options": "i"}},
+        ]
+    skip = (max(page, 1) - 1) * limit
+    total = await db.articles.count_documents(query)
+    docs  = await db.articles.find(query, {"_id": 0, "body": 0}).sort(
+        "created_at", -1
+    ).skip(skip).limit(limit).to_list(limit)
+    return {"total": total, "page": page, "limit": limit, "articles": docs}
+
+@admin_router.post("/articles", dependencies=[Depends(_check_admin)])
+async def admin_create_article(body: ArticleIn):
+    slug = body.slug.strip().lower()
+    if not slug:
+        raise HTTPException(status_code=400, detail="Slug is required")
+    existing = await db.articles.find_one({"slug": slug})
+    if existing:
+        raise HTTPException(status_code=409, detail="Article with this slug already exists")
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        **body.dict(),
+        "slug": slug,
+        "meta_description": body.meta_description or body.excerpt[:155],
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.articles.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+@admin_router.patch("/articles/{slug}", dependencies=[Depends(_check_admin)])
+async def admin_update_article(slug: str, body: dict):
+    body.pop("_id", None)
+    body.pop("slug", None)           # slug is immutable after creation
+    body["updated_at"] = datetime.now(timezone.utc).isoformat()
+    result = await db.articles.update_one({"slug": slug}, {"$set": body})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Article not found")
+    return {"ok": True}
+
+@admin_router.delete("/articles/{slug}", dependencies=[Depends(_check_admin)])
+async def admin_delete_article(slug: str):
+    result = await db.articles.delete_one({"slug": slug})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Article not found")
+    return {"ok": True}
+
+@admin_router.post("/seed-articles", dependencies=[Depends(_check_admin)])
+async def seed_articles_endpoint():
+    count = await _seed_articles()
+    return {"ok": True, "upserted": count}
+
+# ─── Article seed data ────────────────────────────────────────────────────────
+
+def _make_article(slug, title, excerpt, body_html, category, faq_pairs,
+                  related_bank=None, related_state=None, tags=None, read_min=4):
+    now = datetime.now(timezone.utc).isoformat()
+    kw_parts = [category, "FASTag"]
+    if related_bank:
+        kw_parts.append(related_bank.replace("-fastag","").upper())
+    if related_state:
+        kw_parts.append(related_state.replace("-"," ").title())
+    return {
+        "slug": slug,
+        "title": title,
+        "excerpt": excerpt,
+        "body": body_html,
+        "category": category,
+        "tags": tags or [],
+        "related_bank": related_bank,
+        "related_state": related_state,
+        "meta_description": excerpt[:155],
+        "meta_keywords": ", ".join(kw_parts + ["FASTag guide", "toll plaza", "Sathi"]),
+        "faq_pairs": faq_pairs,
+        "cover": None,
+        "is_published": True,
+        "read_min": read_min,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+def _body(sections):
+    """Build a basic HTML body from list of (heading, paragraphs) tuples."""
+    html = ""
+    for heading, paras in sections:
+        html += f"<h2>{heading}</h2>"
+        for p in paras:
+            html += f"<p>{p}</p>"
+    return html
+
+async def _seed_articles():
+    BANKS_DATA = [
+        ("sbi-fastag",   "SBI",       "SBI FASTag"),
+        ("paytm-fastag", "Paytm",     "Paytm FASTag"),
+        ("icici-fastag", "ICICI",     "ICICI FASTag"),
+        ("hdfc-fastag",  "HDFC",      "HDFC FASTag"),
+        ("axis-fastag",  "Axis",      "Axis FASTag"),
+        ("kotak-fastag", "Kotak",     "Kotak FASTag"),
+        ("yes-fastag",   "Yes Bank",  "Yes Bank FASTag"),
+        ("idfc-fastag",  "IDFC First","IDFC First FASTag"),
+    ]
+
+    ISSUES_A = [
+        ("balance-check",    "check balance on",            "Balance",      "how-to check balance"),
+        ("recharge",         "recharge",                    "Balance",      "recharge top-up"),
+        ("dispute",          "file a dispute for",          "Disputes",     "dispute mischarge refund"),
+        ("blacklist-fix",    "fix a blacklisted",           "Blacklist",    "blacklist blocked fix"),
+        ("kyc-update",       "complete KYC update for",     "KYC",          "KYC update documents"),
+        ("name-change",      "change the name on",          "KYC",          "name change correction"),
+        ("vehicle-class",    "update vehicle class for",    "KYC",          "vehicle class update"),
+        ("double-deduction", "get a refund for double deduction on", "Disputes", "double charge deduction"),
+        ("refund",           "claim a refund from",         "Disputes",     "refund process claim"),
+        ("statement",        "download a statement for",    "Balance",      "statement download"),
+        ("lost-fastag",      "replace a lost",              "Installation", "lost replacement"),
+        ("damaged-sticker",  "replace a damaged",           "Installation", "sticker damaged replace"),
+        ("rc-mismatch",      "fix RC mismatch for",         "KYC",          "RC mismatch wrong"),
+        ("low-balance-alert","set up low balance alerts for","Balance",      "alert notification"),
+        ("helpline",         "contact customer support for", "General",      "helpline support contact"),
+    ]
+
+    STATES_DATA = [
+        ("maharashtra","Maharashtra"), ("uttar-pradesh","Uttar Pradesh"),
+        ("rajasthan","Rajasthan"), ("gujarat","Gujarat"), ("karnataka","Karnataka"),
+        ("tamil-nadu","Tamil Nadu"), ("telangana","Telangana"), ("andhra-pradesh","Andhra Pradesh"),
+        ("west-bengal","West Bengal"), ("madhya-pradesh","Madhya Pradesh"),
+        ("kerala","Kerala"), ("punjab","Punjab"), ("haryana","Haryana"),
+        ("bihar","Bihar"), ("odisha","Odisha"), ("jharkhand","Jharkhand"),
+        ("assam","Assam"), ("himachal-pradesh","Himachal Pradesh"), ("uttarakhand","Uttarakhand"),
+        ("chhattisgarh","Chhattisgarh"), ("goa","Goa"), ("tripura","Tripura"),
+        ("meghalaya","Meghalaya"), ("manipur","Manipur"), ("nagaland","Nagaland"),
+        ("arunachal-pradesh","Arunachal Pradesh"), ("sikkim","Sikkim"),
+        ("delhi","Delhi"), ("jammu-kashmir","Jammu & Kashmir"),
+    ]
+
+    STATE_ISSUES = [
+        ("fastag-dispute",       "FASTag Dispute & Refund Guide",          "Disputes"),
+        ("fastag-blacklist",     "FASTag Blacklist Fix Guide",              "Blacklist"),
+        ("fastag-balance-check", "FASTag Balance Check Methods",           "Balance"),
+        ("fastag-kyc-guide",     "FASTag KYC Update Process",              "KYC"),
+        ("fastag-recharge",      "FASTag Recharge Options",                "Balance"),
+        ("toll-help",            "Toll Plaza Help & Sathi Network",         "General"),
+        ("fastag-replacement",   "FASTag Replacement After Loss or Damage","Installation"),
+        ("fastag-new-vehicle",   "FASTag for New Vehicle Owners",          "Installation"),
+    ]
+
+    VEHICLES = [
+        ("car","car"), ("truck","commercial truck"), ("bus","bus"),
+        ("motorcycle","motorcycle"), ("tractor","tractor"),
+        ("suv","SUV"), ("minibus","minibus"), ("pickup","pickup truck"),
+        ("auto-rickshaw","auto-rickshaw"), ("lcv","light commercial vehicle"),
+    ]
+
+    VEHICLE_ISSUES = [
+        ("installation",     "FASTag Installation Guide",        "Installation"),
+        ("not-working",      "FASTag Not Working at Toll Fix",   "Blacklist"),
+        ("transfer",         "FASTag Transfer to New Owner",     "KYC"),
+        ("balance-guide",    "FASTag Balance & Recharge Guide",  "Balance"),
+        ("dispute-guide",    "FASTag Dispute Filing Guide",      "Disputes"),
+    ]
+
+    GENERAL_FAQS = [
+        ("what-is-fastag",             "What is FASTag and how does it work?",                    "General"),
+        ("fastag-mandatory",           "Is FASTag mandatory for all vehicles in India?",           "General"),
+        ("fastag-validity",            "What is the validity period of a FASTag?",                 "General"),
+        ("fastag-multiple-tolls",      "Can one FASTag be used at all toll plazas in India?",      "General"),
+        ("fastag-wallet-balance",      "Minimum wallet balance required for FASTag",               "Balance"),
+        ("fastag-negative-balance",    "FASTag went negative — what happens next?",                "Balance"),
+        ("fastag-not-scanned",         "FASTag not scanned at the toll — what to do",             "Blacklist"),
+        ("fastag-deactivated",         "FASTag deactivated or suspended — reasons and fix",        "Blacklist"),
+        ("fastag-linked-bank-change",  "How to change the bank linked to your FASTag",            "KYC"),
+        ("fastag-pan-aadhaar-link",    "Link PAN and Aadhaar to your FASTag account",             "KYC"),
+        ("fastag-for-old-vehicle",     "Getting FASTag for an old or second-hand vehicle",        "Installation"),
+        ("fastag-sticker-position",    "Correct position to stick a FASTag on windshield",        "Installation"),
+        ("fastag-two-tags-vehicle",    "Two FASTag stickers on one vehicle — what to do",         "Installation"),
+        ("nhai-helpline-number",       "NHAI FASTag helpline number and how to use it",           "General"),
+        ("fastag-reissue-process",     "How to reissue or reactivate a blocked FASTag",           "Blacklist"),
+        ("fastag-exemption-vehicles",  "Which vehicles are exempt from FASTag rules?",            "General"),
+        ("fastag-commercial-vehicles", "FASTag rules for commercial vehicles and fleet",          "General"),
+        ("fastag-international-travel","FASTag for vehicles crossing state or border tolls",      "General"),
+        ("fastag-mobile-number-update","How to update mobile number linked to FASTag",            "KYC"),
+        ("fastag-insurance-link",      "Link vehicle insurance to FASTag account",                "KYC"),
+        ("fastag-sms-alerts-setup",    "Set up SMS alerts for every FASTag transaction",          "Balance"),
+        ("fastag-toll-app",            "Using the FASTag or NHAI ONE app for management",         "General"),
+        ("fastag-mischarge-timeline",  "Timeline to claim a FASTag mischarge refund",             "Disputes"),
+        ("fastag-refund-status-check", "How to check FASTag refund status",                       "Disputes"),
+        ("fastag-rc-linkage",          "Why RC details must match FASTag exactly",                "KYC"),
+        ("fastag-hotlisted",           "FASTag hotlisted — meaning and how to resolve",           "Blacklist"),
+        ("fastag-cashback-offers",     "FASTag cashback and discount offers in 2026",             "Balance"),
+        ("fastag-balance-transfer",    "Can you transfer FASTag balance to another account?",     "Balance"),
+        ("fastag-vehicle-sold",        "What to do with FASTag when you sell your vehicle",       "KYC"),
+        ("fastag-class-4-vehicles",    "FASTag for Class 4 commercial vehicles — special rules",  "General"),
+        ("fastag-truck-overweight",    "Overweight penalty at toll and FASTag balance",           "Disputes"),
+        ("fastag-holiday-traffic",     "FASTag tips for high-traffic holidays and long weekends", "General"),
+        ("fastag-autopay-setup",       "Set up autopay or auto-recharge for FASTag",              "Balance"),
+        ("fastag-customer-care-chat",  "FASTag customer care chat and email support options",     "General"),
+        ("fastag-atm-recharge",        "Recharge FASTag at ATM or bank branch",                  "Balance"),
+        ("fastag-upi-recharge",        "Recharge FASTag using UPI in 2 minutes",                 "Balance"),
+        ("fastag-net-banking-recharge","Recharge FASTag via net banking — all banks",            "Balance"),
+        ("fastag-class-fee-dispute",   "Disputing wrong vehicle class fee at toll",              "Disputes"),
+        ("fastag-non-nhai-toll",       "FASTag at state highway tolls vs NHAI tolls",            "General"),
+        ("fastag-sos-at-toll",         "Emergency SOS at toll — who to call and what to do",     "General"),
+        ("fastag-transaction-history", "How to download complete FASTag transaction history",     "Balance"),
+        ("fastag-fleet-management",    "Managing FASTag for a fleet of 5 or more vehicles",      "General"),
+        ("fastag-gstin-invoice",       "Getting GST invoice for FASTag toll payments",           "General"),
+        ("fastag-monthly-pass",        "FASTag monthly pass for daily commuters",                "Balance"),
+        ("fastag-blocked-at-one-plaza","FASTag blocked only at one plaza — how to resolve",      "Blacklist"),
+        ("fastag-wrong-vehicle-type",  "FASTag tagged to wrong vehicle type — correction",       "KYC"),
+        ("fastag-expiry-renewal",      "FASTag expiry and renewal process — step by step",       "Installation"),
+        ("fastag-bank-account-closed", "Your FASTag bank account was closed — next steps",       "KYC"),
+        ("fastag-police-seized-vehicle","FASTag on a police-seized vehicle — what happens",      "General"),
+    ]
+
+    def _bank_body(action, bank_name, slug_key):
+        return _body([
+            (f"How to {action} {bank_name} — overview",
+             [f"This guide covers how to {action} your {bank_name} step by step.",
+              f"{bank_name} customers face this issue frequently at toll plazas across India.",
+              "Follow the steps below or contact a Sathi at your nearest toll for on-spot help."]),
+            ("Step-by-step process",
+             [f"1. Open the {bank_name.split()[0]} app or visit the official website.",
+              "2. Navigate to 'FASTag' or 'My FASTag' section.",
+              f"3. Select the option for {action.split()[-1]} and follow the on-screen prompts.",
+              "4. Keep your vehicle RC, registered mobile number, and FASTag ID ready.",
+              "5. Complete any OTP verification required by the bank."]),
+            ("Common errors and how to fix them",
+             ["Error: 'Account not found' — ensure you are using the phone number registered with the bank.",
+              "Error: 'Tag inactive' — your FASTag may be blacklisted. Use our blacklist fix guide.",
+              "Error: 'KYC pending' — complete eKYC through the bank's app before proceeding."]),
+            ("When to ping a Sathi instead",
+             [f"If the above steps don't resolve your {bank_name} issue, a verified Sathi at your toll can help in minutes.",
+              "Sathis have direct escalation paths with bank FASTag desks and NHAI.",
+              "Use the ApnaFastag app to connect with a Sathi at your nearest plaza."])
+        ])
+
+    def _state_body(state_name, issue_name):
+        return _body([
+            (f"{issue_name} in {state_name} — complete guide",
+             [f"This guide covers {issue_name.lower()} for FASTag users at toll plazas across {state_name}.",
+              f"{state_name} has a large network of NHAI and state highway toll plazas.",
+              "Verified Sathis are available at major plazas across the state for on-spot help."]),
+            ("How to resolve this issue",
+             ["1. Identify whether your toll plaza is NHAI or state-operated.",
+              "2. Note the toll plaza name, transaction ID, and deduction amount.",
+              "3. Contact your FASTag bank's helpline with these details.",
+              "4. If unresolved in 24 hours, file an NHAI complaint using the toll-free number 1033.",
+              "5. A verified Sathi can handle this process for you in under 10 minutes."]),
+            ("Sathi network coverage",
+             [f"ApnaFastag has verified Sathis at major toll plazas throughout {state_name}.",
+              "Find your nearest Sathi using the map on the ApnaFastag website or app.",
+              "Sathis are available 7 days a week and can resolve most issues on-spot."]),
+        ])
+
+    def _vehicle_body(vtype, issue_name):
+        return _body([
+            (f"{issue_name} for {vtype.title()}s — guide",
+             [f"This guide is specifically for {vtype} owners dealing with FASTag {issue_name.lower()}.",
+              "Rules and processes can vary slightly for different vehicle categories.",
+              "Follow the steps below or get help from a Sathi at your toll plaza."]),
+            ("What you need",
+             ["1. Vehicle registration certificate (RC)",
+              "2. Registered mobile number linked to FASTag",
+              "3. FASTag ID (printed on the sticker)",
+              "4. Valid photo ID (Aadhaar, PAN, or driving licence)"]),
+            ("Step-by-step",
+             [f"1. Contact your FASTag issuing bank for {issue_name.lower()} specific to {vtype}s.",
+              "2. Provide vehicle class details matching your RC.",
+              "3. Complete any KYC or documentation required.",
+              "4. Allow 2–5 business days for the process to complete."]),
+        ])
+
+    def _plaza_body(plaza_name, issue):
+        return _body([
+            (f"FASTag {issue} at {plaza_name}",
+             [f"This guide covers how to resolve FASTag {issue.lower()} specifically at {plaza_name}.",
+              "If you are stranded at this plaza, contact a local Sathi immediately.",
+              "Most issues can be resolved within 10 minutes with Sathi assistance."]),
+            ("Immediate steps",
+             ["1. Pull over to the designated waiting area — do not block the lane.",
+              "2. Note your transaction ID from the receipt or FASTag app.",
+              "3. Contact your bank's helpline or ping a Sathi via ApnaFastag.",
+              "4. For mischarges, file within 7 days for a full refund."]),
+            ("Contact Sathi",
+             [f"A verified Sathi is available at or near {plaza_name}.",
+              "They can resolve disputes, recharge issues, and blacklist problems on-spot.",
+              "Use the ApnaFastag app to connect with the nearest Sathi."]),
+        ])
+
+    def _faq_body(title, category):
+        return _body([
+            (title,
+             [f"This is a comprehensive guide answering: {title}",
+              "FASTag-related questions are among the most searched queries for Indian motorists.",
+              "Our verified Sathis handle hundreds of such cases every week at toll plazas."]),
+            ("The short answer",
+             ["FASTag is India's electronic toll collection system mandated by NHAI.",
+              "All four-wheelers and heavy vehicles are required to have a valid, active FASTag.",
+              "For the specific question above, refer to the FAQ section below or contact a Sathi."]),
+            ("Need on-spot help?",
+             ["If you are at a toll plaza right now, use ApnaFastag to find a nearby Sathi.",
+              "Sathis are verified experts who resolve FASTag issues in minutes.",
+              "The service costs as low as ₹49 for a recharge fix."]),
+        ])
+
+    def _bank_faqs(action, bank_name):
+        return [
+            {"q": f"How long does {action} take for {bank_name}?", "a": "Most requests are processed within 2–5 business days. Urgent cases can be escalated via your bank's helpline."},
+            {"q": f"Can I {action} offline at a bank branch?",      "a": f"Yes, most {bank_name.split()[0]} branches support FASTag services. Carry your RC and a photo ID."},
+            {"q": f"Is there a fee for {action} {bank_name}?",      "a": "Most banks do not charge for standard FASTag services. Check your bank's fee schedule for premium requests."},
+            {"q": "What if my request is rejected?",                "a": "Re-submit with all documents correct. If rejected twice, contact NHAI at 1033 or ping a Sathi for escalation."},
+            {"q": "How do I verify it was successful?",             "a": f"You will receive an SMS confirmation on your registered mobile. Also check the {bank_name.split()[0]} app or website."},
+        ]
+
+    articles = []
+
+    # Group A: Bank × Issue
+    for bank_slug, bank_short, bank_name in BANKS_DATA:
+        for issue_key, action, category, kw in ISSUES_A:
+            slug = f"{bank_slug}-{issue_key}"
+            title = f"How to {action} your {bank_name} — complete 2026 guide"
+            excerpt = f"Step-by-step guide to {action} your {bank_name} online, via app, or at a toll plaza. Includes common errors and Sathi escalation tips."
+            articles.append(_make_article(
+                slug=slug, title=title, excerpt=excerpt,
+                body_html=_bank_body(action, bank_name, issue_key),
+                category=category,
+                faq_pairs=_bank_faqs(action, bank_name),
+                related_bank=bank_slug,
+                tags=[bank_short, "FASTag", kw],
+                read_min=5,
+            ))
+
+    # Group B: General FAQs
+    for slug, title, category in GENERAL_FAQS:
+        excerpt = f"{title} — detailed guide for Indian motorists. Covers process, documents, timeline, and when to contact a Sathi for faster resolution."
+        faqs = [
+            {"q": f"What is the official process for: {title}?", "a": "Please refer to the step-by-step guide above. For urgent help, contact a Sathi at your nearest toll plaza."},
+            {"q": "How long does this take?",                    "a": "Most FASTag processes take 1–5 business days. On-spot Sathi help is available within minutes at toll plazas."},
+            {"q": "Do I need to visit a bank branch?",          "a": "Most processes can be done online via the bank app. Some KYC updates require a branch visit."},
+            {"q": "Is there a helpline for this?",              "a": "Yes. NHAI helpline: 1033. For bank-specific issues, call your FASTag issuing bank's toll-free number."},
+            {"q": "Can a Sathi help with this?",                "a": "Yes. Verified Sathis at toll plazas are trained to handle this and most other FASTag issues on-spot."},
+        ]
+        articles.append(_make_article(
+            slug=slug, title=title, excerpt=excerpt,
+            body_html=_faq_body(title, category),
+            category=category, faq_pairs=faqs, read_min=4,
+        ))
+
+    # Group C: State × Issue
+    for state_slug, state_name in STATES_DATA:
+        for issue_key, issue_name, category in STATE_ISSUES:
+            slug = f"{state_slug}-{issue_key}"
+            title = f"{issue_name} in {state_name} — FASTag guide 2026"
+            excerpt = f"Complete guide for {issue_name.lower()} at {state_name} toll plazas. Covers NHAI and state highways, with local Sathi contact options."
+            faqs = [
+                {"q": f"Which toll plazas in {state_name} have Sathi coverage?", "a": f"ApnaFastag has verified Sathis at major NHAI toll plazas in {state_name}. Use the map to find the nearest one."},
+                {"q": f"Is the {issue_name.lower()} process different in {state_name}?", "a": "The bank-side process is the same across India. State highway tolls may have different escalation paths than NHAI."},
+                {"q": "How do I file a complaint at a state highway toll?", "a": f"Contact the State Road Transport Corporation or the state PWD for {state_name} state highways."},
+                {"q": "What is the NHAI helpline?", "a": "Dial 1033 for NHAI helpline, available 24x7 for toll-related complaints."},
+                {"q": "How fast can a Sathi resolve this?", "a": "Most issues are resolved within 10–30 minutes when a Sathi is physically present at the toll."},
+            ]
+            articles.append(_make_article(
+                slug=slug, title=title, excerpt=excerpt,
+                body_html=_state_body(state_name, issue_name),
+                category=category, faq_pairs=faqs,
+                related_state=state_slug, read_min=4,
+            ))
+
+    # Group D: Vehicle × Issue
+    for v_slug, v_name in VEHICLES:
+        for issue_key, issue_name, category in VEHICLE_ISSUES:
+            slug = f"fastag-{v_slug}-{issue_key}"
+            title = f"FASTag {issue_name} for {v_name.title()}s — 2026 guide"
+            excerpt = f"Complete {issue_name.lower()} guide for {v_name} owners. Covers vehicle class rules, documents needed, and on-spot Sathi assistance."
+            faqs = [
+                {"q": f"What vehicle class is a {v_name} for FASTag purposes?", "a": f"Vehicle class depends on the number of axles. A {v_name} is typically classified by NHAI standards. Check your RC for the official category."},
+                {"q": f"Can I get FASTag for a {v_name} at the toll plaza?", "a": "Yes, NHAI FASTag is available at designated toll plaza counters. Carry your RC, Aadhaar, and a passport-size photo."},
+                {"q": f"Is FASTag mandatory for {v_name}s?", "a": "FASTag is mandatory for all four-wheelers and above on NHAI highways. Check state-specific rules for smaller vehicles."},
+                {"q": "What if my vehicle class is wrong on FASTag?", "a": "Contact your FASTag issuing bank to update the vehicle class. You will need to submit corrected RC documents."},
+                {"q": "Can a Sathi help with FASTag for my vehicle?", "a": f"Yes. Sathis at toll plazas are trained to assist {v_name} owners with installation, disputes, and class corrections."},
+            ]
+            articles.append(_make_article(
+                slug=slug, title=title, excerpt=excerpt,
+                body_html=_vehicle_body(v_slug, issue_name),
+                category=category, faq_pairs=faqs, read_min=4,
+            ))
+
+    # Group E: Plaza × Issue (from DB)
+    plaza_issues = [
+        ("fastag-dispute",    "FASTag Dispute",         "Disputes"),
+        ("fastag-not-working","FASTag Not Working",     "Blacklist"),
+        ("fastag-recharge",   "FASTag Recharge Help",   "Balance"),
+    ]
+    plazas = await db.plazas.find({}, {"_id": 0, "slug": 1, "name": 1}).to_list(None)
+    for plaza in plazas:
+        for issue_key, issue_name, category in plaza_issues:
+            slug = f"{plaza['slug']}-{issue_key}"
+            plaza_name = plaza.get("name", plaza["slug"].replace("-", " ").title()  )
+            title = f"{issue_name} at {plaza_name} Toll Plaza — local guide"
+            excerpt = f"On-spot help for {issue_name.lower()} at {plaza_name}. Verified Sathis available. Covers refund process, escalation steps, and emergency contacts."
+            faqs = [
+                {"q": f"Is there a Sathi available at {plaza_name}?", "a": f"Yes, ApnaFastag has verified Sathis at or near {plaza_name}. Use the map to find and connect."},
+                {"q": f"What are the operating hours at {plaza_name}?", "a": "NHAI toll plazas operate 24x7. Sathi availability may vary — check the app for current online Sathis."},
+                {"q": "How do I report a FASTag issue at this plaza?", "a": "Note the plaza name, lane number, transaction ID, and date. File a complaint with your FASTag bank within 7 days."},
+                {"q": "What if no Sathi is available right now?", "a": "Call NHAI helpline 1033. For bank issues, call your FASTag bank helpline. A Sathi can also follow up remotely."},
+                {"q": "How long does dispute resolution take?", "a": "Bank disputes are resolved within 7–30 days. Sathi-assisted disputes are typically resolved faster with proper escalation."},
+            ]
+            articles.append(_make_article(
+                slug=slug, title=title, excerpt=excerpt,
+                body_html=_plaza_body(plaza_name, issue_name),
+                category=category, faq_pairs=faqs, read_min=3,
+            ))
+
+    # Upsert all articles
+    upserted = 0
+    for art in articles:
+        await db.articles.update_one(
+            {"slug": art["slug"]},
+            {"$setOnInsert": art},
+            upsert=True,
+        )
+        upserted += 1
+
+    # Add indexes for articles collection
+    await db.articles.create_index([("slug", 1)], unique=True)
+    await db.articles.create_index([("is_published", 1), ("category", 1)])
+    await db.articles.create_index([("is_published", 1), ("created_at", -1)])
+
+    logger.info(f"Seeded {upserted} articles into db.articles")
+    return upserted
 
 @admin_router.post("/seed", dependencies=[Depends(_check_admin)])
 async def seed_db():
@@ -1746,6 +2240,7 @@ api.include_router(auth_router)
 api.include_router(users_router)
 api.include_router(states_router)
 api.include_router(sathis_router)
+api.include_router(help_router)
 api.include_router(plazas_router)
 api.include_router(jobs_router)
 api.include_router(admin_router)
@@ -1755,6 +2250,66 @@ api.include_router(tools_router)
 api.include_router(payments_router)
 api.include_router(legacy_router)
 app.include_router(api)
+
+# ─── Dynamic sitemap ──────────────────────────────────────────────────────────
+
+SITE = "https://apnafastag.in"
+
+@app.get("/sitemap.xml", include_in_schema=False)
+async def dynamic_sitemap():
+    from fastapi.responses import Response as FResponse
+    static_urls = [
+        (SITE + "/",                   "1.0",  "daily"),
+        (SITE + "/find",               "0.95", "hourly"),
+        (SITE + "/how-it-works",       "0.8",  "monthly"),
+        (SITE + "/features",           "0.7",  "monthly"),
+        (SITE + "/pricing",            "0.7",  "monthly"),
+        (SITE + "/become-a-sathi",     "0.9",  "weekly"),
+        (SITE + "/help",               "0.9",  "daily"),
+        (SITE + "/blog",               "0.8",  "weekly"),
+        (SITE + "/coverage",           "0.75", "weekly"),
+        (SITE + "/fastag-balance-check","0.95","weekly"),
+        (SITE + "/fastag-status",      "0.9",  "weekly"),
+        (SITE + "/toll-calculator",    "0.9",  "weekly"),
+        (SITE + "/about",              "0.5",  "monthly"),
+        (SITE + "/contact",            "0.4",  "monthly"),
+        (SITE + "/privacy",            "0.2",  "yearly"),
+        (SITE + "/terms",              "0.2",  "yearly"),
+    ]
+    rows = []
+    for url, priority, freq in static_urls:
+        rows.append(f"  <url><loc>{url}</loc><priority>{priority}</priority><changefreq>{freq}</changefreq></url>")
+
+    # Articles
+    articles = await db.articles.find({"is_published": True}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
+    for a in articles:
+        loc = f"{SITE}/help/{a['slug']}"
+        lastmod = (a.get("updated_at") or "")[:10]
+        rows.append(f"  <url><loc>{loc}</loc><priority>0.7</priority><changefreq>monthly</changefreq>{('<lastmod>' + lastmod + '</lastmod>') if lastmod else ''}</url>")
+
+    # Sathis
+    sathis = await db.sathis.find({}, {"_id": 0, "slug": 1}).to_list(None)
+    for s in sathis:
+        rows.append(f"  <url><loc>{SITE}/sathi/{s['slug']}</loc><priority>0.8</priority><changefreq>weekly</changefreq></url>")
+
+    # Plazas & States & Banks (static slugs)
+    plazas = await db.plazas.find({}, {"_id": 0, "slug": 1}).to_list(None)
+    for p in plazas:
+        rows.append(f"  <url><loc>{SITE}/toll/{p['slug']}</loc><priority>0.85</priority><changefreq>weekly</changefreq></url>")
+
+    states = await db.states.find({}, {"_id": 0, "slug": 1}).to_list(None)
+    for s in states:
+        rows.append(f"  <url><loc>{SITE}/state/{s['slug']}</loc><priority>0.7</priority><changefreq>monthly</changefreq></url>")
+
+    bank_slugs = ["sbi-fastag","paytm-fastag","icici-fastag","hdfc-fastag","axis-fastag","kotak-fastag","yes-fastag","idfc-fastag"]
+    for b in bank_slugs:
+        rows.append(f"  <url><loc>{SITE}/bank/{b}</loc><priority>0.8</priority><changefreq>monthly</changefreq></url>")
+
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    xml += "\n".join(rows)
+    xml += "\n</urlset>"
+    return FResponse(content=xml, media_type="application/xml")
 
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 

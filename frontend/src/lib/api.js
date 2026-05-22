@@ -28,6 +28,11 @@ export const sathiApi = {
   submitReview: (slug, data) => api.post(`/api/sathis/${slug}/review`, data),
 };
 
+export const helpApi = {
+  list: (params) => api.get("/api/help", { params }),
+  get:  (slug)   => api.get(`/api/help/${slug}`),
+};
+
 export const plazaApi = {
   list: () => api.get("/api/plazas"),
   byState: (slug) => api.get("/api/plazas", { params: { state: slug } }),
@@ -111,6 +116,12 @@ export const adminApi = {
   updatePlaza: (slug, data) => api.patch(`/api/admin/plazas/${slug}`, data, { headers: adminHeaders() }),
   deletePlaza: (slug) => api.delete(`/api/admin/plazas/${slug}`, { headers: adminHeaders() }),
   importPlazas: (list) => api.post("/api/admin/plazas/import", list, { headers: adminHeaders() }),
+  // Content / Articles
+  articles:      (params) => api.get("/api/admin/articles", { params, headers: adminHeaders() }),
+  createArticle: (data)   => api.post("/api/admin/articles", data, { headers: adminHeaders() }),
+  updateArticle: (slug, d)=> api.patch(`/api/admin/articles/${slug}`, d, { headers: adminHeaders() }),
+  deleteArticle: (slug)   => api.delete(`/api/admin/articles/${slug}`, { headers: adminHeaders() }),
+  seedArticles:  ()       => api.post("/api/admin/seed-articles", {}, { headers: adminHeaders() }),
 };
 
 export default api;

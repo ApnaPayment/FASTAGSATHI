@@ -1,12 +1,16 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { adminApi, setAdminSecret, getAdminSecret, clearAdminSecret } from "@/lib/api";
 import {
   Users, Briefcase, MapPin, ClipboardList, CheckCircle2, XCircle,
   Clock, Loader2, LogOut, RefreshCw, ChevronDown, BadgeCheck, Shield,
   Tag, Percent, Trash2, ToggleLeft, ToggleRight, Plus, Search,
+  FileText, Edit2, Download,
 } from "lucide-react";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
+import { BANKS as SEED_BANKS, STATES as SEED_STATES } from "@/data/seed";
 
-const TABS = ["Dashboard", "Applications", "Jobs", "Sathis", "Promo Codes", "Settlements", "Plazas"];
+const TABS = ["Dashboard", "Applications", "Jobs", "Sathis", "Promo Codes", "Settlements", "Plazas", "Content"];
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 const fullUrl = (url) => { if (!url) return ""; if (url.startsWith("http") || url.startsWith("data:")) return url; if (BACKEND.includes("localhost") && !window.location.hostname.includes("localhost")) return ""; return `${BACKEND}${url}`; };
@@ -181,6 +185,7 @@ function Dashboard({ onLogout }) {
         {tab === "Promo Codes"  && <PromoCodesTab />}
         {tab === "Settlements"  && <SettlementsTab />}
         {tab === "Plazas"       && <PlazasTab />}
+        {tab === "Content"      && <ContentTab />}
       </main>
     </div>
   );
@@ -1507,6 +1512,437 @@ function PlazasTab() {
             <div className="flex gap-3">
               <button onClick={() => deletePlaza(deleteConfirm)} className="flex-1 bg-red-600 text-white font-bold py-2.5 rounded-xl hover:bg-red-700 transition-colors">Delete</button>
               <button onClick={() => setDeleteConfirm(null)} className="flex-1 border-2 border-[#E5E7EB] font-bold py-2.5 rounded-xl hover:border-[#0A0A0A] transition-colors">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Content Tab ─────────────────────────────────────────────────────────── */
+
+const ARTICLE_CATEGORIES = ["Disputes", "Balance", "KYC", "Blacklist", "Installation", "General"];
+
+const EMPTY_FORM = {
+  slug: "", title: "", category: "General", excerpt: "", body: "",
+  meta_description: "", meta_keywords: "", related_bank: "", related_state: "",
+  faq_pairs: [], cover: "", is_published: true, read_min: 4,
+};
+
+const QUILL_MODULES = {
+  toolbar: [
+    [{ header: [2, 3, false] }],
+    ["bold", "italic", "underline", "strike"],
+    [{ list: "ordered" }, { list: "bullet" }],
+    ["blockquote", "code-block"],
+    ["link"],
+    ["clean"],
+  ],
+};
+
+function slugify(str) {
+  return str.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function ContentTab() {
+  const [articles, setArticles]   = useState([]);
+  const [total, setTotal]         = useState(0);
+  const [page, setPage]           = useState(1);
+  const [search, setSearch]       = useState("");
+  const [catFilter, setCatFilter] = useState("");
+  const [loading, setLoading]     = useState(true);
+  const [err, setErr]             = useState("");
+
+  const [form, setForm]           = useState(EMPTY_FORM);
+  const [editSlug, setEditSlug]   = useState(null); // null = create, string = editing
+  const [saving, setSaving]       = useState(false);
+  const [saveErr, setSaveErr]     = useState("");
+  const [saveOk, setSaveOk]       = useState(false);
+
+  const [seeding, setSeeding]     = useState(false);
+  const [seedMsg, setSeedMsg]     = useState("");
+  const [deleteSlug, setDeleteSlug] = useState(null);
+
+  const LIMIT = 20;
+  const debounceRef = useRef(null);
+
+  const load = useCallback(async (p = 1, s = search, c = catFilter) => {
+    setLoading(true); setErr("");
+    try {
+      const params = { page: p, limit: LIMIT };
+      if (s) params.search = s;
+      if (c) params.category = c;
+      const res = await adminApi.articles(params);
+      setArticles(res.data.items || res.data);
+      setTotal(res.data.total || (res.data.items || res.data).length);
+      setPage(p);
+    } catch (e) {
+      setErr(e?.response?.data?.detail || "Failed to load articles");
+    } finally {
+      setLoading(false);
+    }
+  }, [search, catFilter]);
+
+  useEffect(() => { load(1, search, catFilter); }, [catFilter]); // eslint-disable-line
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => load(1, search, catFilter), 350);
+    return () => clearTimeout(debounceRef.current);
+  }, [search]); // eslint-disable-line
+
+  const resetForm = () => { setForm(EMPTY_FORM); setEditSlug(null); setSaveErr(""); setSaveOk(false); };
+
+  const startEdit = (a) => {
+    setForm({
+      slug: a.slug, title: a.title, category: a.category || "General",
+      excerpt: a.excerpt || "", body: a.body || "",
+      meta_description: a.meta_description || "", meta_keywords: a.meta_keywords || "",
+      related_bank: a.related_bank || "", related_state: a.related_state || "",
+      faq_pairs: a.faq_pairs || [], cover: a.cover || "",
+      is_published: a.is_published !== false, read_min: a.read_min || 4,
+    });
+    setEditSlug(a.slug);
+    setSaveErr(""); setSaveOk(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleTitleChange = (val) => {
+    setForm((f) => ({
+      ...f, title: val,
+      ...(editSlug === null ? { slug: slugify(val) } : {}),
+    }));
+  };
+
+  const setFaq = (idx, field, val) => {
+    setForm((f) => {
+      const pairs = [...f.faq_pairs];
+      pairs[idx] = { ...pairs[idx], [field]: val };
+      return { ...f, faq_pairs: pairs };
+    });
+  };
+
+  const addFaq = () => setForm((f) => ({ ...f, faq_pairs: [...f.faq_pairs, { q: "", a: "" }] }));
+  const removeFaq = (idx) => setForm((f) => ({ ...f, faq_pairs: f.faq_pairs.filter((_, i) => i !== idx) }));
+
+  const save = async () => {
+    setSaving(true); setSaveErr(""); setSaveOk(false);
+    try {
+      const data = { ...form, read_min: Number(form.read_min) };
+      if (editSlug) {
+        await adminApi.updateArticle(editSlug, data);
+      } else {
+        await adminApi.createArticle(data);
+      }
+      setSaveOk(true);
+      resetForm();
+      load(page, search, catFilter);
+    } catch (e) {
+      setSaveErr(e?.response?.data?.detail || "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const doDelete = async (slug) => {
+    try {
+      await adminApi.deleteArticle(slug);
+      setDeleteSlug(null);
+      load(page, search, catFilter);
+    } catch (e) {
+      setErr(e?.response?.data?.detail || "Delete failed");
+    }
+  };
+
+  const seedArticles = async () => {
+    setSeeding(true); setSeedMsg("");
+    try {
+      const r = await adminApi.seedArticles();
+      setSeedMsg(`✅ Seeded! ${r.data.inserted || 0} inserted, ${r.data.skipped || 0} skipped.`);
+      load(1, "", "");
+    } catch (e) {
+      setSeedMsg("❌ " + (e?.response?.data?.detail || "Seed failed"));
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  const downloadSitemap = async () => {
+    try {
+      const res = await fetch(`${BACKEND}/sitemap.xml`);
+      const xml = await res.text();
+      const blob = new Blob([xml], { type: "application/xml" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "sitemap.xml"; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErr("Could not fetch sitemap");
+    }
+  };
+
+  const fieldCls = "w-full bg-[#F8F9FA] border-2 border-[#E5E7EB] focus:border-[#FF6B00] rounded-xl px-3 py-2 outline-none text-sm transition-colors";
+  const labelCls = "text-xs font-bold uppercase tracking-widest text-[#4B5563] block mb-1";
+
+  return (
+    <div>
+      {/* Header row */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <h2 className="font-display font-black text-2xl">Content · {total.toLocaleString()} articles</h2>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={seedArticles} disabled={seeding}
+            className="flex items-center gap-2 bg-[#0A0A0A] text-white font-bold px-4 py-2 rounded-xl hover:bg-[#FF6B00] disabled:opacity-50 transition-colors text-sm"
+          >
+            {seeding ? <Loader2 className="w-4 h-4 animate-spin" /> : "🌱"} Seed 1000+ Articles
+          </button>
+          <button
+            onClick={downloadSitemap}
+            className="flex items-center gap-2 border-2 border-[#E5E7EB] font-bold px-4 py-2 rounded-xl hover:border-[#0A0A0A] transition-colors text-sm"
+          >
+            <Download className="w-4 h-4" /> Sitemap XML
+          </button>
+        </div>
+      </div>
+
+      {seedMsg && (
+        <div className={`mb-4 px-4 py-3 rounded-xl text-sm font-semibold ${seedMsg.startsWith("✅") ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-600 border border-red-200"}`}>
+          {seedMsg}
+        </div>
+      )}
+
+      {err && <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 text-red-600 text-sm border border-red-200">{err}</div>}
+
+      <div className="grid lg:grid-cols-5 gap-6">
+        {/* ── Left: Form (2 cols) ── */}
+        <div className="lg:col-span-2 bg-[#F8F9FA] border-2 border-[#E5E7EB] rounded-2xl p-5 h-fit sticky top-6">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="font-display font-black text-lg">
+              {editSlug ? `Edit · ${editSlug}` : "New Article"}
+            </h3>
+            {editSlug && (
+              <button onClick={resetForm} className="text-xs font-bold text-[#4B5563] hover:text-[#0A0A0A] border border-[#E5E7EB] px-3 py-1 rounded-full">
+                + New
+              </button>
+            )}
+          </div>
+
+          {saveOk && <div className="mb-4 px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded-xl text-sm font-semibold">Saved successfully!</div>}
+          {saveErr && <div className="mb-4 px-3 py-2 bg-red-50 text-red-600 border border-red-200 rounded-xl text-sm">{saveErr}</div>}
+
+          <div className="space-y-4">
+            <div>
+              <label className={labelCls}>Title</label>
+              <input value={form.title} onChange={(e) => handleTitleChange(e.target.value)} className={fieldCls} placeholder="How to fix FASTag blacklist — complete guide" />
+            </div>
+
+            <div>
+              <label className={labelCls}>Slug</label>
+              <input value={form.slug} onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))} className={fieldCls} placeholder="fix-fastag-blacklist" disabled={!!editSlug} />
+              {editSlug && <p className="text-xs text-[#9CA3AF] mt-1">Slug is immutable after creation.</p>}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Category</label>
+                <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} className={fieldCls}>
+                  {ARTICLE_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Read time (min)</label>
+                <input type="number" min={1} max={30} value={form.read_min} onChange={(e) => setForm((f) => ({ ...f, read_min: e.target.value }))} className={fieldCls} />
+              </div>
+            </div>
+
+            <div>
+              <label className={labelCls}>Excerpt (150 chars)</label>
+              <textarea value={form.excerpt} onChange={(e) => setForm((f) => ({ ...f, excerpt: e.target.value }))} rows={2} maxLength={200} className={`${fieldCls} resize-none`} placeholder="Short summary for cards and meta description..." />
+            </div>
+
+            <div>
+              <label className={labelCls}>Body (HTML)</label>
+              <div className="rounded-xl overflow-hidden border-2 border-[#E5E7EB] focus-within:border-[#FF6B00] bg-white">
+                <ReactQuill
+                  theme="snow"
+                  value={form.body}
+                  onChange={(val) => setForm((f) => ({ ...f, body: val }))}
+                  modules={QUILL_MODULES}
+                  style={{ minHeight: 200 }}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Related bank</label>
+                <select value={form.related_bank} onChange={(e) => setForm((f) => ({ ...f, related_bank: e.target.value }))} className={fieldCls}>
+                  <option value="">— none —</option>
+                  {SEED_BANKS.map((b) => <option key={b.slug} value={b.slug}>{b.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Related state</label>
+                <select value={form.related_state} onChange={(e) => setForm((f) => ({ ...f, related_state: e.target.value }))} className={fieldCls}>
+                  <option value="">— none —</option>
+                  {SEED_STATES.map((s) => <option key={s.slug} value={s.slug}>{s.name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className={labelCls}>Meta description</label>
+              <textarea value={form.meta_description} onChange={(e) => setForm((f) => ({ ...f, meta_description: e.target.value }))} rows={2} className={`${fieldCls} resize-none`} placeholder="Overrides excerpt for <meta description>" />
+            </div>
+
+            <div>
+              <label className={labelCls}>Meta keywords</label>
+              <input value={form.meta_keywords} onChange={(e) => setForm((f) => ({ ...f, meta_keywords: e.target.value }))} className={fieldCls} placeholder="fastag blacklist, fastag blocked, ..." />
+            </div>
+
+            <div>
+              <label className={labelCls}>Cover image URL</label>
+              <input value={form.cover} onChange={(e) => setForm((f) => ({ ...f, cover: e.target.value }))} className={fieldCls} placeholder="https://..." />
+            </div>
+
+            {/* FAQ pairs */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className={labelCls}>FAQ pairs</label>
+                <button type="button" onClick={addFaq} className="text-xs font-bold text-[#FF6B00] hover:underline">+ Add FAQ</button>
+              </div>
+              {form.faq_pairs.length === 0 && <p className="text-xs text-[#9CA3AF]">No FAQ pairs yet.</p>}
+              <div className="space-y-3">
+                {form.faq_pairs.map((pair, i) => (
+                  <div key={i} className="bg-white border-2 border-[#E5E7EB] rounded-xl p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <input value={pair.q} onChange={(e) => setFaq(i, "q", e.target.value)} placeholder="Question" className={`${fieldCls} flex-1`} />
+                      <button type="button" onClick={() => removeFaq(i)} className="text-[#EF4444] hover:text-red-700 flex-shrink-0">
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <textarea value={pair.a} onChange={(e) => setFaq(i, "a", e.target.value)} placeholder="Answer" rows={2} className={`${fieldCls} resize-none`} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <label className={`${labelCls} mb-0`}>Published</label>
+              <button type="button" onClick={() => setForm((f) => ({ ...f, is_published: !f.is_published }))} className="flex-shrink-0">
+                {form.is_published
+                  ? <ToggleRight className="w-7 h-7 text-[#059669]" />
+                  : <ToggleLeft className="w-7 h-7 text-[#9CA3AF]" />}
+              </button>
+              <span className="text-xs text-[#4B5563]">{form.is_published ? "Visible to users" : "Draft — hidden"}</span>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button onClick={save} disabled={saving || !form.slug || !form.title} className="flex-1 bg-[#0A0A0A] text-white font-bold py-3 rounded-xl hover:bg-[#FF6B00] disabled:opacity-40 flex items-center justify-center gap-2 transition-colors">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : editSlug ? "Update" : "Create"}
+              </button>
+              {editSlug && (
+                <button onClick={resetForm} className="px-5 py-3 border-2 border-[#E5E7EB] rounded-xl font-bold hover:border-[#0A0A0A] transition-colors text-sm">Cancel</button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Right: Table (3 cols) ── */}
+        <div className="lg:col-span-3">
+          {/* Filters */}
+          <div className="flex flex-wrap gap-3 mb-4">
+            <div className="relative flex-1 min-w-48">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />
+              <input
+                value={search} onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search articles…" className="w-full pl-9 pr-3 py-2 border-2 border-[#E5E7EB] rounded-xl text-sm outline-none focus:border-[#FF6B00] transition-colors"
+              />
+            </div>
+            <select value={catFilter} onChange={(e) => { setCatFilter(e.target.value); load(1, search, e.target.value); }} className="border-2 border-[#E5E7EB] rounded-xl px-3 py-2 text-sm outline-none focus:border-[#FF6B00]">
+              <option value="">All categories</option>
+              {ARTICLE_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-16"><Loader2 className="w-6 h-6 animate-spin mx-auto text-[#FF6B00]" /></div>
+          ) : articles.length === 0 ? (
+            <div className="text-center py-16 text-[#9CA3AF]">
+              <FileText className="w-12 h-12 mx-auto mb-3 opacity-40" />
+              <p className="font-semibold">No articles yet. Seed 1000+ or create one.</p>
+            </div>
+          ) : (
+            <>
+              <div className="bg-white border-2 border-[#E5E7EB] rounded-2xl overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-[#F8F9FA] border-b-2 border-[#E5E7EB]">
+                    <tr>
+                      <th className="text-left px-4 py-3 font-bold text-[#4B5563] text-xs uppercase tracking-wide">Title</th>
+                      <th className="text-left px-4 py-3 font-bold text-[#4B5563] text-xs uppercase tracking-wide">Cat</th>
+                      <th className="text-left px-4 py-3 font-bold text-[#4B5563] text-xs uppercase tracking-wide hidden md:table-cell">Bank</th>
+                      <th className="text-center px-4 py-3 font-bold text-[#4B5563] text-xs uppercase tracking-wide">Pub</th>
+                      <th className="text-right px-4 py-3 font-bold text-[#4B5563] text-xs uppercase tracking-wide">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#F3F4F6]">
+                    {articles.map((a) => (
+                      <tr key={a.slug} className="hover:bg-[#FAFAFA] transition-colors">
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-[#0A0A0A] line-clamp-1 text-xs leading-snug">{a.title}</p>
+                          <p className="text-[10px] text-[#9CA3AF] font-mono mt-0.5">{a.slug}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-[10px] font-bold bg-[#F3F4F6] text-[#4B5563] px-2 py-0.5 rounded-full whitespace-nowrap">{a.category}</span>
+                        </td>
+                        <td className="px-4 py-3 hidden md:table-cell">
+                          <span className="text-[10px] text-[#9CA3AF]">{a.related_bank || "—"}</span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {a.is_published
+                            ? <CheckCircle2 className="w-4 h-4 text-[#059669] mx-auto" />
+                            : <XCircle className="w-4 h-4 text-[#9CA3AF] mx-auto" />}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-2">
+                            <button onClick={() => startEdit(a)} className="p-1.5 rounded-lg hover:bg-[#F3F4F6] text-[#4B5563] hover:text-[#0A0A0A] transition-colors">
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => setDeleteSlug(a.slug)} className="p-1.5 rounded-lg hover:bg-red-50 text-[#9CA3AF] hover:text-red-600 transition-colors">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {total > LIMIT && (
+                <div className="flex items-center justify-between mt-4 text-sm">
+                  <span className="text-[#9CA3AF]">Page {page} · {total} total</span>
+                  <div className="flex gap-2">
+                    <button onClick={() => load(page - 1, search, catFilter)} disabled={page <= 1} className="px-4 py-2 border-2 border-[#E5E7EB] rounded-xl font-bold disabled:opacity-40 hover:border-[#0A0A0A] transition-colors">Prev</button>
+                    <button onClick={() => load(page + 1, search, catFilter)} disabled={page * LIMIT >= total} className="px-4 py-2 border-2 border-[#E5E7EB] rounded-xl font-bold disabled:opacity-40 hover:border-[#0A0A0A] transition-colors">Next</button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Delete confirm modal */}
+      {deleteSlug && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 className="font-bold text-lg mb-2">Delete article?</h3>
+            <p className="text-sm text-[#4B5563] mb-5">This will permanently remove <strong className="font-mono">{deleteSlug}</strong> from the database.</p>
+            <div className="flex gap-3">
+              <button onClick={() => doDelete(deleteSlug)} className="flex-1 bg-red-600 text-white font-bold py-2.5 rounded-xl hover:bg-red-700 transition-colors">Delete</button>
+              <button onClick={() => setDeleteSlug(null)} className="flex-1 border-2 border-[#E5E7EB] font-bold py-2.5 rounded-xl hover:border-[#0A0A0A] transition-colors">Cancel</button>
             </div>
           </div>
         </div>

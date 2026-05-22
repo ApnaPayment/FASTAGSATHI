@@ -20,6 +20,8 @@ import AboutPage from "@/pages/AboutPage";
 import BlogPage from "@/pages/BlogPage";
 import BlogPostPage from "@/pages/BlogPostPage";
 import HelpCenterPage from "@/pages/HelpCenterPage";
+import HelpDirectoryPage from "@/pages/HelpDirectoryPage";
+import HelpArticlePage from "@/pages/HelpArticlePage";
 import ContactPage from "@/pages/ContactPage";
 import CareersPage from "@/pages/CareersPage";
 import PressPage from "@/pages/PressPage";
@@ -66,7 +68,8 @@ function App() {
             <Route path="about" element={<AboutPage />} />
             <Route path="blog" element={<BlogPage />} />
             <Route path="blog/:slug" element={<BlogPostPage />} />
-            <Route path="help" element={<HelpCenterPage />} />
+            <Route path="help" element={<HelpDirectoryPage />} />
+            <Route path="help/:slug" element={<HelpArticlePage />} />
             <Route path="contact" element={<ContactPage />} />
             <Route path="careers" element={<CareersPage />} />
             <Route path="press" element={<PressPage />} />
