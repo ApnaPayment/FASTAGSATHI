@@ -448,16 +448,18 @@ function AvatarUpload({ profile, onUploaded }) {
 
   return (
     <div className="relative flex-shrink-0">
-      <div className="w-16 h-16 rounded-2xl border-2 border-[#FF6B00] overflow-hidden bg-[#FF6B00]/20 flex items-center justify-center">
+      <div className="w-16 h-16 rounded-2xl border-2 border-[#FF6B00] overflow-hidden bg-[#FF6B00]/20 relative">
         {showImage ? (
           <img
             src={avatarUrl}
             alt=""
-            className="w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover block"
             onError={() => setImgError(true)}
           />
         ) : (
-          <span className="font-display font-black text-2xl text-[#FF6B00]">{(profile?.name || "S")[0]}</span>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="font-display font-black text-2xl text-[#FF6B00]">{(profile?.name || "S")[0]}</span>
+          </div>
         )}
       </div>
       <button onClick={() => { setUploadErr(""); inputRef.current?.click(); }} title="Change photo"
