@@ -9,6 +9,7 @@ import {
   BadgeCheck, CheckCircle2, Clock, XCircle, Star, Loader2, AlertCircle,
   IndianRupee, Briefcase, ToggleLeft, ToggleRight, ChevronRight,
   Play, Ban, Camera, Upload, Trash2, X, Save, Edit3, Image, Info,
+  Building2, MapPin, Navigation, ToggleLeft as ToggleOff,
 } from "lucide-react";
 
 const ISSUE_LABELS  = { dispute: "Mischarge / Dispute", kyc: "KYC paperwork", recharge: "Recharge fix", sos: "Emergency SOS" };
@@ -341,6 +342,9 @@ export default function SathiDashboardPage() {
             {/* Gallery preview */}
             <GalleryPreview profile={profile} onUpdate={(g) => setProfile((p) => ({ ...p, gallery: g }))} />
 
+            {/* Apnafastag Center */}
+            <ApnafastagCenterCard profile={profile} onSaved={(updated) => setProfile(updated)} />
+
             {/* Quick links */}
             <div className="bg-white border-2 border-[#E5E7EB] rounded-2xl p-5 space-y-3">
               <Link to={`/sathi/${profile?.slug}`} className="flex items-center justify-between text-sm font-bold text-[#0A0A0A] hover:text-[#FF6B00]">
@@ -530,6 +534,157 @@ function GalleryPreview({ profile, onUpdate }) {
               <Upload className="w-4 h-4 text-[#9CA3AF]" />
             </button>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Apnafastag Center card ──────────────────────────────────────────────── */
+
+function ApnafastagCenterCard({ profile, onSaved }) {
+  const existing = profile?.center || {};
+  const [active,  setActive]  = useState(!!existing.active);
+  const [name,    setName]    = useState(existing.name || "");
+  const [address, setAddress] = useState(existing.address || "");
+  const [hours,   setHours]   = useState(existing.hours || "");
+  const [lat,     setLat]     = useState(existing.lat || null);
+  const [lng,     setLng]     = useState(existing.lng || null);
+  const [locating, setLocating] = useState(false);
+  const [locErr,   setLocErr]   = useState("");
+  const [saving,   setSaving]   = useState(false);
+  const [saved,    setSaved]    = useState(false);
+  const [saveErr,  setSaveErr]  = useState("");
+  const [open,     setOpen]     = useState(false);
+
+  const grabLocation = () => {
+    if (!navigator.geolocation) { setLocErr("Geolocation not supported by your browser."); return; }
+    setLocating(true); setLocErr("");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLat(pos.coords.latitude);
+        setLng(pos.coords.longitude);
+        setLocating(false);
+        // Reverse-geocode using OpenStreetMap Nominatim (no API key needed)
+        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`)
+          .then((r) => r.json())
+          .then((d) => { if (d.display_name) setAddress(d.display_name.split(",").slice(0, 3).join(", ")); })
+          .catch(() => {});
+      },
+      (err) => { setLocating(false); setLocErr("Could not get location. Please allow location access."); },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const save = async () => {
+    setSaving(true); setSaveErr(""); setSaved(false);
+    try {
+      const payload = { active, name: name.trim() || null, address: address.trim() || null, lat, lng, hours: hours.trim() || null };
+      await sathiDashApi.updateCenter(payload);
+      setSaved(true);
+      onSaved({ ...profile, center: payload });
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setSaveErr(err?.response?.data?.detail || "Failed to save. Try again.");
+    } finally { setSaving(false); }
+  };
+
+  const hasCenter = existing.lat && existing.active;
+
+  return (
+    <div className="bg-white border-2 border-[#0A0A0A] rounded-2xl overflow-hidden">
+      {/* Header row */}
+      <button onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-[#F8F9FA] transition-colors">
+        <div className="flex items-center gap-3">
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${hasCenter ? "bg-[#FF6B00]" : "bg-[#F3F4F6]"}`}>
+            <Building2 className={`w-4 h-4 ${hasCenter ? "text-white" : "text-[#9CA3AF]"}`} />
+          </div>
+          <div className="text-left">
+            <p className="font-bold text-sm text-[#0A0A0A]">Apnafastag Center</p>
+            <p className="text-[11px] text-[#4B5563]">
+              {hasCenter ? (existing.name || "Center active") : "Set up your service location"}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {hasCenter && <span className="text-[10px] font-black uppercase bg-[#059669] text-white px-2 py-0.5 rounded-full">Live</span>}
+          <ChevronRight className={`w-4 h-4 text-[#9CA3AF] transition-transform ${open ? "rotate-90" : ""}`} />
+        </div>
+      </button>
+
+      {/* Expanded form */}
+      {open && (
+        <div className="border-t-2 border-[#E5E7EB] px-5 py-5 space-y-4">
+          <p className="text-xs text-[#4B5563] leading-relaxed">
+            Set up a physical service point where customers can walk in for FASTag help.
+            Your center will appear on the map separately from your toll plaza.
+          </p>
+
+          {/* Active toggle */}
+          <div className="flex items-center justify-between bg-[#F8F9FA] rounded-xl px-4 py-3">
+            <div>
+              <p className="font-bold text-sm">Center is open</p>
+              <p className="text-[11px] text-[#4B5563]">Toggle off when you're closed</p>
+            </div>
+            <button type="button" onClick={() => setActive((a) => !a)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all ${active ? "bg-[#059669] border-[#059669] text-white" : "bg-white border-[#E5E7EB] text-[#9CA3AF]"}`}>
+              {active ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+              {active ? "Open" : "Closed"}
+            </button>
+          </div>
+
+          {/* Center name */}
+          <div>
+            <label className="block text-xs font-bold text-[#0A0A0A] mb-1.5">Center name</label>
+            <input value={name} onChange={(e) => setName(e.target.value)}
+              placeholder={`${(profile?.name || "Your").split(" ")[0]}'s FASTag Help Center`}
+              className="w-full bg-[#F8F9FA] border-2 border-[#E5E7EB] focus:border-[#FF6B00] rounded-xl px-4 py-2.5 text-sm outline-none" />
+          </div>
+
+          {/* Location picker */}
+          <div>
+            <label className="block text-xs font-bold text-[#0A0A0A] mb-1.5">Location</label>
+            <button type="button" onClick={grabLocation} disabled={locating}
+              className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-[#FF6B00] rounded-xl py-3 text-sm font-bold text-[#FF6B00] hover:bg-[#FF6B00]/5 transition-colors disabled:opacity-60">
+              {locating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Navigation className="w-4 h-4" />}
+              {locating ? "Getting location…" : lat ? "Update my location" : "Use my current location"}
+            </button>
+            {locErr && <p className="text-xs text-red-600 mt-1.5">{locErr}</p>}
+            {lat && lng && (
+              <div className="mt-2 flex items-center gap-2 bg-[#F0FDF4] border border-[#059669] rounded-xl px-3 py-2">
+                <MapPin className="w-3.5 h-3.5 text-[#059669] flex-shrink-0" />
+                <span className="text-xs text-[#059669] font-semibold">
+                  {lat.toFixed(5)}, {lng.toFixed(5)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Address */}
+          <div>
+            <label className="block text-xs font-bold text-[#0A0A0A] mb-1.5">Address <span className="font-normal text-[#9CA3AF]">(auto-filled from GPS, or type manually)</span></label>
+            <textarea rows={2} value={address} onChange={(e) => setAddress(e.target.value)}
+              placeholder="Shop no., street, landmark, city…"
+              className="w-full bg-[#F8F9FA] border-2 border-[#E5E7EB] focus:border-[#FF6B00] rounded-xl px-4 py-2.5 text-sm outline-none resize-none" />
+          </div>
+
+          {/* Hours */}
+          <div>
+            <label className="block text-xs font-bold text-[#0A0A0A] mb-1.5">Working hours <span className="font-normal text-[#9CA3AF]">(optional)</span></label>
+            <input value={hours} onChange={(e) => setHours(e.target.value)}
+              placeholder="e.g. Mon–Sat, 9am–6pm"
+              className="w-full bg-[#F8F9FA] border-2 border-[#E5E7EB] focus:border-[#FF6B00] rounded-xl px-4 py-2.5 text-sm outline-none" />
+          </div>
+
+          {saveErr && <p className="text-xs text-red-600 font-semibold bg-red-50 border border-red-200 rounded-xl px-3 py-2">{saveErr}</p>}
+
+          <button onClick={save} disabled={saving || (!lat && !address.trim())}
+            className="w-full bg-[#FF6B00] text-white font-bold py-3 rounded-full shadow-[0_4px_0_#0A0A0A] disabled:opacity-60 flex items-center justify-center gap-2 text-sm">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+            {saving ? "Saving…" : saved ? "Saved!" : "Save center"}
+          </button>
+          <p className="text-[10px] text-[#9CA3AF] text-center">You must add a location (GPS or address) before saving.</p>
         </div>
       )}
     </div>

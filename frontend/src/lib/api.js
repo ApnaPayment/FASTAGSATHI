@@ -59,6 +59,7 @@ export const sathiDashApi = {
   setAvailability: (is_available) => api.patch("/api/sathi-dashboard/availability", { is_available }),
   earnings: () => api.get("/api/sathi-dashboard/earnings"),
   updateProfile: (data) => api.patch("/api/sathi-dashboard/profile", data),
+  updateCenter: (data) => api.patch("/api/sathi-dashboard/center", data),
   uploadAvatar: (file) => { const fd = new FormData(); fd.append("file", file); return api.post("/api/sathi-dashboard/upload-avatar", fd); },
   uploadGallery: (file) => { const fd = new FormData(); fd.append("file", file); return api.post("/api/sathi-dashboard/upload-gallery", fd); },
   deleteGallery: (url) => api.delete("/api/sathi-dashboard/gallery", { data: { url } }),

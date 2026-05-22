@@ -1123,6 +1123,14 @@ class SathiProfileUpdateIn(BaseModel):
     active_hours: Optional[dict] = None
     whatsapp: Optional[str] = None
 
+class SathiCenterIn(BaseModel):
+    active: bool = False
+    name: Optional[str] = None       # e.g. "Rakesh FASTag Help Center"
+    address: Optional[str] = None    # human-readable address
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    hours: Optional[str] = None      # e.g. "Mon–Sat, 9am–6pm"
+
 @sathi_dash.patch("/profile")
 async def update_sathi_profile(body: SathiProfileUpdateIn, ctx: dict = Depends(_require_sathi_ctx)):
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
@@ -1135,6 +1143,13 @@ async def update_sathi_profile(body: SathiProfileUpdateIn, ctx: dict = Depends(_
         raise HTTPException(status_code=400, detail="Nothing to update")
     await db.sathis.update_one({"slug": ctx["sathi"]["slug"]}, {"$set": updates})
     return {"ok": True}
+
+@sathi_dash.patch("/center")
+async def update_sathi_center(body: SathiCenterIn, ctx: dict = Depends(_require_sathi_ctx)):
+    slug = ctx["sathi"]["slug"]
+    center = body.model_dump()
+    await db.sathis.update_one({"slug": slug}, {"$set": {"center": center}})
+    return {"ok": True, "center": center}
 
 @sathi_dash.post("/upload-avatar")
 async def upload_avatar(file: UploadFile = File(...), ctx: dict = Depends(_require_sathi_ctx)):

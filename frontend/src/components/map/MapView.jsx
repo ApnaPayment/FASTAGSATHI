@@ -45,6 +45,19 @@ const userIcon = L.divIcon({
   iconSize: [22, 22], iconAnchor: [11, 11], popupAnchor: [0, -8],
 });
 
+const centerIcon = L.divIcon({
+  className: "",
+  html: `<div style="position:relative;width:44px;height:52px;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.4));">
+    <div style="position:absolute;top:0;left:0;width:44px;height:44px;border-radius:50% 50% 50% 0;background:#FF6B00;transform:rotate(-45deg);border:3px solid #0A0A0A;"></div>
+    <div style="position:absolute;top:6px;left:6px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/>
+      </svg>
+    </div>
+  </div>`,
+  iconSize: [44, 52], iconAnchor: [22, 52], popupAnchor: [0, -48],
+});
+
 export default function MapView({ center, sathis = [], plazas = [], userPos, radiusKm = 25, height = 480, onSathiClick, onPlazaClick }) {
   return (
     <div data-testid="map-view" style={{ height, width: "100%", borderRadius: 24, overflow: "hidden", border: "2px solid #0A0A0A" }}>
@@ -72,6 +85,21 @@ export default function MapView({ center, sathis = [], plazas = [], userPos, rad
                 <div style={{ fontSize: 11, color: "#4B5563", marginTop: 2 }}>{p.highway} · {p.city}</div>
                 <div style={{ fontSize: 11, marginTop: 6 }}>Car ₹{p.carRate} · Truck ₹{p.truckRate}</div>
                 <a href={`/toll/${p.slug}`} style={{ display: "inline-block", marginTop: 8, background: "#FF6B00", color: "#fff", padding: "4px 10px", borderRadius: 999, fontWeight: 700, fontSize: 11, textDecoration: "none" }}>View plaza</a>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+
+        {/* Apnafastag Centers — sathis who have an active center location */}
+        {sathis.filter((s) => s.center?.active && s.center?.lat && s.center?.lng).map((s) => (
+          <Marker key={`center-${s.slug}`} position={[s.center.lat, s.center.lng]} icon={centerIcon}>
+            <Popup>
+              <div style={{ minWidth: 220 }}>
+                <div style={{ fontSize: 10, fontWeight: 900, textTransform: "uppercase", letterSpacing: 1, color: "#FF6B00", marginBottom: 4 }}>Apnafastag Center</div>
+                <div style={{ fontWeight: 800, fontSize: 14 }}>{s.center.name || `${s.name}'s Center`}</div>
+                {s.center.address && <div style={{ fontSize: 11, color: "#4B5563", marginTop: 2 }}>{s.center.address}</div>}
+                {s.center.hours  && <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>🕐 {s.center.hours}</div>}
+                <a href={`/sathi/${s.slug}`} style={{ display: "inline-block", marginTop: 8, background: "#FF6B00", color: "#fff", padding: "4px 10px", borderRadius: 999, fontWeight: 700, fontSize: 11, textDecoration: "none" }}>View Sathi</a>
               </div>
             </Popup>
           </Marker>

@@ -8,7 +8,7 @@ import MapView from "@/components/map/MapView";
 import { motion } from "framer-motion";
 import {
   BadgeCheck, Star, Clock, MapPin, Phone, MessageSquare, Languages,
-  Shield, Calendar, Send, CheckCircle2, ArrowRight, Loader2, Images,
+  Shield, Calendar, Send, CheckCircle2, ArrowRight, Loader2, Images, Building2,
 } from "lucide-react";
 import { getSathiBySlug } from "@/data/sathis";
 import { PLAZAS, STATES } from "@/data/seed";
@@ -160,6 +160,18 @@ export default function SathiProfilePage() {
                     <MapPin className="w-4 h-4 text-[#FF6B00]" />
                     Operating from <Link to={`/toll/${s.homePlaza}`} className="text-[#FFD60A] underline">{plaza?.name}</Link>
                   </p>
+                  {s.center?.active && (
+                    <div className="mt-2 inline-flex items-center gap-2 bg-[#FF6B00]/20 border border-[#FF6B00]/40 rounded-xl px-3 py-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-[#FF6B00] flex-shrink-0" />
+                      <div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-[#FF6B00]">Apnafastag Center</span>
+                        {s.center.name && <span className="text-white/80 text-xs ml-1.5">· {s.center.name}</span>}
+                        {s.center.address && <p className="text-white/60 text-[11px] mt-0.5">{s.center.address}</p>}
+                        {s.center.hours && <p className="text-white/50 text-[11px]">{s.center.hours}</p>}
+                      </div>
+                      <span className="ml-1 w-2 h-2 rounded-full bg-[#059669] animate-pulse flex-shrink-0" />
+                    </div>
+                  )}
                 </div>
               </div>
 
