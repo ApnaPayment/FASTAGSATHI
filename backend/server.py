@@ -1545,7 +1545,11 @@ async def create_indexes():
 
 @app.on_event("startup")
 async def startup_db():
-    await create_indexes()
+    try:
+        await create_indexes()
+    except Exception as e:
+        logger.warning(f"MongoDB not reachable on startup (indexes skipped): {e}")
+        logger.warning("Set MONGO_URL env var to a valid MongoDB connection string.")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
