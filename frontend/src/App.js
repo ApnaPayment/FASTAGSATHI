@@ -16,6 +16,8 @@ import CoveragePage from "@/pages/CoveragePage";
 import PlazaPage from "@/pages/PlazaPage";
 import StatePage from "@/pages/StatePage";
 import BankPage from "@/pages/BankPage";
+import HighwayPage from "@/pages/HighwayPage";
+import CityPage from "@/pages/CityPage";
 import AboutPage from "@/pages/AboutPage";
 import BlogPage from "@/pages/BlogPage";
 import BlogPostPage from "@/pages/BlogPostPage";
@@ -63,6 +65,8 @@ function App() {
             <Route path="toll/:plazaSlug" element={<PlazaPage />} />
             <Route path="state/:stateSlug" element={<StatePage />} />
             <Route path="bank/:bankSlug" element={<BankPage />} />
+            <Route path="highway/:highwaySlug" element={<HighwayPage />} />
+            <Route path="city/:citySlug" element={<CityPage />} />
 
             {/* Content */}
             <Route path="about" element={<AboutPage />} />

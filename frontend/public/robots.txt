@@ -2,10 +2,10 @@
 User-agent: *
 Allow: /
 
-# Disallow auth + private app routes
-Disallow: /app/
+Disallow: /admin
 Disallow: /api/
-Disallow: /admin/
+Disallow: /my-jobs
+Disallow: /dashboard
+Disallow: /login
 
-# Public sitemap
-Sitemap: https://apnafastag.in/sitemap.xml
+Sitemap: https://www.apnafastag.com/sitemap.xml

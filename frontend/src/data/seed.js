@@ -32,6 +32,39 @@ export const BANKS = [
   { slug: "idfc-fastag",  name: "IDFC First FASTag",  shortName: "IDFC",  color: "#6B2D8B", logo: "/banks/idfc.svg",  smsCode: "FASTAG", helpline: "1800-10-888",   marketShare: 4  },
 ];
 
+export const HIGHWAYS = [
+  { slug:"nh-48", name:"NH-48", fullName:"National Highway 48 (Delhi–Mumbai)", length:"1428 km", states:["Delhi","Haryana","Rajasthan","Gujarat","Maharashtra"], plazaCount:67, desc:"India's busiest highway connecting Delhi to Mumbai via Gurugram, Jaipur, Vadodara, and Surat." },
+  { slug:"nh-44", name:"NH-44", fullName:"National Highway 44 (Srinagar–Kanyakumari)", length:"3745 km", states:["J&K","Punjab","Haryana","Delhi","UP","MP","Maharashtra","Telangana","AP","Tamil Nadu"], plazaCount:112, desc:"India's longest highway, connecting Srinagar in the north to Kanyakumari in the south." },
+  { slug:"nh-19", name:"NH-19", fullName:"National Highway 19 (Delhi–Kolkata)", length:"1435 km", states:["Delhi","UP","Bihar","Jharkhand","West Bengal"], plazaCount:58, desc:"Connects Delhi to Kolkata via Agra, Kanpur, Varanasi, and Patna." },
+  { slug:"nh-27", name:"NH-27", fullName:"National Highway 27 (Porbandar–Silchar)", length:"3187 km", states:["Gujarat","Rajasthan","MP","UP","Bihar","West Bengal","Assam"], plazaCount:89, desc:"One of India's longest east-west highways, connecting Porbandar in Gujarat to Silchar in Assam." },
+  { slug:"nh-66", name:"NH-66", fullName:"National Highway 66 (Panvel–Kanyakumari)", length:"1622 km", states:["Maharashtra","Goa","Karnataka","Kerala","Tamil Nadu"], plazaCount:74, desc:"Runs along India's western coast, passing through Mumbai, Goa, Mangalore, and Calicut." },
+  { slug:"nh-16", name:"NH-16", fullName:"National Highway 16 (Kolkata–Chennai)", length:"1711 km", states:["West Bengal","Odisha","Andhra Pradesh","Tamil Nadu"], plazaCount:64, desc:"Connects Kolkata to Chennai along the eastern coast through Bhubaneswar and Visakhapatnam." },
+  { slug:"nh-8",  name:"NH-8",  fullName:"National Highway 8 (Mumbai–Pune Expressway)", length:"94 km", states:["Maharashtra"], plazaCount:8, desc:"Mumbai-Pune Expressway — one of India's busiest expressways with multiple toll plazas." },
+];
+
+export const CITIES = [
+  { slug:"mumbai",    name:"Mumbai",    state:"Maharashtra", plazaCount:8,  sathiCount:42 },
+  { slug:"delhi",     name:"Delhi",     state:"Delhi",       plazaCount:12, sathiCount:67 },
+  { slug:"bengaluru", name:"Bengaluru", state:"Karnataka",   plazaCount:6,  sathiCount:38 },
+  { slug:"pune",      name:"Pune",      state:"Maharashtra", plazaCount:5,  sathiCount:29 },
+  { slug:"hyderabad", name:"Hyderabad", state:"Telangana",   plazaCount:7,  sathiCount:35 },
+  { slug:"chennai",   name:"Chennai",   state:"Tamil Nadu",  plazaCount:5,  sathiCount:27 },
+  { slug:"ahmedabad", name:"Ahmedabad", state:"Gujarat",     plazaCount:4,  sathiCount:22 },
+  { slug:"kolkata",   name:"Kolkata",   state:"West Bengal", plazaCount:4,  sathiCount:19 },
+  { slug:"jaipur",    name:"Jaipur",    state:"Rajasthan",   plazaCount:3,  sathiCount:17 },
+  { slug:"lucknow",   name:"Lucknow",   state:"UP",          plazaCount:3,  sathiCount:16 },
+  { slug:"surat",     name:"Surat",     state:"Gujarat",     plazaCount:3,  sathiCount:14 },
+  { slug:"nagpur",    name:"Nagpur",    state:"Maharashtra", plazaCount:3,  sathiCount:13 },
+  { slug:"gurugram",  name:"Gurugram",  state:"Haryana",     plazaCount:4,  sathiCount:24 },
+  { slug:"noida",     name:"Noida",     state:"UP",          plazaCount:3,  sathiCount:18 },
+  { slug:"chandigarh",name:"Chandigarh",state:"Punjab",      plazaCount:3,  sathiCount:15 },
+  { slug:"indore",    name:"Indore",    state:"MP",          plazaCount:2,  sathiCount:11 },
+  { slug:"bhopal",    name:"Bhopal",    state:"MP",          plazaCount:2,  sathiCount:10 },
+  { slug:"vadodara",  name:"Vadodara",  state:"Gujarat",     plazaCount:2,  sathiCount:10 },
+  { slug:"nashik",    name:"Nashik",    state:"Maharashtra", plazaCount:2,  sathiCount:9  },
+  { slug:"agra",      name:"Agra",      state:"UP",          plazaCount:2,  sathiCount:9  },
+];
+
 export const BLOG_POSTS = [
   { slug: "fastag-mischarge-refund-2026", title: "How to claim a FASTag mischarge refund in 2026 (step-by-step)", excerpt: "The official NHAI dispute window is 7 days. Here's the exact process — and the 3 mistakes that get claims rejected.", date: "Jan 14, 2026", readMin: 6, category: "Disputes", cover: "https://images.unsplash.com/photo-1466875603152-be5267bd180e?crop=entropy&cs=srgb&fm=jpg&q=70&w=800" },
   { slug: "fastag-blacklisted-fix",       title: "FASTag blacklisted? 4 reasons + the fastest fix at the plaza",       excerpt: "Low balance is just one of the four reasons. Two of them require a bank branch visit — unless your Sathi handles it on-spot.", date: "Jan 09, 2026", readMin: 5, category: "Troubleshooting", cover: "https://images.unsplash.com/photo-1466875603152-be5267bd180e?crop=entropy&cs=srgb&fm=jpg&q=70&w=800" },
