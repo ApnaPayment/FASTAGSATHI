@@ -4,13 +4,14 @@ import {
   Users, Briefcase, MapPin, ClipboardList, CheckCircle2, XCircle,
   Clock, Loader2, LogOut, RefreshCw, ChevronDown, BadgeCheck, Shield,
   Tag, Percent, Trash2, ToggleLeft, ToggleRight, Plus, Search,
-  FileText, Edit2, Download,
+  FileText, Edit2, Download, Globe, Map, Building2, Landmark, Route,
+  AlertTriangle, CheckCircle, ExternalLink, Upload,
 } from "lucide-react";
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import { BANKS as SEED_BANKS, STATES as SEED_STATES } from "@/data/seed";
 
-const TABS = ["Dashboard", "Applications", "Jobs", "Sathis", "Promo Codes", "Settlements", "Plazas", "Content"];
+const TABS = ["Dashboard", "Applications", "Jobs", "Sathis", "Promo Codes", "Settlements", "Plazas", "Sitemap", "Content"];
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 const fullUrl = (url) => { if (!url) return ""; if (url.startsWith("http") || url.startsWith("data:")) return url; if (BACKEND.includes("localhost") && !window.location.hostname.includes("localhost")) return ""; return `${BACKEND}${url}`; };
@@ -185,6 +186,7 @@ function Dashboard({ onLogout }) {
         {tab === "Promo Codes"  && <PromoCodesTab />}
         {tab === "Settlements"  && <SettlementsTab />}
         {tab === "Plazas"       && <PlazasTab />}
+        {tab === "Sitemap"      && <SitemapTab />}
         {tab === "Content"      && <ContentTab />}
       </main>
     </div>
@@ -1950,6 +1952,516 @@ function ContentTab() {
             </div>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Sitemap Tab ──────────────────────────────────────────────────────────────
+
+const SITEMAP_SUB_TABS = ["Overview", "States", "Highways", "Cities", "Banks"];
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
+
+/** Generic reusable import modal for JSON/CSV */
+function ImportModal({ title, templateNote, onImport, onClose, importing, result }) {
+  const [text, setText] = useState("");
+  const fileRef = useRef(null);
+
+  const handleFile = (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setText(ev.target.result);
+    reader.readAsText(f);
+  };
+
+  const parseAndImport = () => {
+    let list;
+    try { list = JSON.parse(text); } catch { alert("Invalid JSON. Paste a valid JSON array."); return; }
+    if (!Array.isArray(list)) { alert("Must be a JSON array [ {...}, {...} ]"); return; }
+    onImport(list);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl">
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#F3F4F6]">
+          <h3 className="font-bold text-lg flex items-center gap-2"><Upload className="w-5 h-5 text-[#FF6B00]" />{title}</h3>
+          <button onClick={onClose} className="text-[#6B7280] hover:text-[#0A0A0A] text-xl font-bold">×</button>
+        </div>
+        <div className="p-6 space-y-4">
+          <p className="text-xs text-[#6B7280]">{templateNote}</p>
+          <div className="flex gap-3">
+            <button onClick={() => fileRef.current?.click()} className="flex items-center gap-1.5 text-sm font-bold border-2 border-[#0A0A0A] rounded-xl px-4 py-2 hover:border-[#FF6B00] transition-colors">
+              <Upload className="w-4 h-4" /> Upload file
+            </button>
+            <input ref={fileRef} type="file" accept=".json,.csv,.txt" className="hidden" onChange={handleFile} />
+          </div>
+          <textarea
+            className="w-full h-40 text-xs font-mono border-2 border-[#E5E7EB] rounded-xl p-3 focus:border-[#FF6B00] outline-none resize-none"
+            placeholder='[{"slug":"nh-48","name":"NH-48","fullName":"...","length":"1428 km",...}]'
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+          {result && (
+            <div className={`text-sm font-bold px-4 py-2 rounded-xl ${result.error ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}>
+              {result.error ? `Error: ${result.error}` : `✓ Imported ${result.imported}, skipped ${result.skipped}`}
+            </div>
+          )}
+          <div className="flex gap-3 pt-1">
+            <button onClick={parseAndImport} disabled={importing || !text.trim()} className="flex-1 bg-[#FF6B00] text-white font-bold py-2.5 rounded-xl disabled:opacity-50 transition-colors hover:bg-[#e55f00]">
+              {importing ? "Importing…" : "Import"}
+            </button>
+            <button onClick={onClose} className="flex-1 border-2 border-[#E5E7EB] font-bold py-2.5 rounded-xl hover:border-[#0A0A0A] transition-colors">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Generic data table for States / Highways / Cities / Banks */
+function GenericDataTable({ label, icon: Icon, fetchFn, createFn, updateFn, deleteFn, importFn, columns, formFields, templateNote }) {
+  const [items, setItems] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState("");
+  const [page, setPage] = useState(0);
+  const PAGE = 50;
+
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [saveErr, setSaveErr] = useState("");
+
+  const [showImport, setShowImport] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetchFn({ q: q || undefined, skip: page * PAGE, limit: PAGE });
+      const d = res.data || {};
+      // Backend returns { total, <key>: [] } — find the array key
+      const key = Object.keys(d).find((k) => Array.isArray(d[k]));
+      setItems(key ? d[key] : []);
+      setTotal(d.total != null ? Number(d.total) : (key ? d[key].length : 0));
+    } catch { setItems([]); }
+    setLoading(false);
+  }, [fetchFn, q, page]);
+
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { const t = setTimeout(() => { setPage(0); load(); }, 400); return () => clearTimeout(t); }, [q]); // eslint-disable-line
+
+  const openAdd = () => { setForm({}); setSaveErr(""); setEditing(null); setShowForm(true); };
+  const openEdit = (item) => { setEditing(item); setForm({ ...item }); setSaveErr(""); setShowForm(true); };
+  const closeForm = () => { setShowForm(false); setEditing(null); setForm({}); };
+
+  const save = async () => {
+    setSaving(true); setSaveErr("");
+    try {
+      if (editing) { await updateFn(editing.slug, form); }
+      else { await createFn(form); }
+      closeForm(); load();
+    } catch (e) { setSaveErr(e?.response?.data?.detail || "Save failed"); }
+    setSaving(false);
+  };
+
+  const doDelete = async (slug) => {
+    try { await deleteFn(slug); setDeleteConfirm(null); load(); } catch { }
+  };
+
+  const doImport = async (list) => {
+    setImporting(true); setImportResult(null);
+    try { const res = await importFn(list); setImportResult(res.data); load(); }
+    catch (e) { setImportResult({ error: e?.response?.data?.detail || "Import failed" }); }
+    setImporting(false);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Toolbar */}
+      <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
+        <div className="flex items-center gap-2 bg-[#F8F9FA] border-2 border-[#E5E7EB] rounded-xl px-3 py-2 w-full md:w-72">
+          <Search className="w-4 h-4 text-[#9CA3AF] flex-shrink-0" />
+          <input className="bg-transparent outline-none text-sm w-full" placeholder={`Search ${label}…`} value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => { setShowImport(true); setImportResult(null); }} className="flex items-center gap-1.5 text-sm font-bold border-2 border-[#0A0A0A] rounded-xl px-3 py-2 hover:border-[#FF6B00] transition-colors">
+            <Upload className="w-4 h-4" /> Import
+          </button>
+          <button onClick={openAdd} className="flex items-center gap-1.5 text-sm font-bold bg-[#FF6B00] text-white rounded-xl px-4 py-2 hover:bg-[#e55f00] transition-colors">
+            <Plus className="w-4 h-4" /> Add {label}
+          </button>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white border-2 border-[#0A0A0A] rounded-2xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-[#F8F9FA] border-b-2 border-[#0A0A0A]">
+              <tr>
+                {columns.map((c) => <th key={c.key} className="text-left px-4 py-3 font-bold text-xs uppercase tracking-widest text-[#6B7280]">{c.label}</th>)}
+                <th className="px-4 py-3 text-right font-bold text-xs uppercase tracking-widest text-[#6B7280]">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#F3F4F6]">
+              {loading ? (
+                <tr><td colSpan={columns.length + 1} className="text-center py-8 text-[#9CA3AF]"><Loader2 className="w-5 h-5 animate-spin inline mr-2" />Loading…</td></tr>
+              ) : items.length === 0 ? (
+                <tr><td colSpan={columns.length + 1} className="text-center py-8 text-[#9CA3AF]">No {label.toLowerCase()} found. Import or add one.</td></tr>
+              ) : items.map((item) => (
+                <tr key={item.slug} className="hover:bg-[#FAFAFA]">
+                  {columns.map((c) => (
+                    <td key={c.key} className="px-4 py-3 text-[#0A0A0A]">
+                      {c.render ? c.render(item) : (item[c.key] ?? "—")}
+                    </td>
+                  ))}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => openEdit(item)} className="p-1.5 rounded-lg hover:bg-[#F3F4F6] transition-colors" title="Edit"><Edit2 className="w-4 h-4 text-[#4B5563]" /></button>
+                      <button onClick={() => setDeleteConfirm(item.slug)} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Delete"><Trash2 className="w-4 h-4 text-red-500" /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {total > PAGE && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-[#F3F4F6]">
+            <span className="text-xs text-[#9CA3AF]">Showing {page * PAGE + 1}–{Math.min((page + 1) * PAGE, total)} of {total}</span>
+            <div className="flex gap-2">
+              <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} className="px-3 py-1 rounded-lg border border-[#E5E7EB] text-sm font-bold disabled:opacity-40">Prev</button>
+              <button onClick={() => setPage((p) => p + 1)} disabled={(page + 1) * PAGE >= total} className="px-3 py-1 rounded-lg border border-[#E5E7EB] text-sm font-bold disabled:opacity-40">Next</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Add / Edit form modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#F3F4F6]">
+              <h3 className="font-bold text-lg">{editing ? `Edit ${label}` : `Add ${label}`}</h3>
+              <button onClick={closeForm} className="text-[#6B7280] hover:text-[#0A0A0A] text-xl font-bold">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              {formFields.map((f) => (
+                <div key={f.key}>
+                  <label className="block text-xs font-bold text-[#4B5563] uppercase tracking-widest mb-1">{f.label}{f.required && " *"}</label>
+                  {f.type === "textarea" ? (
+                    <textarea className="w-full border-2 border-[#E5E7EB] rounded-xl px-3 py-2 text-sm focus:border-[#FF6B00] outline-none resize-none h-20" value={form[f.key] || ""} onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} />
+                  ) : f.type === "toggle" ? (
+                    <button type="button" onClick={() => setForm((p) => ({ ...p, [f.key]: !p[f.key] }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form[f.key] !== false ? "bg-[#FF6B00]" : "bg-[#D1D5DB]"}`}>
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form[f.key] !== false ? "translate-x-6" : "translate-x-1"}`} />
+                    </button>
+                  ) : (
+                    <input type={f.type || "text"} className="w-full border-2 border-[#E5E7EB] rounded-xl px-3 py-2 text-sm focus:border-[#FF6B00] outline-none" value={form[f.key] ?? ""} onChange={(e) => setForm((p) => ({ ...p, [f.key]: f.type === "number" ? Number(e.target.value) : e.target.value }))} placeholder={f.placeholder} disabled={f.disabled && !!editing} />
+                  )}
+                </div>
+              ))}
+              {saveErr && <p className="text-red-600 text-sm font-bold">{saveErr}</p>}
+              <div className="flex gap-3 pt-2">
+                <button onClick={save} disabled={saving} className="flex-1 bg-[#FF6B00] text-white font-bold py-2.5 rounded-xl disabled:opacity-50 hover:bg-[#e55f00] transition-colors">{saving ? "Saving…" : "Save"}</button>
+                <button onClick={closeForm} className="flex-1 border-2 border-[#E5E7EB] font-bold py-2.5 rounded-xl hover:border-[#0A0A0A] transition-colors">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import modal */}
+      {showImport && (
+        <ImportModal
+          title={`Import ${label}`}
+          templateNote={templateNote}
+          onImport={doImport}
+          onClose={() => { setShowImport(false); setImportResult(null); }}
+          importing={importing}
+          result={importResult}
+        />
+      )}
+
+      {/* Delete confirm */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 className="font-bold text-lg mb-2">Delete {label}?</h3>
+            <p className="text-sm text-[#4B5563] mb-5">Permanently remove <strong className="font-mono">{deleteConfirm}</strong>?</p>
+            <div className="flex gap-3">
+              <button onClick={() => doDelete(deleteConfirm)} className="flex-1 bg-red-600 text-white font-bold py-2.5 rounded-xl hover:bg-red-700 transition-colors">Delete</button>
+              <button onClick={() => setDeleteConfirm(null)} className="flex-1 border-2 border-[#E5E7EB] font-bold py-2.5 rounded-xl hover:border-[#0A0A0A] transition-colors">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SitemapTab() {
+  const [subTab, setSubTab] = useState("Overview");
+  const [stats, setStats] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [seeding, setSeeding] = useState(false);
+  const [seedResult, setSeedResult] = useState(null);
+
+  const refreshStats = () => {
+    setLoadingStats(true);
+    adminApi.sitemapStats().then((r) => { setStats(r.data); }).catch(() => {}).finally(() => setLoadingStats(false));
+  };
+
+  useEffect(() => { refreshStats(); }, []); // eslint-disable-line
+
+  const seedGeo = async () => {
+    setSeeding(true); setSeedResult(null);
+    try {
+      const r = await adminApi.seedGeoData();
+      setSeedResult(r.data);
+      refreshStats();
+    } catch (e) { setSeedResult({ error: e?.response?.data?.detail || "Seed failed" }); }
+    setSeeding(false);
+  };
+
+  const downloadSitemap = async (path) => {
+    const base = BACKEND_URL || "";
+    const url = `${base}${path}`;
+    try {
+      const res = await fetch(url);
+      const text = await res.text();
+      const blob = new Blob([text], { type: "application/xml" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = path.replace("/", "") || "sitemap.xml";
+      a.click();
+    } catch { alert("Download failed — check backend is running"); }
+  };
+
+  const CATEGORY_ICONS = { static: Globe, plazas: MapPin, states: Map, banks: Landmark, highways: Route, cities: Building2, help: FileText, sathis: Users };
+  const CATEGORY_COLORS = { static: "bg-blue-50 border-blue-200 text-blue-700", plazas: "bg-orange-50 border-orange-200 text-orange-700", states: "bg-green-50 border-green-200 text-green-700", banks: "bg-purple-50 border-purple-200 text-purple-700", highways: "bg-yellow-50 border-yellow-200 text-yellow-700", cities: "bg-pink-50 border-pink-200 text-pink-700", help: "bg-indigo-50 border-indigo-200 text-indigo-700", sathis: "bg-teal-50 border-teal-200 text-teal-700" };
+
+  return (
+    <div className="space-y-6">
+      {/* Sub-tab nav */}
+      <div className="flex gap-1 border-b-2 border-[#E5E7EB] overflow-x-auto">
+        {SITEMAP_SUB_TABS.map((t) => (
+          <button key={t} onClick={() => setSubTab(t)} className={`px-4 py-2.5 text-sm font-bold whitespace-nowrap border-b-2 -mb-0.5 transition-colors ${subTab === t ? "border-[#FF6B00] text-[#FF6B00]" : "border-transparent text-[#4B5563] hover:text-[#0A0A0A]"}`}>{t}</button>
+        ))}
+      </div>
+
+      {/* ── Overview ── */}
+      {subTab === "Overview" && (
+        <div className="space-y-6">
+          {/* Index info */}
+          <div className="bg-[#0A0A0A] text-white rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+              <div className="text-xs text-white/60 uppercase tracking-widest font-bold mb-1">Sitemap Index</div>
+              <div className="font-mono text-sm text-[#FFD60A]">/sitemap.xml</div>
+              <div className="text-xs text-white/60 mt-1">Points to {stats?.categories?.length || 8} child sitemaps · {loadingStats ? "…" : (stats?.total || 0).toLocaleString("en-IN")} total URLs</div>
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              <button onClick={() => downloadSitemap("/sitemap.xml")} className="flex items-center gap-1.5 text-xs font-bold bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl px-3 py-2 transition-colors">
+                <Download className="w-3.5 h-3.5" /> Download index
+              </button>
+              <a href={`${BACKEND_URL}/sitemap.xml`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs font-bold bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl px-3 py-2 transition-colors">
+                <ExternalLink className="w-3.5 h-3.5" /> Open in browser
+              </a>
+            </div>
+          </div>
+
+          {/* Category cards */}
+          {loadingStats ? (
+            <div className="text-center py-10 text-[#9CA3AF]"><Loader2 className="w-6 h-6 animate-spin inline mr-2" />Loading stats…</div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {(stats?.categories || []).map((cat) => {
+                const Icon = CATEGORY_ICONS[cat.key] || Globe;
+                const color = CATEGORY_COLORS[cat.key] || "bg-gray-50 border-gray-200 text-gray-700";
+                return (
+                  <div key={cat.key} className="bg-white border-2 border-[#0A0A0A] rounded-2xl p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border ${color}`}>
+                        <Icon className="w-3.5 h-3.5" />{cat.label}
+                      </span>
+                      <span className="text-2xl font-black text-[#FF6B00]">{cat.count.toLocaleString("en-IN")}</span>
+                    </div>
+                    <div className="text-xs text-[#6B7280] font-mono">{cat.url}</div>
+                    <div className="text-xs text-[#9CA3AF]">Priority {cat.priority} · {cat.changefreq}</div>
+                    <div className="flex gap-2">
+                      <button onClick={() => downloadSitemap(cat.url)} className="flex-1 flex items-center justify-center gap-1 text-xs font-bold border border-[#E5E7EB] rounded-lg py-1.5 hover:border-[#FF6B00] transition-colors">
+                        <Download className="w-3 h-3" /> Download
+                      </button>
+                      <a href={`${BACKEND_URL}${cat.url}`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-1 text-xs font-bold border border-[#E5E7EB] rounded-lg py-1.5 hover:border-[#FF6B00] transition-colors">
+                        <ExternalLink className="w-3 h-3" /> Preview
+                      </a>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Seed defaults */}
+          <div className="bg-[#FFFBEB] border-2 border-yellow-200 rounded-2xl p-5">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
+                <h4 className="font-bold text-yellow-800 mb-1 flex items-center gap-2"><Globe className="w-4 h-4" />Seed default geo data</h4>
+                <p className="text-sm text-yellow-700">Populate States (29), Highways (7), Cities (20), and Banks (8) with built-in defaults. Idempotent — safe to run again after importing custom data.</p>
+                {seedResult && (
+                  <div className={`mt-2 text-sm font-bold ${seedResult.error ? "text-red-700" : "text-green-700"}`}>
+                    {seedResult.error ? `Error: ${seedResult.error}` : `✓ Seeded ${seedResult.states} states · ${seedResult.highways} highways · ${seedResult.cities} cities · ${seedResult.banks} banks`}
+                  </div>
+                )}
+              </div>
+              <button onClick={seedGeo} disabled={seeding} className="flex items-center gap-2 bg-yellow-600 text-white font-bold px-5 py-2.5 rounded-xl hover:bg-yellow-700 disabled:opacity-50 transition-colors flex-shrink-0">
+                {seeding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+                {seeding ? "Seeding…" : "Seed Geo Data"}
+              </button>
+            </div>
+          </div>
+
+          {/* Google ping instructions */}
+          <div className="bg-[#F0FDF4] border-2 border-green-200 rounded-2xl p-5">
+            <div className="flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-bold text-green-800 mb-1">Submit to Google Search Console</h4>
+                <p className="text-sm text-green-700 mb-2">After adding/importing data, submit the sitemap index to Google Search Console so new URLs get discovered.</p>
+                <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-green-700 underline flex items-center gap-1">
+                  Open Google Search Console <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+                <p className="text-xs text-green-600 mt-1 font-mono">Sitemap URL: {BACKEND_URL}/sitemap.xml</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── States ── */}
+      {subTab === "States" && (
+        <GenericDataTable
+          label="State"
+          icon={Map}
+          fetchFn={(p) => adminApi.states(p)}
+          createFn={(d) => adminApi.createState(d)}
+          updateFn={(slug, d) => adminApi.updateState(slug, d)}
+          deleteFn={(slug) => adminApi.deleteState(slug)}
+          importFn={(list) => adminApi.importStates(list)}
+          columns={[
+            { key: "name", label: "Name" },
+            { key: "slug", label: "Slug", render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.slug}</span> },
+            { key: "plazaCount", label: "Plazas" },
+            { key: "sathiCount", label: "Sathis" },
+            { key: "highways", label: "Highways", render: (r) => <span className="text-xs">{(r.highways || []).join(", ") || "—"}</span> },
+          ]}
+          formFields={[
+            { key: "name",       label: "State Name",    required: true,  placeholder: "Maharashtra" },
+            { key: "slug",       label: "Slug",          required: true,  placeholder: "maharashtra", disabled: true },
+            { key: "plazaCount", label: "Plaza Count",   type: "number",  placeholder: "142" },
+            { key: "sathiCount", label: "Sathi Count",   type: "number",  placeholder: "386" },
+            { key: "highways",   label: "Highways (comma-separated)", placeholder: "NH-48, NH-160", render: "csv" },
+          ]}
+          templateNote='JSON array: [{"slug":"maharashtra","name":"Maharashtra","plazaCount":142,"sathiCount":386,"highways":["NH-48","NH-160"]}]'
+        />
+      )}
+
+      {/* ── Highways ── */}
+      {subTab === "Highways" && (
+        <GenericDataTable
+          label="Highway"
+          icon={Route}
+          fetchFn={(p) => adminApi.highways(p)}
+          createFn={(d) => adminApi.createHighway(d)}
+          updateFn={(slug, d) => adminApi.updateHighway(slug, d)}
+          deleteFn={(slug) => adminApi.deleteHighway(slug)}
+          importFn={(list) => adminApi.importHighways(list)}
+          columns={[
+            { key: "name",      label: "Name" },
+            { key: "fullName",  label: "Full Name",  render: (r) => <span className="text-xs">{r.fullName}</span> },
+            { key: "length",    label: "Length" },
+            { key: "plazaCount",label: "Plazas" },
+            { key: "is_active", label: "Active", render: (r) => r.is_active !== false ? <CheckCircle className="w-4 h-4 text-green-500" /> : <AlertTriangle className="w-4 h-4 text-red-400" /> },
+          ]}
+          formFields={[
+            { key: "name",       label: "Highway ID",     required: true,  placeholder: "NH-48" },
+            { key: "slug",       label: "Slug",           required: true,  placeholder: "nh-48", disabled: true },
+            { key: "fullName",   label: "Full Name",      required: true,  placeholder: "National Highway 48 (Delhi–Mumbai)" },
+            { key: "length",     label: "Length",         placeholder: "1428 km" },
+            { key: "plazaCount", label: "Total Plazas",   type: "number",  placeholder: "67" },
+            { key: "desc",       label: "Description",    type: "textarea", placeholder: "India's busiest highway…" },
+            { key: "is_active",  label: "Active (in sitemap)", type: "toggle" },
+          ]}
+          templateNote='JSON array: [{"slug":"nh-48","name":"NH-48","fullName":"National Highway 48 (Delhi–Mumbai)","length":"1428 km","plazaCount":67,"states":["Delhi","Maharashtra"],"desc":"..."}]'
+        />
+      )}
+
+      {/* ── Cities ── */}
+      {subTab === "Cities" && (
+        <GenericDataTable
+          label="City"
+          icon={Building2}
+          fetchFn={(p) => adminApi.cities(p)}
+          createFn={(d) => adminApi.createCity(d)}
+          updateFn={(slug, d) => adminApi.updateCity(slug, d)}
+          deleteFn={(slug) => adminApi.deleteCity(slug)}
+          importFn={(list) => adminApi.importCities(list)}
+          columns={[
+            { key: "name",       label: "City" },
+            { key: "state",      label: "State" },
+            { key: "plazaCount", label: "Plazas" },
+            { key: "sathiCount", label: "Sathis" },
+            { key: "slug",       label: "Slug", render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.slug}</span> },
+          ]}
+          formFields={[
+            { key: "name",       label: "City Name",    required: true,  placeholder: "Mumbai" },
+            { key: "slug",       label: "Slug",         required: true,  placeholder: "mumbai", disabled: true },
+            { key: "state",      label: "State",        required: true,  placeholder: "Maharashtra" },
+            { key: "plazaCount", label: "Plaza Count",  type: "number",  placeholder: "8" },
+            { key: "sathiCount", label: "Sathi Count",  type: "number",  placeholder: "42" },
+          ]}
+          templateNote='JSON array: [{"slug":"mumbai","name":"Mumbai","state":"Maharashtra","plazaCount":8,"sathiCount":42}]'
+        />
+      )}
+
+      {/* ── Banks ── */}
+      {subTab === "Banks" && (
+        <GenericDataTable
+          label="Bank"
+          icon={Landmark}
+          fetchFn={(p) => adminApi.banks(p)}
+          createFn={(d) => adminApi.createBank(d)}
+          updateFn={(slug, d) => adminApi.updateBank(slug, d)}
+          deleteFn={(slug) => adminApi.deleteBank(slug)}
+          importFn={(list) => adminApi.importBanks(list)}
+          columns={[
+            { key: "name",       label: "Bank" },
+            { key: "shortName",  label: "Short" },
+            { key: "helpline",   label: "Helpline" },
+            { key: "smsCode",    label: "SMS Code" },
+            { key: "marketShare",label: "Market %", render: (r) => r.marketShare != null ? `${r.marketShare}%` : "—" },
+            { key: "is_active",  label: "Active", render: (r) => r.is_active !== false ? <CheckCircle className="w-4 h-4 text-green-500" /> : <AlertTriangle className="w-4 h-4 text-red-400" /> },
+          ]}
+          formFields={[
+            { key: "name",        label: "Bank Name",      required: true,  placeholder: "SBI FASTag" },
+            { key: "slug",        label: "Slug",           required: true,  placeholder: "sbi-fastag", disabled: true },
+            { key: "shortName",   label: "Short Name",     required: true,  placeholder: "SBI" },
+            { key: "helpline",    label: "Helpline",       placeholder: "1800-11-0018" },
+            { key: "smsCode",     label: "SMS Code",       placeholder: "FTBAL" },
+            { key: "marketShare", label: "Market Share %", type: "number",  placeholder: "18" },
+            { key: "color",       label: "Brand Color",    placeholder: "#22409A" },
+            { key: "logo",        label: "Logo URL",       placeholder: "/banks/sbi.svg" },
+            { key: "is_active",   label: "Active (in sitemap)", type: "toggle" },
+          ]}
+          templateNote='JSON array: [{"slug":"sbi-fastag","name":"SBI FASTag","shortName":"SBI","helpline":"1800-11-0018","smsCode":"FTBAL","marketShare":18}]'
+        />
       )}
     </div>
   );

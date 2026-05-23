@@ -994,6 +994,302 @@ async def admin_plaza_stats():
     ]).to_list(10)
     return {"total": total, "by_state": by_state, "by_highway": by_highway}
 
+# ─── Admin: State Management ──────────────────────────────────────────────────
+
+class StateIn(BaseModel):
+    slug: str
+    name: str
+    plazaCount: int = 0
+    sathiCount: int = 0
+    highways: List[str] = []
+
+@admin_router.get("/states", dependencies=[Depends(_check_admin)])
+async def admin_list_states(q: Optional[str] = None, skip: int = 0, limit: int = 100):
+    filt: dict = {}
+    if q:
+        filt["$or"] = [{"name": {"$regex": q, "$options": "i"}}, {"slug": {"$regex": q, "$options": "i"}}]
+    total = await db.states.count_documents(filt)
+    docs = await db.states.find(filt, {"_id": 0}).sort("name", 1).skip(skip).limit(limit).to_list(limit)
+    return {"total": total, "states": docs}
+
+@admin_router.post("/states", dependencies=[Depends(_check_admin)])
+async def admin_create_state(body: StateIn):
+    if await db.states.find_one({"slug": body.slug}):
+        raise HTTPException(400, "Slug already exists")
+    doc = body.dict()
+    doc["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.states.insert_one({**doc, "_id": str(uuid.uuid4())})
+    return {"ok": True, "slug": body.slug}
+
+@admin_router.patch("/states/{slug}", dependencies=[Depends(_check_admin)])
+async def admin_update_state(slug: str, body: dict):
+    body.pop("_id", None)
+    body["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.states.update_one({"slug": slug}, {"$set": body})
+    return {"ok": True}
+
+@admin_router.delete("/states/{slug}", dependencies=[Depends(_check_admin)])
+async def admin_delete_state(slug: str):
+    res = await db.states.delete_one({"slug": slug})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "State not found")
+    return {"ok": True}
+
+@admin_router.post("/states/import", dependencies=[Depends(_check_admin)])
+async def admin_import_states(states: List[dict]):
+    imported = skipped = 0
+    for s in states:
+        if not s.get("name") or not s.get("slug"):
+            slug = re.sub(r"[^a-z0-9]+", "-", (s.get("name") or "").lower()).strip("-")
+            if not slug:
+                skipped += 1
+                continue
+            s["slug"] = slug
+        s["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await db.states.update_one({"slug": s["slug"]}, {"$set": s}, upsert=True)
+        imported += 1
+    return {"ok": True, "imported": imported, "skipped": skipped}
+
+# ─── Admin: Highway Management ────────────────────────────────────────────────
+
+class HighwayIn(BaseModel):
+    slug: str
+    name: str
+    fullName: str
+    length: Optional[str] = None
+    states: List[str] = []
+    plazaCount: int = 0
+    desc: Optional[str] = None
+    is_active: bool = True
+
+@admin_router.get("/highways", dependencies=[Depends(_check_admin)])
+async def admin_list_highways(q: Optional[str] = None, skip: int = 0, limit: int = 100):
+    filt: dict = {}
+    if q:
+        filt["$or"] = [{"name": {"$regex": q, "$options": "i"}}, {"fullName": {"$regex": q, "$options": "i"}}]
+    total = await db.highways.count_documents(filt)
+    docs = await db.highways.find(filt, {"_id": 0}).sort("name", 1).skip(skip).limit(limit).to_list(limit)
+    return {"total": total, "highways": docs}
+
+@admin_router.post("/highways", dependencies=[Depends(_check_admin)])
+async def admin_create_highway(body: HighwayIn):
+    if await db.highways.find_one({"slug": body.slug}):
+        raise HTTPException(400, "Slug already exists")
+    doc = body.dict()
+    doc["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.highways.insert_one({**doc, "_id": str(uuid.uuid4())})
+    return {"ok": True, "slug": body.slug}
+
+@admin_router.patch("/highways/{slug}", dependencies=[Depends(_check_admin)])
+async def admin_update_highway(slug: str, body: dict):
+    body.pop("_id", None)
+    body["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.highways.update_one({"slug": slug}, {"$set": body})
+    return {"ok": True}
+
+@admin_router.delete("/highways/{slug}", dependencies=[Depends(_check_admin)])
+async def admin_delete_highway(slug: str):
+    res = await db.highways.delete_one({"slug": slug})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Highway not found")
+    return {"ok": True}
+
+@admin_router.post("/highways/import", dependencies=[Depends(_check_admin)])
+async def admin_import_highways(highways: List[dict]):
+    imported = skipped = 0
+    for h in highways:
+        if not h.get("name"):
+            skipped += 1
+            continue
+        if not h.get("slug"):
+            h["slug"] = re.sub(r"[^a-z0-9]+", "-", h["name"].lower()).strip("-")
+        h["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await db.highways.update_one({"slug": h["slug"]}, {"$set": h}, upsert=True)
+        imported += 1
+    return {"ok": True, "imported": imported, "skipped": skipped}
+
+# ─── Admin: City Management ───────────────────────────────────────────────────
+
+class CityIn(BaseModel):
+    slug: str
+    name: str
+    state: str
+    plazaCount: int = 0
+    sathiCount: int = 0
+
+@admin_router.get("/cities", dependencies=[Depends(_check_admin)])
+async def admin_list_cities(q: Optional[str] = None, state: Optional[str] = None, skip: int = 0, limit: int = 100):
+    filt: dict = {}
+    if q:
+        filt["$or"] = [{"name": {"$regex": q, "$options": "i"}}, {"state": {"$regex": q, "$options": "i"}}]
+    if state:
+        filt["state"] = {"$regex": state, "$options": "i"}
+    total = await db.cities.count_documents(filt)
+    docs = await db.cities.find(filt, {"_id": 0}).sort("name", 1).skip(skip).limit(limit).to_list(limit)
+    return {"total": total, "cities": docs}
+
+@admin_router.post("/cities", dependencies=[Depends(_check_admin)])
+async def admin_create_city(body: CityIn):
+    if await db.cities.find_one({"slug": body.slug}):
+        raise HTTPException(400, "Slug already exists")
+    doc = body.dict()
+    doc["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.cities.insert_one({**doc, "_id": str(uuid.uuid4())})
+    return {"ok": True, "slug": body.slug}
+
+@admin_router.patch("/cities/{slug}", dependencies=[Depends(_check_admin)])
+async def admin_update_city(slug: str, body: dict):
+    body.pop("_id", None)
+    body["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.cities.update_one({"slug": slug}, {"$set": body})
+    return {"ok": True}
+
+@admin_router.delete("/cities/{slug}", dependencies=[Depends(_check_admin)])
+async def admin_delete_city(slug: str):
+    res = await db.cities.delete_one({"slug": slug})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "City not found")
+    return {"ok": True}
+
+@admin_router.post("/cities/import", dependencies=[Depends(_check_admin)])
+async def admin_import_cities(cities: List[dict]):
+    imported = skipped = 0
+    for c in cities:
+        if not c.get("name") or not c.get("state"):
+            skipped += 1
+            continue
+        if not c.get("slug"):
+            c["slug"] = re.sub(r"[^a-z0-9]+", "-", c["name"].lower()).strip("-")
+        c["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await db.cities.update_one({"slug": c["slug"]}, {"$set": c}, upsert=True)
+        imported += 1
+    return {"ok": True, "imported": imported, "skipped": skipped}
+
+# ─── Admin: Bank Management ───────────────────────────────────────────────────
+
+class BankIn(BaseModel):
+    slug: str
+    name: str
+    shortName: str
+    color: Optional[str] = None
+    logo: Optional[str] = None
+    smsCode: Optional[str] = None
+    helpline: Optional[str] = None
+    marketShare: Optional[int] = None
+    is_active: bool = True
+
+@admin_router.get("/banks", dependencies=[Depends(_check_admin)])
+async def admin_list_banks(q: Optional[str] = None, skip: int = 0, limit: int = 100):
+    filt: dict = {}
+    if q:
+        filt["$or"] = [{"name": {"$regex": q, "$options": "i"}}, {"shortName": {"$regex": q, "$options": "i"}}]
+    total = await db.banks.count_documents(filt)
+    docs = await db.banks.find(filt, {"_id": 0}).sort("name", 1).skip(skip).limit(limit).to_list(limit)
+    return {"total": total, "banks": docs}
+
+@admin_router.post("/banks", dependencies=[Depends(_check_admin)])
+async def admin_create_bank(body: BankIn):
+    if await db.banks.find_one({"slug": body.slug}):
+        raise HTTPException(400, "Slug already exists")
+    doc = body.dict()
+    doc["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.banks.insert_one({**doc, "_id": str(uuid.uuid4())})
+    return {"ok": True, "slug": body.slug}
+
+@admin_router.patch("/banks/{slug}", dependencies=[Depends(_check_admin)])
+async def admin_update_bank(slug: str, body: dict):
+    body.pop("_id", None)
+    body["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.banks.update_one({"slug": slug}, {"$set": body})
+    return {"ok": True}
+
+@admin_router.delete("/banks/{slug}", dependencies=[Depends(_check_admin)])
+async def admin_delete_bank(slug: str):
+    res = await db.banks.delete_one({"slug": slug})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Bank not found")
+    return {"ok": True}
+
+@admin_router.post("/banks/import", dependencies=[Depends(_check_admin)])
+async def admin_import_banks(banks: List[dict]):
+    imported = skipped = 0
+    for b in banks:
+        if not b.get("name") or not b.get("shortName"):
+            skipped += 1
+            continue
+        if not b.get("slug"):
+            b["slug"] = re.sub(r"[^a-z0-9]+", "-", b["name"].lower()).strip("-") + "-fastag"
+        b["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await db.banks.update_one({"slug": b["slug"]}, {"$set": b}, upsert=True)
+        imported += 1
+    return {"ok": True, "imported": imported, "skipped": skipped}
+
+# ─── Admin: Sitemap Stats ─────────────────────────────────────────────────────
+
+@admin_router.get("/sitemap-stats", dependencies=[Depends(_check_admin)])
+async def admin_sitemap_stats():
+    """Return URL counts per sitemap category for the admin sitemap overview."""
+    plazas_count     = await db.plazas.count_documents({})
+    states_count     = await db.states.count_documents({})
+    highways_count   = await db.highways.count_documents({})
+    cities_count     = await db.cities.count_documents({})
+    banks_count      = await db.banks.count_documents({})
+    sathis_count     = await db.sathis.count_documents({})
+    articles_count   = await db.articles.count_documents({"is_published": True})
+    static_count     = 16
+    return {
+        "categories": [
+            {"key": "static",   "label": "Static pages",   "count": static_count,   "url": "/sitemap-static.xml",   "priority": "0.8–1.0", "changefreq": "daily/monthly"},
+            {"key": "plazas",   "label": "Toll plazas",    "count": plazas_count,   "url": "/sitemap-plazas.xml",   "priority": "0.85",    "changefreq": "weekly"},
+            {"key": "states",   "label": "States",         "count": states_count,   "url": "/sitemap-states.xml",   "priority": "0.70",    "changefreq": "monthly"},
+            {"key": "banks",    "label": "Banks",          "count": banks_count,    "url": "/sitemap-banks.xml",    "priority": "0.80",    "changefreq": "monthly"},
+            {"key": "highways", "label": "Highways",       "count": highways_count, "url": "/sitemap-highways.xml", "priority": "0.75",    "changefreq": "monthly"},
+            {"key": "cities",   "label": "Cities",         "count": cities_count,   "url": "/sitemap-cities.xml",   "priority": "0.75",    "changefreq": "monthly"},
+            {"key": "help",     "label": "Help articles",  "count": articles_count, "url": "/sitemap-help.xml",     "priority": "0.70",    "changefreq": "monthly"},
+            {"key": "sathis",   "label": "Sathi profiles", "count": sathis_count,   "url": "/sitemap-sathis.xml",   "priority": "0.80",    "changefreq": "weekly"},
+        ],
+        "total": plazas_count + states_count + highways_count + cities_count + banks_count + sathis_count + articles_count + static_count,
+        "index_url": "/sitemap.xml",
+    }
+
+# ─── Public: Highways / Cities / Banks ────────────────────────────────────────
+
+@api.get("/highways")
+async def list_highways():
+    docs = await db.highways.find({"is_active": {"$ne": False}}, {"_id": 0}).sort("name", 1).to_list(100)
+    return docs
+
+@api.get("/highways/{slug}")
+async def get_highway(slug: str):
+    doc = await db.highways.find_one({"slug": slug}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Highway not found")
+    return doc
+
+@api.get("/cities")
+async def list_cities():
+    docs = await db.cities.find({}, {"_id": 0}).sort("name", 1).to_list(200)
+    return docs
+
+@api.get("/cities/{slug}")
+async def get_city(slug: str):
+    doc = await db.cities.find_one({"slug": slug}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "City not found")
+    return doc
+
+@api.get("/banks")
+async def list_banks():
+    docs = await db.banks.find({"is_active": {"$ne": False}}, {"_id": 0}).sort("name", 1).to_list(50)
+    return docs
+
+@api.get("/banks/{slug}")
+async def get_bank(slug: str):
+    doc = await db.banks.find_one({"slug": slug}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Bank not found")
+    return doc
+
 @admin_router.post("/cleanup-uploads", dependencies=[Depends(_check_admin)])
 async def cleanup_stale_uploads():
     """Remove file-path avatars and gallery URLs left over from the old filesystem-based storage."""
@@ -1479,6 +1775,105 @@ async def seed_db():
         await db.plazas.update_one({"slug": p["slug"]}, {"$set": p}, upsert=True)
     logger.info(f"Seeded {len(SATHI_SEED)} sathis + {len(PLAZA_SEED)} plazas")
     return {"ok": True, "sathis": len(SATHI_SEED), "plazas": len(PLAZA_SEED)}
+
+@admin_router.post("/seed-geo-data", dependencies=[Depends(_check_admin)])
+async def seed_geo_data():
+    """Seed states, highways, cities, and banks collections from built-in defaults.
+    Idempotent — safe to re-run. Does NOT overwrite existing custom data."""
+    now = datetime.now(timezone.utc).isoformat()
+
+    GEO_STATES = [
+        {"slug":"maharashtra","name":"Maharashtra","plazaCount":142,"sathiCount":386,"highways":["NH-48","NH-160","NH-66"]},
+        {"slug":"uttar-pradesh","name":"Uttar Pradesh","plazaCount":168,"sathiCount":421,"highways":["NH-19","NH-27","NH-44"]},
+        {"slug":"rajasthan","name":"Rajasthan","plazaCount":89,"sathiCount":201,"highways":["NH-48","NH-58","NH-27"]},
+        {"slug":"gujarat","name":"Gujarat","plazaCount":74,"sathiCount":156,"highways":["NH-48","NH-27"]},
+        {"slug":"karnataka","name":"Karnataka","plazaCount":98,"sathiCount":221,"highways":["NH-48","NH-44","NH-75"]},
+        {"slug":"tamil-nadu","name":"Tamil Nadu","plazaCount":89,"sathiCount":198,"highways":["NH-44","NH-32"]},
+        {"slug":"telangana","name":"Telangana","plazaCount":67,"sathiCount":143,"highways":["NH-44","NH-65"]},
+        {"slug":"andhra-pradesh","name":"Andhra Pradesh","plazaCount":78,"sathiCount":167,"highways":["NH-16","NH-44"]},
+        {"slug":"west-bengal","name":"West Bengal","plazaCount":56,"sathiCount":123,"highways":["NH-12","NH-16"]},
+        {"slug":"madhya-pradesh","name":"Madhya Pradesh","plazaCount":93,"sathiCount":187,"highways":["NH-44","NH-46","NH-30"]},
+        {"slug":"kerala","name":"Kerala","plazaCount":48,"sathiCount":109,"highways":["NH-66","NH-183"]},
+        {"slug":"punjab","name":"Punjab","plazaCount":52,"sathiCount":134,"highways":["NH-44","NH-7"]},
+        {"slug":"haryana","name":"Haryana","plazaCount":67,"sathiCount":174,"highways":["NH-44","NH-48","NH-19"]},
+        {"slug":"bihar","name":"Bihar","plazaCount":61,"sathiCount":132,"highways":["NH-19","NH-28","NH-31"]},
+        {"slug":"odisha","name":"Odisha","plazaCount":54,"sathiCount":118,"highways":["NH-16","NH-57"]},
+        {"slug":"jharkhand","name":"Jharkhand","plazaCount":43,"sathiCount":96,"highways":["NH-33","NH-75"]},
+        {"slug":"assam","name":"Assam","plazaCount":38,"sathiCount":84,"highways":["NH-15","NH-37"]},
+        {"slug":"himachal-pradesh","name":"Himachal Pradesh","plazaCount":29,"sathiCount":63,"highways":["NH-21","NH-22"]},
+        {"slug":"uttarakhand","name":"Uttarakhand","plazaCount":34,"sathiCount":72,"highways":["NH-58","NH-74"]},
+        {"slug":"chhattisgarh","name":"Chhattisgarh","plazaCount":47,"sathiCount":98,"highways":["NH-30","NH-43"]},
+        {"slug":"goa","name":"Goa","plazaCount":12,"sathiCount":34,"highways":["NH-66","NH-748"]},
+        {"slug":"delhi","name":"Delhi","plazaCount":24,"sathiCount":89,"highways":["NH-48","NH-44","NH-19"]},
+        {"slug":"jammu-kashmir","name":"Jammu & Kashmir","plazaCount":21,"sathiCount":47,"highways":["NH-44","NH-1"]},
+        {"slug":"tripura","name":"Tripura","plazaCount":14,"sathiCount":31,"highways":["NH-8"]},
+        {"slug":"meghalaya","name":"Meghalaya","plazaCount":11,"sathiCount":24,"highways":["NH-6"]},
+        {"slug":"manipur","name":"Manipur","plazaCount":9,"sathiCount":19,"highways":["NH-2"]},
+        {"slug":"nagaland","name":"Nagaland","plazaCount":8,"sathiCount":17,"highways":["NH-29"]},
+        {"slug":"arunachal-pradesh","name":"Arunachal Pradesh","plazaCount":7,"sathiCount":14,"highways":["NH-13"]},
+        {"slug":"sikkim","name":"Sikkim","plazaCount":5,"sathiCount":11,"highways":["NH-10"]},
+    ]
+
+    GEO_HIGHWAYS = [
+        {"slug":"nh-48","name":"NH-48","fullName":"National Highway 48 (Delhi–Mumbai)","length":"1428 km","states":["Delhi","Haryana","Rajasthan","Gujarat","Maharashtra"],"plazaCount":67,"desc":"India's busiest highway connecting Delhi to Mumbai via Gurugram, Jaipur, Vadodara, and Surat.","is_active":True},
+        {"slug":"nh-44","name":"NH-44","fullName":"National Highway 44 (Srinagar–Kanyakumari)","length":"3745 km","states":["J&K","Punjab","Haryana","Delhi","UP","MP","Maharashtra","Telangana","AP","Tamil Nadu"],"plazaCount":112,"desc":"India's longest highway, connecting Srinagar in the north to Kanyakumari in the south.","is_active":True},
+        {"slug":"nh-19","name":"NH-19","fullName":"National Highway 19 (Delhi–Kolkata)","length":"1435 km","states":["Delhi","UP","Bihar","Jharkhand","West Bengal"],"plazaCount":58,"desc":"Connects Delhi to Kolkata via Agra, Kanpur, Varanasi, and Patna.","is_active":True},
+        {"slug":"nh-27","name":"NH-27","fullName":"National Highway 27 (Porbandar–Silchar)","length":"3187 km","states":["Gujarat","Rajasthan","MP","UP","Bihar","West Bengal","Assam"],"plazaCount":89,"desc":"One of India's longest east-west highways, connecting Porbandar to Silchar.","is_active":True},
+        {"slug":"nh-66","name":"NH-66","fullName":"National Highway 66 (Panvel–Kanyakumari)","length":"1622 km","states":["Maharashtra","Goa","Karnataka","Kerala","Tamil Nadu"],"plazaCount":74,"desc":"Runs along India's western coast, passing through Mumbai, Goa, Mangalore, and Calicut.","is_active":True},
+        {"slug":"nh-16","name":"NH-16","fullName":"National Highway 16 (Kolkata–Chennai)","length":"1711 km","states":["West Bengal","Odisha","Andhra Pradesh","Tamil Nadu"],"plazaCount":64,"desc":"Connects Kolkata to Chennai along the eastern coast.","is_active":True},
+        {"slug":"nh-8","name":"NH-8","fullName":"National Highway 8 (Mumbai–Pune Expressway)","length":"94 km","states":["Maharashtra"],"plazaCount":8,"desc":"Mumbai-Pune Expressway — one of India's busiest expressways.","is_active":True},
+    ]
+
+    GEO_CITIES = [
+        {"slug":"mumbai","name":"Mumbai","state":"Maharashtra","plazaCount":8,"sathiCount":42},
+        {"slug":"delhi","name":"Delhi","state":"Delhi","plazaCount":12,"sathiCount":67},
+        {"slug":"bengaluru","name":"Bengaluru","state":"Karnataka","plazaCount":6,"sathiCount":38},
+        {"slug":"pune","name":"Pune","state":"Maharashtra","plazaCount":5,"sathiCount":29},
+        {"slug":"hyderabad","name":"Hyderabad","state":"Telangana","plazaCount":7,"sathiCount":35},
+        {"slug":"chennai","name":"Chennai","state":"Tamil Nadu","plazaCount":5,"sathiCount":27},
+        {"slug":"ahmedabad","name":"Ahmedabad","state":"Gujarat","plazaCount":4,"sathiCount":22},
+        {"slug":"kolkata","name":"Kolkata","state":"West Bengal","plazaCount":4,"sathiCount":19},
+        {"slug":"jaipur","name":"Jaipur","state":"Rajasthan","plazaCount":3,"sathiCount":17},
+        {"slug":"lucknow","name":"Lucknow","state":"UP","plazaCount":3,"sathiCount":16},
+        {"slug":"surat","name":"Surat","state":"Gujarat","plazaCount":3,"sathiCount":14},
+        {"slug":"nagpur","name":"Nagpur","state":"Maharashtra","plazaCount":3,"sathiCount":13},
+        {"slug":"gurugram","name":"Gurugram","state":"Haryana","plazaCount":4,"sathiCount":24},
+        {"slug":"noida","name":"Noida","state":"UP","plazaCount":3,"sathiCount":18},
+        {"slug":"chandigarh","name":"Chandigarh","state":"Punjab","plazaCount":3,"sathiCount":15},
+        {"slug":"indore","name":"Indore","state":"MP","plazaCount":2,"sathiCount":11},
+        {"slug":"bhopal","name":"Bhopal","state":"MP","plazaCount":2,"sathiCount":10},
+        {"slug":"vadodara","name":"Vadodara","state":"Gujarat","plazaCount":2,"sathiCount":10},
+        {"slug":"nashik","name":"Nashik","state":"Maharashtra","plazaCount":2,"sathiCount":9},
+        {"slug":"agra","name":"Agra","state":"UP","plazaCount":2,"sathiCount":9},
+    ]
+
+    GEO_BANKS = [
+        {"slug":"sbi-fastag","name":"SBI FASTag","shortName":"SBI","color":"#22409A","logo":"/banks/sbi.svg","smsCode":"FTBAL","helpline":"1800-11-0018","marketShare":18,"is_active":True},
+        {"slug":"paytm-fastag","name":"Paytm FASTag","shortName":"Paytm","color":"#00BAF2","logo":"/banks/paytm.svg","smsCode":"FT BAL","helpline":"1800-120-4210","marketShare":28,"is_active":True},
+        {"slug":"icici-fastag","name":"ICICI FASTag","shortName":"ICICI","color":"#F58220","logo":"/banks/icici.svg","smsCode":"FASTAG","helpline":"1800-2100-104","marketShare":14,"is_active":True},
+        {"slug":"hdfc-fastag","name":"HDFC FASTag","shortName":"HDFC","color":"#004C8F","logo":"/banks/hdfc.svg","smsCode":"FASTAG","helpline":"1800-120-1243","marketShare":12,"is_active":True},
+        {"slug":"axis-fastag","name":"Axis FASTag","shortName":"Axis","color":"#97144D","logo":"/banks/axis.svg","smsCode":"FASTAG","helpline":"1860-419-8585","marketShare":9,"is_active":True},
+        {"slug":"kotak-fastag","name":"Kotak FASTag","shortName":"Kotak","color":"#ED1C24","logo":"/banks/kotak.svg","smsCode":"FASTAG","helpline":"1800-209-0000","marketShare":6,"is_active":True},
+        {"slug":"yes-fastag","name":"Yes Bank FASTag","shortName":"Yes","color":"#003087","logo":"/banks/yes.svg","smsCode":"FASTAG","helpline":"1800-1200","marketShare":5,"is_active":True},
+        {"slug":"idfc-fastag","name":"IDFC First FASTag","shortName":"IDFC","color":"#6B2D8B","logo":"/banks/idfc.svg","smsCode":"FASTAG","helpline":"1800-10-888","marketShare":4,"is_active":True},
+    ]
+
+    counts = {"states": 0, "highways": 0, "cities": 0, "banks": 0}
+    for s in GEO_STATES:
+        await db.states.update_one({"slug": s["slug"]}, {"$set": {**s, "updated_at": now}}, upsert=True)
+        counts["states"] += 1
+    for h in GEO_HIGHWAYS:
+        await db.highways.update_one({"slug": h["slug"]}, {"$set": {**h, "updated_at": now}}, upsert=True)
+        counts["highways"] += 1
+    for c in GEO_CITIES:
+        await db.cities.update_one({"slug": c["slug"]}, {"$set": {**c, "updated_at": now}}, upsert=True)
+        counts["cities"] += 1
+    for b in GEO_BANKS:
+        await db.banks.update_one({"slug": b["slug"]}, {"$set": {**b, "updated_at": now}}, upsert=True)
+        counts["banks"] += 1
+
+    logger.info(f"Seeded geo data: {counts}")
+    return {"ok": True, **counts}
 
 # ─── Legacy status check (keep for compatibility) ─────────────────────────────
 
@@ -2253,63 +2648,123 @@ app.include_router(api)
 
 # ─── Dynamic sitemap ──────────────────────────────────────────────────────────
 
-SITE = "https://apnafastag.in"
+SITE = "https://www.apnafastag.com"
 
-@app.get("/sitemap.xml", include_in_schema=False)
-async def dynamic_sitemap():
-    from fastapi.responses import Response as FResponse
-    static_urls = [
-        (SITE + "/",                   "1.0",  "daily"),
-        (SITE + "/find",               "0.95", "hourly"),
-        (SITE + "/how-it-works",       "0.8",  "monthly"),
-        (SITE + "/features",           "0.7",  "monthly"),
-        (SITE + "/pricing",            "0.7",  "monthly"),
-        (SITE + "/become-a-sathi",     "0.9",  "weekly"),
-        (SITE + "/help",               "0.9",  "daily"),
-        (SITE + "/blog",               "0.8",  "weekly"),
-        (SITE + "/coverage",           "0.75", "weekly"),
-        (SITE + "/fastag-balance-check","0.95","weekly"),
-        (SITE + "/fastag-status",      "0.9",  "weekly"),
-        (SITE + "/toll-calculator",    "0.9",  "weekly"),
-        (SITE + "/about",              "0.5",  "monthly"),
-        (SITE + "/contact",            "0.4",  "monthly"),
-        (SITE + "/privacy",            "0.2",  "yearly"),
-        (SITE + "/terms",              "0.2",  "yearly"),
-    ]
-    rows = []
-    for url, priority, freq in static_urls:
-        rows.append(f"  <url><loc>{url}</loc><priority>{priority}</priority><changefreq>{freq}</changefreq></url>")
+# ─── Sitemap helpers ──────────────────────────────────────────────────────────
 
-    # Articles
-    articles = await db.articles.find({"is_published": True}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
-    for a in articles:
-        loc = f"{SITE}/help/{a['slug']}"
-        lastmod = (a.get("updated_at") or "")[:10]
-        rows.append(f"  <url><loc>{loc}</loc><priority>0.7</priority><changefreq>monthly</changefreq>{('<lastmod>' + lastmod + '</lastmod>') if lastmod else ''}</url>")
-
-    # Sathis
-    sathis = await db.sathis.find({}, {"_id": 0, "slug": 1}).to_list(None)
-    for s in sathis:
-        rows.append(f"  <url><loc>{SITE}/sathi/{s['slug']}</loc><priority>0.8</priority><changefreq>weekly</changefreq></url>")
-
-    # Plazas & States & Banks (static slugs)
-    plazas = await db.plazas.find({}, {"_id": 0, "slug": 1}).to_list(None)
-    for p in plazas:
-        rows.append(f"  <url><loc>{SITE}/toll/{p['slug']}</loc><priority>0.85</priority><changefreq>weekly</changefreq></url>")
-
-    states = await db.states.find({}, {"_id": 0, "slug": 1}).to_list(None)
-    for s in states:
-        rows.append(f"  <url><loc>{SITE}/state/{s['slug']}</loc><priority>0.7</priority><changefreq>monthly</changefreq></url>")
-
-    bank_slugs = ["sbi-fastag","paytm-fastag","icici-fastag","hdfc-fastag","axis-fastag","kotak-fastag","yes-fastag","idfc-fastag"]
-    for b in bank_slugs:
-        rows.append(f"  <url><loc>{SITE}/bank/{b}</loc><priority>0.8</priority><changefreq>monthly</changefreq></url>")
-
+def _urlset(rows: list[str]) -> str:
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     xml += "\n".join(rows)
     xml += "\n</urlset>"
+    return xml
+
+def _url(loc: str, priority: str = "0.7", freq: str = "monthly", lastmod: str = "") -> str:
+    lm = f"<lastmod>{lastmod}</lastmod>" if lastmod else ""
+    return f"  <url><loc>{loc}</loc>{lm}<priority>{priority}</priority><changefreq>{freq}</changefreq></url>"
+
+def _today() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+# ─── Sitemap index ────────────────────────────────────────────────────────────
+
+@app.get("/sitemap.xml", include_in_schema=False)
+async def sitemap_index():
+    from fastapi.responses import Response as FResponse
+    today = _today()
+    subs = [
+        "sitemap-static.xml",
+        "sitemap-plazas.xml",
+        "sitemap-states.xml",
+        "sitemap-banks.xml",
+        "sitemap-highways.xml",
+        "sitemap-cities.xml",
+        "sitemap-help.xml",
+        "sitemap-sathis.xml",
+    ]
+    rows = [f'  <sitemap><loc>{SITE}/{s}</loc><lastmod>{today}</lastmod></sitemap>' for s in subs]
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    xml += '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    xml += "\n".join(rows)
+    xml += "\n</sitemapindex>"
     return FResponse(content=xml, media_type="application/xml")
+
+# ─── Category sitemaps ────────────────────────────────────────────────────────
+
+@app.get("/sitemap-static.xml", include_in_schema=False)
+async def sitemap_static():
+    from fastapi.responses import Response as FResponse
+    today = _today()
+    entries = [
+        ("/",                    "1.0",  "daily"),
+        ("/find",                "0.95", "hourly"),
+        ("/become-a-sathi",      "0.90", "weekly"),
+        ("/help",                "0.90", "daily"),
+        ("/tools/fastag-balance-check", "0.95", "weekly"),
+        ("/tools/fastag-status", "0.90", "weekly"),
+        ("/tools/toll-calculator","0.90", "weekly"),
+        ("/tools/dispute-tracker","0.85", "weekly"),
+        ("/blog",                "0.80", "weekly"),
+        ("/coverage",            "0.75", "weekly"),
+        ("/how-it-works",        "0.80", "monthly"),
+        ("/features",            "0.70", "monthly"),
+        ("/pricing",             "0.70", "monthly"),
+        ("/about",               "0.50", "monthly"),
+        ("/contact",             "0.40", "monthly"),
+        ("/privacy",             "0.20", "yearly"),
+        ("/terms",               "0.20", "yearly"),
+    ]
+    rows = [_url(SITE + path, pri, freq, today if freq in ("daily","hourly","weekly") else "") for path, pri, freq in entries]
+    return FResponse(content=_urlset(rows), media_type="application/xml")
+
+@app.get("/sitemap-plazas.xml", include_in_schema=False)
+async def sitemap_plazas():
+    from fastapi.responses import Response as FResponse
+    plazas = await db.plazas.find({}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
+    rows = [_url(f"{SITE}/toll/{p['slug']}", "0.85", "weekly", (p.get("updated_at") or "")[:10]) for p in plazas]
+    return FResponse(content=_urlset(rows), media_type="application/xml")
+
+@app.get("/sitemap-states.xml", include_in_schema=False)
+async def sitemap_states():
+    from fastapi.responses import Response as FResponse
+    states = await db.states.find({}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
+    rows = [_url(f"{SITE}/state/{s['slug']}", "0.70", "monthly", (s.get("updated_at") or "")[:10]) for s in states]
+    return FResponse(content=_urlset(rows), media_type="application/xml")
+
+@app.get("/sitemap-banks.xml", include_in_schema=False)
+async def sitemap_banks():
+    from fastapi.responses import Response as FResponse
+    banks = await db.banks.find({"is_active": {"$ne": False}}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
+    rows = [_url(f"{SITE}/bank/{b['slug']}", "0.80", "monthly", (b.get("updated_at") or "")[:10]) for b in banks]
+    return FResponse(content=_urlset(rows), media_type="application/xml")
+
+@app.get("/sitemap-highways.xml", include_in_schema=False)
+async def sitemap_highways():
+    from fastapi.responses import Response as FResponse
+    highways = await db.highways.find({"is_active": {"$ne": False}}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
+    rows = [_url(f"{SITE}/highway/{h['slug']}", "0.75", "monthly", (h.get("updated_at") or "")[:10]) for h in highways]
+    return FResponse(content=_urlset(rows), media_type="application/xml")
+
+@app.get("/sitemap-cities.xml", include_in_schema=False)
+async def sitemap_cities():
+    from fastapi.responses import Response as FResponse
+    cities = await db.cities.find({}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
+    rows = [_url(f"{SITE}/city/{c['slug']}", "0.75", "monthly", (c.get("updated_at") or "")[:10]) for c in cities]
+    return FResponse(content=_urlset(rows), media_type="application/xml")
+
+@app.get("/sitemap-help.xml", include_in_schema=False)
+async def sitemap_help():
+    from fastapi.responses import Response as FResponse
+    articles = await db.articles.find({"is_published": True}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
+    rows = [_url(f"{SITE}/help/{a['slug']}", "0.70", "monthly", (a.get("updated_at") or "")[:10]) for a in articles]
+    return FResponse(content=_urlset(rows), media_type="application/xml")
+
+@app.get("/sitemap-sathis.xml", include_in_schema=False)
+async def sitemap_sathis():
+    from fastapi.responses import Response as FResponse
+    sathis = await db.sathis.find({}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
+    rows = [_url(f"{SITE}/sathi/{s['slug']}", "0.80", "weekly", (s.get("updated_at") or "")[:10]) for s in sathis]
+    return FResponse(content=_urlset(rows), media_type="application/xml")
 
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
@@ -2339,6 +2794,16 @@ async def create_indexes():
     await db.payment_intents.create_index([("cashfree_order_id", 1)], unique=True, sparse=True)
     # promo_codes
     await db.promo_codes.create_index([("code", 1)], unique=True)
+    # plazas / states / highways / cities / banks
+    await db.plazas.create_index([("slug", 1)], unique=True, sparse=True)
+    await db.plazas.create_index([("state", 1), ("highway", 1)])
+    await db.states.create_index([("slug", 1)], unique=True, sparse=True)
+    await db.highways.create_index([("slug", 1)], unique=True, sparse=True)
+    await db.cities.create_index([("slug", 1)], unique=True, sparse=True)
+    await db.banks.create_index([("slug", 1)], unique=True, sparse=True)
+    # articles
+    await db.articles.create_index([("slug", 1)], unique=True, sparse=True)
+    await db.articles.create_index([("is_published", 1), ("category", 1)])
     logger.info("MongoDB indexes ensured")
 
 @app.on_event("startup")
