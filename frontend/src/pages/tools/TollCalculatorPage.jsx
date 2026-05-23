@@ -43,7 +43,7 @@ export default function TollCalculatorPage() {
         jsonLd={webAppSchema({
           name: "Toll Calculator",
           description: "Free trip toll estimator for India's national highways.",
-          url: "https://www.apnafastag.com/tools/toll-calculator",
+          url: "https://apnafastag.com/tools/toll-calculator",
         })}
       />
       <PageHero

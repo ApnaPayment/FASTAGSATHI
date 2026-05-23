@@ -94,7 +94,7 @@ export default function DisputeTrackerPage() {
         jsonLd={webAppSchema({
           name: "FASTag Dispute Tracker",
           description: "Real-time status across NHAI + bank for any FASTag dispute reference.",
-          url: "https://www.apnafastag.com/tools/dispute-tracker",
+          url: "https://apnafastag.com/tools/dispute-tracker",
         })}
       />
       <PageHero

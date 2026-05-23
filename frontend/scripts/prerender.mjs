@@ -16,7 +16,7 @@ const ROOT      = path.resolve(__dirname, "..");
 const BUILD_DIR = path.join(ROOT, "build");
 const TEMPLATE  = path.join(BUILD_DIR, "index.html");
 
-const SITE_URL    = "https://www.apnafastag.com";
+const SITE_URL    = "https://apnafastag.com";
 const DEFAULT_IMG = `${SITE_URL}/og-default.png`;
 const DEFAULT_DESC= "India's first real-time peer-to-peer rescue network for FASTag chaos — disputes, KYC, recharge fails, emergency SOS. Verified Sathis at 60+ toll plazas.";
 

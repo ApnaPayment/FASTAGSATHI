@@ -2,9 +2,9 @@ import { useEffect } from "react";
 
 const SITE = {
   name: "ApnaFastag",
-  url: "https://www.apnafastag.com",
+  url: "https://apnafastag.com",
   defaultDescription: "India's first real-time peer-to-peer rescue network for FASTag chaos — disputes, KYC, recharge fails, emergency SOS. Verified Sathis at 60+ toll plazas.",
-  defaultImage: "https://www.apnafastag.com/og-default.png",
+  defaultImage: "https://apnafastag.com/og-default.png",
   twitter: "@apnafastag",
 };
 

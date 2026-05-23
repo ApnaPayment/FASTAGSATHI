@@ -96,7 +96,7 @@ export default function SathiProfilePage() {
     knowsLanguage: s.languages,
     workLocation: { "@type": "Place", name: plaza?.name, address: { "@type": "PostalAddress", addressLocality: s.city, addressRegion: state?.name } },
     aggregateRating: { "@type": "AggregateRating", ratingValue: s.rating, reviewCount: s.reviewCount, bestRating: 5 },
-    url: `https://www.apnafastag.com/sathi/${s.slug}`,
+    url: `https://apnafastag.com/sathi/${s.slug}`,
   };
 
   return (

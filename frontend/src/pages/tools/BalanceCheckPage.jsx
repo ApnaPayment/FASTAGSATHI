@@ -30,7 +30,7 @@ export default function BalanceCheckPage() {
         jsonLd={webAppSchema({
           name: "FASTag Balance Checker",
           description: "Free FASTag balance lookup across all major Indian banks.",
-          url: "https://www.apnafastag.com/tools/fastag-balance-check",
+          url: "https://apnafastag.com/tools/fastag-balance-check",
         })}
       />
       <PageHero
