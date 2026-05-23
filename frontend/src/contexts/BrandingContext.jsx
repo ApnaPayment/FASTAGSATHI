@@ -1,35 +1,56 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 export const SITE_DEFAULTS = {
-  logo:           null,
-  favicon:        null,
-  siteName:       "ApnaFastag",
-  tagline:        "अपना फास्टैग साथी",
-  description:    "India's first real-time, peer-to-peer rescue network for FASTag chaos.",
-  legalName:      "ApnaFastag Technologies Pvt. Ltd.",
-  foundedYear:    "2024",
-  supportEmail:   "help@apnafastag.com",
-  hiringEmail:    "hiring@apnafastag.com",
-  pressEmail:     "press@apnafastag.com",
-  legalEmail:     "legal@apnafastag.com",
-  helpline:       "1800-XXX-XXXX",
-  whatsapp:       "+91 80000 00000",
-  addressLine1:   "",
-  addressCity:    "Pune",
-  addressState:   "Maharashtra",
-  addressPincode: "",
-  addressCountry: "India",
+  logo:            null,
+  favicon:         null,
+  siteName:        "ApnaFastag",
+  tagline:         "अपना फास्टैग साथी",
+  description:     "India's first real-time, peer-to-peer rescue network for FASTag chaos.",
+  legalName:       "ApnaFastag Technologies Pvt. Ltd.",
+  foundedYear:     "2024",
+  supportEmail:    "help@apnafastag.com",
+  hiringEmail:     "hiring@apnafastag.com",
+  pressEmail:      "press@apnafastag.com",
+  legalEmail:      "legal@apnafastag.com",
+  helpline:        "1800-XXX-XXXX",
+  whatsapp:        "+91 80000 00000",
+  addressLine1:    "",
+  addressCity:     "Pune",
+  addressState:    "Maharashtra",
+  addressPincode:  "",
+  addressCountry:  "India",
   socialInstagram: "",
   socialTwitter:   "",
   socialYoutube:   "",
   socialFacebook:  "",
   socialLinkedin:  "",
-  footerTagline:  "Made with chai on NH-48.",
-  loading:        true,
+  footerTagline:   "Made with chai on NH-48.",
+  loading:         true,
 };
 
-const BrandingContext = createContext({ ...SITE_DEFAULTS, reload: () => {} });
+// ── localStorage cache (stale-while-revalidate) ──────────────────────────────
+// Key versioned so a schema change auto-invalidates old entries.
+const CACHE_KEY = "apnafastag_branding_v2";
 
+function readCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(data) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+  } catch {
+    // Storage full or private browsing — silently skip
+  }
+}
+
+// ── API response → context shape ─────────────────────────────────────────────
 function mapApiToContext(d) {
   return {
     logo:            d.logo_url         || null,
@@ -56,11 +77,20 @@ function mapApiToContext(d) {
     socialFacebook:  d.social_facebook  || "",
     socialLinkedin:  d.social_linkedin  || "",
     footerTagline:   d.footer_tagline   || SITE_DEFAULTS.footerTagline,
+    loading:         false,
   };
 }
 
+// ── Context ───────────────────────────────────────────────────────────────────
+const BrandingContext = createContext({ ...SITE_DEFAULTS, reload: () => {} });
+
 export function BrandingProvider({ children }) {
-  const [site, setSite] = useState({ ...SITE_DEFAULTS });
+  // Initialise instantly from localStorage (if available) → zero flash on
+  // repeat visits.  Falls back to SITE_DEFAULTS on the very first visit.
+  const cached = readCache();
+  const [site, setSite] = useState(
+    cached ? cached : { ...SITE_DEFAULTS }
+  );
 
   const fetchBranding = async () => {
     try {
@@ -68,13 +98,24 @@ export function BrandingProvider({ children }) {
       const res = await fetch(`${base}/api/branding`);
       if (!res.ok) throw new Error("branding fetch failed");
       const d = await res.json();
-      setSite({ ...mapApiToContext(d), loading: false });
+      const mapped = mapApiToContext(d);
+      // Write to cache first so the next page load is instant
+      writeCache(mapped);
+      // Only trigger a re-render if something actually changed
+      setSite((prev) => {
+        const changed = Object.keys(mapped).some((k) => prev[k] !== mapped[k]);
+        return changed ? mapped : prev;
+      });
     } catch {
+      // API unreachable — keep showing cached / default values; mark not loading
       setSite((b) => ({ ...b, loading: false }));
     }
   };
 
-  useEffect(() => { fetchBranding(); }, []);
+  // Fetch fresh data on every mount (stale-while-revalidate)
+  useEffect(() => {
+    fetchBranding();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Inject dynamic favicon whenever it changes
   useEffect(() => {
