@@ -55,7 +55,7 @@ export default function Header() {
               <img
                 src={logo}
                 alt={siteName}
-                className="h-9 md:h-10 w-auto max-w-[160px] object-contain"
+                className="h-10 md:h-12 w-auto max-w-[200px] object-contain"
               />
             ) : (
               <>

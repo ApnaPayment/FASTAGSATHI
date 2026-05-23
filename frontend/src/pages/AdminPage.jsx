@@ -2949,7 +2949,7 @@ function BrandingTab() {
               <p className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wider mb-3">Header preview</p>
               <div className="bg-[#F8F9FA] rounded-xl px-6 py-4 flex items-center">
                 {site.logo ? (
-                  <img src={site.logo} alt="logo" className="h-10 w-auto max-w-[160px] object-contain" />
+                  <img src={site.logo} alt="logo" className="h-12 w-auto max-w-[200px] object-contain" />
                 ) : (
                   <div className="flex items-center gap-2">
                     <div className="relative w-10 h-10 rounded-xl bg-[#0A0A0A] flex items-center justify-center shadow-[3px_3px_0_#FF6B00]">
