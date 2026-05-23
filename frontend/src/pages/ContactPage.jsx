@@ -24,7 +24,7 @@ export default function ContactPage() {
     <>
       <SEO
         title="Contact ApnaFastag — talk to a real human"
-        description="Email help@apnafastag.in, WhatsApp +91-80000-00000, helpline 1800-XXX-XXXX (24×7). Most messages get a reply in under 4 hours."
+        description="Email help@apnafastag.com, WhatsApp +91-80000-00000, helpline 1800-XXX-XXXX (24×7). Most messages get a reply in under 4 hours."
         path="/contact"
       />
       <PageHero
@@ -67,7 +67,7 @@ export default function ContactPage() {
 
           <div className="md:col-span-2 space-y-4">
             {[
-              { Icon: Mail,    t: "Email",     v: "help@apnafastag.in" },
+              { Icon: Mail,    t: "Email",     v: "help@apnafastag.com" },
               { Icon: Phone,   t: "Helpline",  v: "1800-XXX-XXXX (24×7)" },
               { Icon: MessageSquare, t: "WhatsApp", v: "+91 80000 00000" },
               { Icon: MapPin,  t: "HQ",        v: "Pune, Maharashtra · IN" },

@@ -34,7 +34,7 @@ export default function CareersPage() {
       <section className="py-16 bg-white">
         <div className="max-w-5xl mx-auto px-6 md:px-10 lg:px-12 space-y-4">
           {JOBS.map((j) => (
-            <a key={j.title} href={`mailto:hiring@apnafastag.in?subject=Applying — ${encodeURIComponent(j.title)}`} className="group flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-[#F8F9FA] border-2 border-[#0A0A0A] rounded-2xl p-6 hover:bg-[#0A0A0A] hover:text-white transition-colors">
+            <a key={j.title} href={`mailto:hiring@apnafastag.com?subject=Applying — ${encodeURIComponent(j.title)}`} className="group flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-[#F8F9FA] border-2 border-[#0A0A0A] rounded-2xl p-6 hover:bg-[#0A0A0A] hover:text-white transition-colors">
               <div>
                 <h3 className="font-display font-bold text-xl">{j.title}</h3>
                 <div className="flex flex-wrap gap-4 text-sm text-[#4B5563] group-hover:text-white/60 mt-2">

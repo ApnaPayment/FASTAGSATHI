@@ -14,7 +14,12 @@
       "Bash(python3 -m json.tool)",
       "Bash(curl -s -X POST http://localhost:8000/api/admin/seed -H 'x-admin-secret: sathi-admin-2026')",
       "Bash(curl -s http://localhost:8000/api/sathis/ravi-shinde-khalapur)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'Admin: persist session across refresh + full-page login UI *)",
+      "Bash(git push *)",
+      "Bash(curl -s https://fastagsathi-production.up.railway.app/api/plazas)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

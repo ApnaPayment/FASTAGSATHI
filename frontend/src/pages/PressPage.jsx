@@ -64,7 +64,7 @@ export default function PressPage() {
 
           <div className="mt-14 bg-[#0A0A0A] text-white rounded-3xl p-7">
             <h3 className="font-display font-black text-2xl">Press contact</h3>
-            <p className="text-white/70 mt-2">Anjali Singh · <a className="text-[#FFD60A] underline" href="mailto:press@apnafastag.in">press@apnafastag.in</a></p>
+            <p className="text-white/70 mt-2">Anjali Singh · <a className="text-[#FFD60A] underline" href="mailto:press@apnafastag.com">press@apnafastag.com</a></p>
           </div>
         </div>
       </section>

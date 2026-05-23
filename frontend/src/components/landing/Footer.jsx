@@ -81,7 +81,7 @@ export default function Footer() {
             <div className="mt-6 text-xs uppercase tracking-widest text-[#FF6B00] font-bold mb-3">
               Support
             </div>
-            <p className="text-sm text-white/70">help@apnafastag.in</p>
+            <p className="text-sm text-white/70">help@apnafastag.com</p>
             <p className="text-sm text-white/70">1800-XXX-XXXX (24×7)</p>
           </div>
         </div>

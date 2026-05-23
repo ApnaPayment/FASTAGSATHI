@@ -36,7 +36,7 @@ export default function LegalPage({ kind }) {
           <p>{kind === "privacy" ? "Firebase (auth, data), Razorpay (payments), Twilio/Exotel (masked calling), Sentry (error logs). Each operates under their own privacy policy and is processed under DPA contracts." : kind === "terms" ? "ApnaFastag is an intermediary. We do not guarantee NHAI / bank resolution outcomes; we guarantee that a verified Sathi will attempt resolution within agreed SLAs." : "Refunds initiated within 24 hours of dispute close. Credit reflects in source account within 5–7 business days via Razorpay."}</p>
 
           <h2 className="font-display font-black text-2xl pt-4">4. Contact</h2>
-          <p>Reach <a className="text-[#FF6B00] underline" href="mailto:legal@apnafastag.in">legal@apnafastag.in</a> for any clarifications, data-deletion requests, or grievance redressal under the IT Rules 2021.</p>
+          <p>Reach <a className="text-[#FF6B00] underline" href="mailto:legal@apnafastag.com">legal@apnafastag.com</a> for any clarifications, data-deletion requests, or grievance redressal under the IT Rules 2021.</p>
         </article>
       </section>
     </>

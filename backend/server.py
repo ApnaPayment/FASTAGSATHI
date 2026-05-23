@@ -55,6 +55,24 @@ app = FastAPI(title="Sathi API")
 api = APIRouter(prefix="/api")
 bearer = HTTPBearer(auto_error=False)
 
+# ─── www redirect middleware ───────────────────────────────────────────────────
+# Redirect apnafastag.com (no-www) → www.apnafastag.com with 301.
+# Both domains must be added as custom domains in Railway.
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import RedirectResponse as _RedirectResponse
+
+class WwwRedirectMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        host = request.headers.get("host", "")
+        # Strip port for comparison
+        hostname = host.split(":")[0]
+        if hostname == "apnafastag.com":
+            url = str(request.url).replace("://apnafastag.com", "://www.apnafastag.com", 1)
+            return _RedirectResponse(url=url, status_code=301)
+        return await call_next(request)
+
+app.add_middleware(WwwRedirectMiddleware)
+
 # ─── SSE subscriber registry ──────────────────────────────────────────────────
 # Maps sathi_slug -> list of asyncio.Queue (one per open connection)
 sathi_subscribers: dict[str, list[asyncio.Queue]] = {}
@@ -2405,7 +2423,7 @@ async def _cf_create_order(order_id: str, amount: float, user_id: str, phone: st
                     "customer_id": user_id,
                     "customer_phone": phone,
                     "customer_name": "Customer",
-                    "customer_email": f"customer{phone[-4:]}@apnafastag.in",
+                    "customer_email": f"customer{phone[-4:]}@apnafastag.com",
                 },
                 "order_meta": {
                     "return_url": f"{FRONTEND_URL}{return_path}",

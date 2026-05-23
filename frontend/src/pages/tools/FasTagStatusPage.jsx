@@ -57,7 +57,7 @@ export default function FasTagStatusPage() {
         jsonLd={webAppSchema({
           name: "FASTag Status Checker",
           description: "Free FASTag status lookup by vehicle number.",
-          url: "https://apnafastag.in/tools/fastag-status",
+          url: "https://www.apnafastag.com/tools/fastag-status",
         })}
       />
 
