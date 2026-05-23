@@ -92,8 +92,8 @@ const BrandingContext = createContext({ ...SITE_DEFAULTS, reload: () => {} });
  *                     in index.html so it's available before React loads.
  *
  *  2. window.__BRANDING__ — injected into every HTML page by prerender.mjs at
- *                     build time (excludes logo/favicon to keep HTML compact).
- *                     Covers first-ever visits where localStorage is empty.
+ *                     build time. logo_url/favicon_url are proper HTTP URLs
+ *                     (not base64), so they're included and preloaded too.
  *
  *  3. SITE_DEFAULTS — absolute last resort (dev mode, CI, empty cache).
  */

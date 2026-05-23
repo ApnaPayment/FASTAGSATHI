@@ -543,20 +543,24 @@ async function emit() {
   // ── Fetch live branding from the API at build time ──────────────────────────
   // Injected as window.__BRANDING__ into every page so BrandingContext can
   // initialise with correct data on frame-1 (zero flash on first visit).
-  // logo_url / favicon_url are excluded — base64 data-URLs can be 100 KB+
-  // and would bloat every HTML file. They load from localStorage / API instead.
+  // logo_url / favicon_url are now proper HTTP URLs (not base64), so they're
+  // safe to include — tiny strings, cached by the browser, preload-able.
   let brandingSnippet = "";
   try {
     const backendUrl = process.env.REACT_APP_BACKEND_URL || "https://fastagsathi-production.up.railway.app";
     const res = await fetch(`${backendUrl}/api/branding`, { signal: AbortSignal.timeout(8000) });
     if (res.ok) {
       const d = await res.json();
-      // Strip large binary fields before baking into HTML
-      const { logo_url, favicon_url, ...slim } = d; // eslint-disable-line no-unused-vars
-      // Escape </script> sequences to prevent HTML injection
-      const json = JSON.stringify(slim).replace(/<\//g, "<\\/");
-      // Use ||= pattern so localStorage (set by the browser inline script) wins
+      // logo_url and favicon_url are now proper HTTP URLs (not base64) — safe to include.
+      // Escape </script> sequences to prevent HTML injection.
+      const json = JSON.stringify(d).replace(/<\//g, "<\\/");
+      // Use || so localStorage (seeded by the inline script in index.html) always wins
       brandingSnippet = `<script>window.__BRANDING__=window.__BRANDING__||${json};</script>`;
+      // Preload the logo so the browser fetches it while HTML is still parsing —
+      // the image is in browser cache by the time React mounts, zero flash.
+      if (d.logo_url) {
+        brandingSnippet += `\n<link rel="preload" as="image" href="${d.logo_url}">`;
+      }
       console.log("✅ Branding fetched and will be injected into every page");
     }
   } catch (e) {

@@ -446,7 +446,49 @@ async def get_branding():
     result = dict(SITE_DEFAULTS)
     if doc:
         result.update({k: v for k, v in doc.items() if k in SITE_DEFAULTS})
+    # Replace base64 data-URLs with proper cacheable HTTP image URLs.
+    # The browser caches these like any <img> — they don't bloat API payloads
+    # and they can be preloaded in HTML <head> for instant logo rendering.
+    # The ?t= timestamp param busts the cache whenever admin re-uploads.
+    logo_ts = doc.get("logo_ts", 0) if doc else 0
+    fav_ts  = doc.get("favicon_ts", 0) if doc else 0
+    result["logo_url"]    = f"{BACKEND_SITE}/api/branding/logo-image?t={logo_ts}"    if result.get("logo_url")    else None
+    result["favicon_url"] = f"{BACKEND_SITE}/api/branding/favicon-image?t={fav_ts}" if result.get("favicon_url") else None
     return result
+
+def _serve_branding_image(data_url: str):
+    """Decode a stored base64 data-URL and return a FastAPI binary Response."""
+    from fastapi.responses import Response as FResponse
+    try:
+        header, b64data = data_url.split(",", 1)
+        content_type = header.split(";")[0].replace("data:", "") or "image/png"
+        return FResponse(
+            content=base64.b64decode(b64data),
+            media_type=content_type,
+            headers={
+                # Cache 1 hour at the CDN / browser; allow 24h stale-while-revalidate
+                "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+            },
+        )
+    except Exception:
+        from fastapi.responses import Response as FResponse
+        raise HTTPException(status_code=500, detail="Malformed image data")
+
+@app.get("/api/branding/logo-image", tags=["branding"], include_in_schema=False)
+async def get_branding_logo():
+    """Serve the company logo as a binary image (cached, no base64 bloat)."""
+    doc = await db.site_settings.find_one({"key": "branding"}, {"_id": 0, "logo_url": 1})
+    if not doc or not doc.get("logo_url"):
+        raise HTTPException(status_code=404, detail="No logo uploaded")
+    return _serve_branding_image(doc["logo_url"])
+
+@app.get("/api/branding/favicon-image", tags=["branding"], include_in_schema=False)
+async def get_branding_favicon():
+    """Serve the favicon as a binary image (cached)."""
+    doc = await db.site_settings.find_one({"key": "branding"}, {"_id": 0, "favicon_url": 1})
+    if not doc or not doc.get("favicon_url"):
+        raise HTTPException(status_code=404, detail="No favicon uploaded")
+    return _serve_branding_image(doc["favicon_url"])
 
 @help_router.get("")
 async def list_help(
@@ -1700,13 +1742,16 @@ async def admin_upload_logo(file: UploadFile = File(...)):
             mime = "image/jpeg" if ext in {".jpg", ".jpeg"} else "image/png"
             data_url = f"data:{mime};base64," + base64.b64encode(contents).decode()
 
+    import time as _time
+    logo_ts = int(_time.time())
     await db.site_settings.update_one(
         {"key": "branding"},
-        {"$set": {"logo_url": data_url, "updated_at": datetime.utcnow().isoformat()}},
+        {"$set": {"logo_url": data_url, "logo_ts": logo_ts, "updated_at": datetime.utcnow().isoformat()}},
         upsert=True,
     )
     logger.info(f"Site logo uploaded ({len(data_url)} chars)")
-    return {"ok": True, "logo_url": data_url}
+    logo_serve_url = f"{BACKEND_SITE}/api/branding/logo-image?t={logo_ts}"
+    return {"ok": True, "logo_url": logo_serve_url}
 
 @admin_router.post("/branding/upload-favicon", dependencies=[Depends(_check_admin)])
 async def admin_upload_favicon(file: UploadFile = File(...)):
@@ -1738,13 +1783,16 @@ async def admin_upload_favicon(file: UploadFile = File(...)):
             logger.warning(f"Favicon resize failed ({e}), storing as-is")
             data_url = "data:image/png;base64," + base64.b64encode(contents).decode()
 
+    import time as _time
+    fav_ts = int(_time.time())
     await db.site_settings.update_one(
         {"key": "branding"},
-        {"$set": {"favicon_url": data_url, "updated_at": datetime.utcnow().isoformat()}},
+        {"$set": {"favicon_url": data_url, "favicon_ts": fav_ts, "updated_at": datetime.utcnow().isoformat()}},
         upsert=True,
     )
     logger.info(f"Site favicon uploaded ({len(data_url)} chars)")
-    return {"ok": True, "favicon_url": data_url}
+    fav_serve_url = f"{BACKEND_SITE}/api/branding/favicon-image?t={fav_ts}"
+    return {"ok": True, "favicon_url": fav_serve_url}
 
 @admin_router.delete("/branding/logo", dependencies=[Depends(_check_admin)])
 async def admin_delete_logo():
