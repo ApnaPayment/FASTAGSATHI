@@ -72,6 +72,13 @@ export const sathiDashApi = {
   stats: () => api.get("/api/sathi-dashboard/stats"),
 };
 
+export const fastagOrderApi = {
+  prices:      ()                   => api.get("/api/fastag/prices"),
+  create:      (data)               => api.post("/api/fastag/orders", data),
+  track:       (order_id, phone)    => api.get("/api/fastag/orders/track", { params: { order_id, phone } }),
+  verify:      (order_id, phone)    => api.get(`/api/fastag/orders/verify/${order_id}`, { params: { phone } }),
+};
+
 export const toolsApi = {
   fastagStatus: (vehicle) => api.get("/api/tools/fastag-status", { params: { vehicle } }),
 };
@@ -162,6 +169,12 @@ export const adminApi = {
   },
   deleteLogo:    () => api.delete("/api/admin/branding/logo",    { headers: adminHeaders() }),
   deleteFavicon: () => api.delete("/api/admin/branding/favicon", { headers: adminHeaders() }),
+  // FASTag orders
+  fastagOrders:       (params) => api.get("/api/admin/fastag-orders", { params, headers: adminHeaders() }),
+  fastagOrderStats:   ()       => api.get("/api/admin/fastag-orders/stats", { headers: adminHeaders() }),
+  updateFastagOrder:  (id, d)  => api.patch(`/api/admin/fastag-orders/${id}`, d, { headers: adminHeaders() }),
+  fastagPrices:       ()       => api.get("/api/admin/fastag-prices", { headers: adminHeaders() }),
+  updateFastagPrice:  (slug,d) => api.patch(`/api/admin/fastag-prices/${slug}`, d, { headers: adminHeaders() }),
 };
 
 export default api;

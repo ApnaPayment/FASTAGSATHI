@@ -7,12 +7,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useBranding } from "@/contexts/BrandingContext";
 
 const NAV = [
-  { label: "How it Works", to: "/how-it-works" },
-  { label: "Features",     to: "/features" },
-  { label: "Pricing",      to: "/pricing" },
-  { label: "Coverage",     to: "/coverage" },
+  { label: "Buy FASTag",     to: "/buy-fastag",     highlight: true },
+  { label: "How it Works",   to: "/how-it-works" },
+  { label: "Features",       to: "/features" },
+  { label: "Coverage",       to: "/coverage" },
   { label: "Become a Sathi", to: "/become-a-sathi" },
-  { label: "Help",         to: "/help" },
+  { label: "Help",           to: "/help" },
 ];
 
 const LANGS = ["EN", "हिं", "मरा", "தமி"];
@@ -76,6 +76,16 @@ export default function Header() {
         <nav className="hidden lg:flex items-center gap-6 flex-1 justify-center">
           {NAV.map((n) => {
             const active = pathname === n.to || (n.to !== "/" && pathname.startsWith(n.to));
+            if (n.highlight) return (
+              <Link
+                key={n.to}
+                to={n.to}
+                data-testid={`nav-link-${n.label.replace(/\s+/g, "-").toLowerCase()}`}
+                className={`text-sm font-bold px-3 py-1.5 rounded-full border-2 transition-all ${active ? "bg-[#FF6B00] border-[#FF6B00] text-white" : "border-[#FF6B00] text-[#FF6B00] hover:bg-[#FF6B00] hover:text-white"}`}
+              >
+                {n.label}
+              </Link>
+            );
             return (
               <Link
                 key={n.to}
@@ -168,7 +178,8 @@ export default function Header() {
         >
           <div className="px-6 py-6 flex flex-col gap-4">
             {NAV.map((n) => (
-              <Link key={n.to} to={n.to} className="text-base font-semibold text-[#0A0A0A]">
+              <Link key={n.to} to={n.to}
+                className={`text-base font-semibold ${n.highlight ? "text-[#FF6B00]" : "text-[#0A0A0A]"}`}>
                 {n.label}
               </Link>
             ))}

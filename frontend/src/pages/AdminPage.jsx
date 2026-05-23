@@ -12,7 +12,7 @@ import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import { BANKS as SEED_BANKS, STATES as SEED_STATES } from "@/data/seed";
 
-const TABS = ["Dashboard", "Applications", "Jobs", "Sathis", "Promo Codes", "Settlements", "Plazas", "Sitemap", "Content", "Branding"];
+const TABS = ["Dashboard", "Applications", "Jobs", "Sathis", "Promo Codes", "Settlements", "FASTag Orders", "Plazas", "Sitemap", "Content", "Branding"];
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 const fullUrl = (url) => { if (!url) return ""; if (url.startsWith("http") || url.startsWith("data:")) return url; if (BACKEND.includes("localhost") && !window.location.hostname.includes("localhost")) return ""; return `${BACKEND}${url}`; };
@@ -186,6 +186,7 @@ function Dashboard({ onLogout }) {
         {tab === "Sathis"       && <SathisTab />}
         {tab === "Promo Codes"  && <PromoCodesTab />}
         {tab === "Settlements"  && <SettlementsTab />}
+        {tab === "FASTag Orders" && <FasTagOrdersTab />}
         {tab === "Plazas"       && <PlazasTab />}
         {tab === "Sitemap"      && <SitemapTab />}
         {tab === "Content"      && <ContentTab />}
@@ -2464,6 +2465,294 @@ function SitemapTab() {
           ]}
           templateNote='JSON array: [{"slug":"sbi-fastag","name":"SBI FASTag","shortName":"SBI","helpline":"1800-11-0018","smsCode":"FTBAL","marketShare":18}]'
         />
+      )}
+    </div>
+  );
+}
+
+// ─── FASTag Orders Tab ────────────────────────────────────────────────────────
+
+const FTO_STATUSES = ["all", "pending_payment", "paid", "confirmed", "sathi_assigned", "out_for_delivery", "delivered", "activated", "cancelled"];
+const FTO_STATUS_COLORS = {
+  pending_payment: "bg-yellow-100 text-yellow-800",
+  paid:            "bg-green-100 text-green-800",
+  confirmed:       "bg-blue-100 text-blue-800",
+  sathi_assigned:  "bg-orange-100 text-orange-800",
+  out_for_delivery:"bg-purple-100 text-purple-800",
+  delivered:       "bg-indigo-100 text-indigo-800",
+  activated:       "bg-emerald-100 text-emerald-800",
+  cancelled:       "bg-red-100 text-red-800",
+};
+
+function FasTagOrdersTab() {
+  const [orders, setOrders] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [prices, setPrices] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [editForm, setEditForm] = useState({ status: "", sathi_name: "", tracking_notes: "" });
+  const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState("orders"); // orders | pricing
+  const [savingPrice, setSavingPrice] = useState(null);
+  const [priceEdits, setPriceEdits] = useState({});
+  const BANKS_META = SEED_BANKS.reduce((acc, b) => { acc[b.slug] = b; return acc; }, {});
+
+  const fetchOrders = useCallback(async (p = 1) => {
+    setLoading(true);
+    try {
+      const params = { page: p, limit: 50 };
+      if (statusFilter !== "all") params.status = statusFilter;
+      if (search.trim()) params.search = search.trim();
+      const res = await adminApi.fastagOrders(params);
+      setOrders(res.data.orders || []);
+      setTotal(res.data.total || 0);
+      setPages(res.data.pages || 1);
+      setPage(p);
+    } catch { setOrders([]); }
+    setLoading(false);
+  }, [statusFilter, search]);
+
+  const fetchStats = useCallback(async () => {
+    try { const r = await adminApi.fastagOrderStats(); setStats(r.data); } catch {}
+  }, []);
+
+  const fetchPrices = useCallback(async () => {
+    try { const r = await adminApi.fastagPrices(); setPrices(r.data); } catch {}
+  }, []);
+
+  useEffect(() => { fetchOrders(1); fetchStats(); fetchPrices(); }, [statusFilter]);
+  useEffect(() => { const t = setTimeout(() => fetchOrders(1), 350); return () => clearTimeout(t); }, [search]);
+
+  const openEdit = (order) => {
+    setSelectedOrder(order);
+    setEditForm({ status: order.status, sathi_name: order.sathi_name || "", tracking_notes: order.tracking_notes || "" });
+  };
+
+  const saveEdit = async () => {
+    setSaving(true);
+    try {
+      await adminApi.updateFastagOrder(selectedOrder.order_id, editForm);
+      setSelectedOrder(null);
+      fetchOrders(page);
+      fetchStats();
+    } catch {}
+    setSaving(false);
+  };
+
+  const savePrice = async (bankSlug) => {
+    setSavingPrice(bankSlug);
+    try {
+      await adminApi.updateFastagPrice(bankSlug, priceEdits[bankSlug] || {});
+      fetchPrices();
+    } catch {}
+    setSavingPrice(null);
+  };
+
+  const paidRevenue = stats?.total_revenue || 0;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-black text-[#0A0A0A]">FASTag Orders</h2>
+          <p className="text-sm text-[#6B7280] mt-1">Manage purchase orders, assign Sathis, update delivery status</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => setActiveTab("orders")} className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${activeTab === "orders" ? "bg-[#0A0A0A] text-white" : "bg-[#F3F4F6] text-[#374151] hover:bg-[#E5E7EB]"}`}>Orders</button>
+          <button onClick={() => setActiveTab("pricing")} className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${activeTab === "pricing" ? "bg-[#0A0A0A] text-white" : "bg-[#F3F4F6] text-[#374151] hover:bg-[#E5E7EB]"}`}>Pricing</button>
+        </div>
+      </div>
+
+      {activeTab === "orders" && <>
+        {/* Stats */}
+        {stats && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: "Total Orders", val: stats.total_orders },
+              { label: "Revenue Collected", val: `₹${paidRevenue.toLocaleString()}` },
+              { label: "Active", val: (stats.by_status?.paid || 0) + (stats.by_status?.confirmed || 0) + (stats.by_status?.sathi_assigned || 0) + (stats.by_status?.out_for_delivery || 0) },
+              { label: "Activated", val: stats.by_status?.activated || 0 },
+            ].map((s) => (
+              <div key={s.label} className="bg-white border-2 border-[#E5E7EB] rounded-2xl p-4">
+                <p className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wider">{s.label}</p>
+                <p className="text-2xl font-black text-[#0A0A0A] mt-1">{s.val}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-3">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />
+            <input className="w-full pl-9 pr-4 py-2.5 border-2 border-[#E5E7EB] rounded-xl text-sm focus:border-[#FF6B00] focus:outline-none"
+              placeholder="Search order ID, phone, name…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+          <select className="border-2 border-[#E5E7EB] rounded-xl px-3 py-2.5 text-sm focus:border-[#FF6B00] focus:outline-none"
+            value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            {FTO_STATUSES.map((s) => <option key={s} value={s}>{s === "all" ? "All statuses" : s.replace(/_/g, " ")}</option>)}
+          </select>
+          <button onClick={() => fetchOrders(1)} className="px-4 py-2.5 border-2 border-[#E5E7EB] rounded-xl text-sm font-semibold hover:border-[#0A0A0A] transition-colors flex items-center gap-1.5">
+            <RefreshCw className="w-4 h-4" /> Refresh
+          </button>
+        </div>
+
+        {/* Table */}
+        <div className="bg-white border-2 border-[#E5E7EB] rounded-2xl overflow-hidden">
+          {loading ? (
+            <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 text-[#FF6B00] animate-spin" /></div>
+          ) : orders.length === 0 ? (
+            <p className="text-center py-16 text-[#9CA3AF]">No orders found</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-[#F8F9FA] border-b border-[#E5E7EB]">
+                  <tr>
+                    {["Order ID", "Customer", "Bank", "Vehicle", "Amount", "Status", "Date", "Actions"].map((h) => (
+                      <th key={h} className="text-left px-4 py-3 text-xs font-bold text-[#6B7280] uppercase tracking-wider">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F3F4F6]">
+                  {orders.map((o) => {
+                    const bank = BANKS_META[o.bank_slug] || {};
+                    return (
+                      <tr key={o.order_id} className="hover:bg-[#F8F9FA] transition-colors">
+                        <td className="px-4 py-3 font-mono text-xs font-bold text-[#0A0A0A]">{o.order_id}</td>
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-[#0A0A0A]">{o.customer_name}</p>
+                          <p className="text-xs text-[#6B7280]">{o.customer_phone}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5">
+                            {bank.logo ? <img src={bank.logo} alt="" className="h-5 w-7 object-contain" /> :
+                              <div className="w-7 h-5 rounded text-white text-[9px] font-black flex items-center justify-center" style={{ background: bank.color || "#6B7280" }}>{bank.shortName?.slice(0,2)}</div>}
+                            <span className="text-xs font-semibold">{bank.shortName || o.bank_slug}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-xs font-mono text-[#374151]">{o.vehicle_number}</td>
+                        <td className="px-4 py-3 font-black text-[#0A0A0A]">₹{o.amount}</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${FTO_STATUS_COLORS[o.status] || "bg-gray-100 text-gray-600"}`}>
+                            {o.status.replace(/_/g, " ")}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-[#6B7280]">
+                          {new Date(o.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button onClick={() => openEdit(o)}
+                            className="inline-flex items-center gap-1 text-xs font-bold text-[#FF6B00] hover:text-[#E66000] border border-[#FF6B00]/30 rounded-lg px-2.5 py-1.5 hover:bg-[#FFF7F0] transition-colors">
+                            <Edit2 className="w-3 h-3" /> Update
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Pagination */}
+        {pages > 1 && (
+          <div className="flex items-center justify-center gap-2">
+            <button onClick={() => fetchOrders(page - 1)} disabled={page === 1}
+              className="px-3 py-1.5 border rounded-lg text-sm disabled:opacity-40">← Prev</button>
+            <span className="text-sm text-[#6B7280]">Page {page} of {pages} · {total} orders</span>
+            <button onClick={() => fetchOrders(page + 1)} disabled={page === pages}
+              className="px-3 py-1.5 border rounded-lg text-sm disabled:opacity-40">Next →</button>
+          </div>
+        )}
+      </>}
+
+      {/* Pricing tab */}
+      {activeTab === "pricing" && (
+        <div className="space-y-4">
+          <p className="text-sm text-[#6B7280]">Set the flat price customers pay per bank FASTag (includes all fees). Leave blank to use default.</p>
+          <div className="grid md:grid-cols-2 gap-4">
+            {prices.map((p) => {
+              const bank = BANKS_META[p.bank_slug] || {};
+              const edit = priceEdits[p.bank_slug] || {};
+              return (
+                <div key={p.bank_slug} className="bg-white border-2 border-[#E5E7EB] rounded-2xl p-5">
+                  <div className="flex items-center gap-3 mb-4">
+                    {bank.logo ? <img src={bank.logo} alt="" className="h-8 w-12 object-contain" /> :
+                      <div className="w-12 h-8 rounded-lg flex items-center justify-center text-white font-black text-xs" style={{ background: bank.color || "#6B7280" }}>{bank.shortName?.slice(0,2)}</div>}
+                    <p className="font-black text-[#0A0A0A]">{bank.name || p.bank_slug}</p>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-[#374151] w-20">Price (₹)</span>
+                      <input type="number" className="flex-1 border-2 border-[#E5E7EB] rounded-xl px-3 py-2 text-sm focus:border-[#FF6B00] focus:outline-none"
+                        defaultValue={p.price}
+                        onChange={(e) => setPriceEdits((prev) => ({ ...prev, [p.bank_slug]: { ...prev[p.bank_slug], price: parseInt(e.target.value) || p.price } }))} />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-[#374151] w-20">Available</span>
+                      <input type="checkbox" defaultChecked={p.is_available !== false}
+                        onChange={(e) => setPriceEdits((prev) => ({ ...prev, [p.bank_slug]: { ...prev[p.bank_slug], is_available: e.target.checked } }))}
+                        className="w-4 h-4 accent-[#FF6B00]" />
+                    </div>
+                    <button onClick={() => savePrice(p.bank_slug)} disabled={savingPrice === p.bank_slug}
+                      className="w-full bg-[#0A0A0A] text-white font-bold text-sm py-2 rounded-xl hover:bg-[#FF6B00] transition-colors disabled:opacity-60 flex items-center justify-center gap-1.5">
+                      {savingPrice === p.bank_slug ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                      {savingPrice === p.bank_slug ? "Saving…" : "Save"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Edit modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl">
+            <h3 className="font-black text-[#0A0A0A] text-lg mb-1">Update Order</h3>
+            <p className="text-sm text-[#6B7280] mb-5 font-mono">{selectedOrder.order_id}</p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-[#374151] mb-1.5">Status</label>
+                <select className="w-full border-2 border-[#E5E7EB] rounded-xl px-3 py-2.5 text-sm focus:border-[#FF6B00] focus:outline-none"
+                  value={editForm.status} onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}>
+                  {FTO_STATUSES.filter((s) => s !== "all").map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-[#374151] mb-1.5">Assigned Sathi name</label>
+                <input className="w-full border-2 border-[#E5E7EB] rounded-xl px-3 py-2.5 text-sm focus:border-[#FF6B00] focus:outline-none"
+                  placeholder="Ravi Shinde"
+                  value={editForm.sathi_name} onChange={(e) => setEditForm((f) => ({ ...f, sathi_name: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-[#374151] mb-1.5">Note for customer (shown in tracking)</label>
+                <textarea className="w-full border-2 border-[#E5E7EB] rounded-xl px-3 py-2.5 text-sm focus:border-[#FF6B00] focus:outline-none" rows={2}
+                  placeholder="Your Sathi will call you by 3 PM…"
+                  value={editForm.tracking_notes} onChange={(e) => setEditForm((f) => ({ ...f, tracking_notes: e.target.value }))} />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setSelectedOrder(null)}
+                className="flex-1 border-2 border-[#E5E7EB] text-[#374151] font-bold py-2.5 rounded-xl hover:border-[#0A0A0A] transition-colors">
+                Cancel
+              </button>
+              <button onClick={saveEdit} disabled={saving}
+                className="flex-1 bg-[#FF6B00] text-white font-bold py-2.5 rounded-xl hover:bg-[#E66000] disabled:opacity-60 transition-colors flex items-center justify-center gap-1.5">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {saving ? "Saving…" : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -251,6 +251,135 @@ async def get_me(current: dict = Depends(_require_user)):
 
 # ─── Sathi routes ─────────────────────────────────────────────────────────────
 
+# ─── FASTag purchase defaults ─────────────────────────────────────────────────
+
+FASTAG_DEFAULT_PRICES: dict = {
+    "paytm-fastag": {"price": 499, "security_info": "₹100 refundable security deposit included"},
+    "sbi-fastag":   {"price": 599, "security_info": "₹200 refundable security deposit included"},
+    "hdfc-fastag":  {"price": 599, "security_info": "₹200 refundable security deposit included"},
+    "icici-fastag": {"price": 549, "security_info": "₹200 refundable security deposit included"},
+    "axis-fastag":  {"price": 549, "security_info": "₹200 refundable security deposit included"},
+    "kotak-fastag": {"price": 549, "security_info": "₹200 refundable security deposit included"},
+    "yes-fastag":   {"price": 499, "security_info": "₹100 refundable security deposit included"},
+    "idfc-fastag":  {"price": 499, "security_info": "₹100 refundable security deposit included"},
+}
+
+FASTAG_VEHICLE_TYPES = ["Car / Jeep / Van", "SUV / MUV", "LCV (Mini-truck)", "Bus", "Truck / HCV", "MAV / Earth Mover", "3-Wheeler", "2-Wheeler"]
+FASTAG_STATUSES = ["pending_payment", "paid", "confirmed", "sathi_assigned", "out_for_delivery", "delivered", "activated", "cancelled"]
+
+class FasTagOrderIn(BaseModel):
+    bank_slug: str
+    customer_name: str
+    customer_phone: str
+    customer_email: Optional[str] = None
+    vehicle_type: str
+    vehicle_number: str
+    chassis_last6: str
+    delivery_address: str
+    delivery_city: str
+    delivery_state: str
+    delivery_pincode: str
+    notes: Optional[str] = ""
+
+fastag_router = APIRouter(prefix="/fastag", tags=["fastag"])
+
+@fastag_router.get("/prices")
+async def get_fastag_prices():
+    """Return per-bank prices (DB overrides default, fallback to hardcoded)."""
+    rows = await db.fastag_pricing.find({}, {"_id": 0}).to_list(20)
+    db_map = {r["bank_slug"]: r for r in rows}
+    result = []
+    for slug, defaults in FASTAG_DEFAULT_PRICES.items():
+        row = db_map.get(slug, {})
+        result.append({
+            "bank_slug":     slug,
+            "price":         row.get("price",         defaults["price"]),
+            "security_info": row.get("security_info", defaults["security_info"]),
+            "is_available":  row.get("is_available",  True),
+        })
+    return result
+
+@fastag_router.post("/orders")
+async def create_fastag_order(body: FasTagOrderIn):
+    # Validate bank
+    if body.bank_slug not in FASTAG_DEFAULT_PRICES:
+        raise HTTPException(status_code=400, detail="Invalid bank")
+
+    # Get price
+    pricing = await db.fastag_pricing.find_one({"bank_slug": body.bank_slug}, {"_id": 0}) or {}
+    price = pricing.get("price", FASTAG_DEFAULT_PRICES[body.bank_slug]["price"])
+    if not pricing.get("is_available", True):
+        raise HTTPException(status_code=400, detail="This bank FASTag is temporarily unavailable")
+
+    order_id = f"FTO-{str(uuid.uuid4())[:10].upper()}"
+    now = datetime.now(timezone.utc).isoformat()
+
+    order = {
+        "order_id":         order_id,
+        "bank_slug":        body.bank_slug,
+        "customer_name":    body.customer_name.strip(),
+        "customer_phone":   body.customer_phone.strip(),
+        "customer_email":   (body.customer_email or "").strip(),
+        "vehicle_type":     body.vehicle_type,
+        "vehicle_number":   body.vehicle_number.strip().upper(),
+        "chassis_last6":    body.chassis_last6.strip().upper(),
+        "delivery_address": body.delivery_address.strip(),
+        "delivery_city":    body.delivery_city.strip(),
+        "delivery_state":   body.delivery_state.strip(),
+        "delivery_pincode": body.delivery_pincode.strip(),
+        "notes":            (body.notes or "").strip(),
+        "amount":           price,
+        "status":           "pending_payment",
+        "payment_status":   "pending",
+        "sathi_slug":       None,
+        "sathi_name":       None,
+        "tracking_notes":   "",
+        "cashfree_order_id": None,
+        "paid_at":          None,
+        "created_at":       now,
+        "updated_at":       now,
+    }
+    await db.fastag_orders.insert_one({**order})
+
+    # Create Cashfree payment
+    cf_data = await _cf_create_order(
+        order_id, price,
+        f"ft-{body.customer_phone}",
+        body.customer_phone,
+        f"/buy-fastag/track?payment_id={order_id}&phone={body.customer_phone}",
+    )
+    await db.fastag_orders.update_one(
+        {"order_id": order_id},
+        {"$set": {"cashfree_order_id": cf_data.get("order_id", order_id)}},
+    )
+    logger.info(f"[FTO] FASTag order {order_id} created for {body.customer_phone}")
+    return {
+        "order_id":          order_id,
+        "payment_session_id": cf_data["payment_session_id"],
+        "amount":            price,
+    }
+
+@fastag_router.get("/orders/track")
+async def track_fastag_order(order_id: str, phone: str):
+    doc = await db.fastag_orders.find_one(
+        {"order_id": order_id, "customer_phone": phone},
+        {"_id": 0, "chassis_last6": 0},
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail="Order not found. Check order ID and phone number.")
+    return doc
+
+@fastag_router.get("/orders/verify/{order_id}")
+async def verify_fastag_payment(order_id: str, phone: str):
+    doc = await db.fastag_orders.find_one(
+        {"order_id": order_id, "customer_phone": phone},
+        {"_id": 0},
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {"status": doc.get("status"), "payment_status": doc.get("payment_status")}
+
+# ─────────────────────────────────────────────────────────────────────────────
 states_router = APIRouter(prefix="/states", tags=["states"])
 
 @states_router.get("")
@@ -1417,6 +1546,77 @@ async def admin_delete_article(slug: str):
 async def seed_articles_endpoint():
     count = await _seed_articles()
     return {"ok": True, "upserted": count}
+
+# ─── Admin: FASTag orders ─────────────────────────────────────────────────────
+
+@admin_router.get("/fastag-orders", dependencies=[Depends(_check_admin)])
+async def admin_list_fastag_orders(
+    status: Optional[str] = None,
+    search: Optional[str] = None,
+    page: int = 1,
+    limit: int = 50,
+):
+    query: dict = {}
+    if status and status != "all":
+        query["status"] = status
+    if search:
+        r = re.compile(search, re.IGNORECASE)
+        query["$or"] = [{"order_id": r}, {"customer_phone": r}, {"customer_name": r}, {"vehicle_number": r}]
+    skip = (page - 1) * limit
+    total = await db.fastag_orders.count_documents(query)
+    rows = await db.fastag_orders.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    return {"orders": rows, "total": total, "page": page, "pages": max(1, -(-total // limit))}
+
+@admin_router.patch("/fastag-orders/{order_id}", dependencies=[Depends(_check_admin)])
+async def admin_update_fastag_order(order_id: str, data: dict = Body(...)):
+    allowed = {"status", "sathi_slug", "sathi_name", "tracking_notes"}
+    update = {k: v for k, v in data.items() if k in allowed}
+    if not update:
+        raise HTTPException(status_code=400, detail="No valid fields")
+    update["updated_at"] = datetime.now(timezone.utc).isoformat()
+    result = await db.fastag_orders.update_one({"order_id": order_id}, {"$set": update})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {"ok": True}
+
+@admin_router.get("/fastag-orders/stats", dependencies=[Depends(_check_admin)])
+async def admin_fastag_order_stats():
+    pipeline = [
+        {"$group": {"_id": "$status", "count": {"$sum": 1}, "revenue": {"$sum": "$amount"}}},
+    ]
+    rows = await db.fastag_orders.aggregate(pipeline).to_list(20)
+    total_orders = sum(r["count"] for r in rows)
+    total_revenue = sum(r["revenue"] for r in rows if r["_id"] not in ("pending_payment", "cancelled"))
+    by_status = {r["_id"]: r["count"] for r in rows}
+    return {"total_orders": total_orders, "total_revenue": total_revenue, "by_status": by_status}
+
+# ─── Admin: FASTag pricing ────────────────────────────────────────────────────
+
+@admin_router.get("/fastag-prices", dependencies=[Depends(_check_admin)])
+async def admin_get_fastag_prices():
+    rows = await db.fastag_pricing.find({}, {"_id": 0}).to_list(20)
+    db_map = {r["bank_slug"]: r for r in rows}
+    result = []
+    for slug, defaults in FASTAG_DEFAULT_PRICES.items():
+        row = db_map.get(slug, {})
+        result.append({
+            "bank_slug":     slug,
+            "price":         row.get("price",         defaults["price"]),
+            "security_info": row.get("security_info", defaults["security_info"]),
+            "is_available":  row.get("is_available",  True),
+        })
+    return result
+
+@admin_router.patch("/fastag-prices/{bank_slug}", dependencies=[Depends(_check_admin)])
+async def admin_update_fastag_price(bank_slug: str, data: dict = Body(...)):
+    if bank_slug not in FASTAG_DEFAULT_PRICES:
+        raise HTTPException(status_code=404, detail="Unknown bank slug")
+    allowed = {"price", "security_info", "is_available"}
+    update = {k: v for k, v in data.items() if k in allowed}
+    update["bank_slug"] = bank_slug
+    update["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.fastag_pricing.update_one({"bank_slug": bank_slug}, {"$set": update}, upsert=True)
+    return {"ok": True}
 
 # ─── Admin branding endpoints ─────────────────────────────────────────────────
 
@@ -2728,9 +2928,20 @@ async def payment_webhook(request: Request):
     payment_status = payload.get("data", {}).get("payment", {}).get("payment_status", "")
 
     if order_id and payment_status == "SUCCESS":
-        intent = await db.payment_intents.find_one({"order_id": order_id}, {"_id": 0})
-        if intent:
-            await _create_job_from_intent(intent)
+        if order_id.startswith("FTO-"):
+            # FASTag purchase order
+            now = datetime.now(timezone.utc).isoformat()
+            result = await db.fastag_orders.update_one(
+                {"order_id": order_id, "payment_status": {"$ne": "paid"}},
+                {"$set": {"payment_status": "paid", "status": "paid", "paid_at": now, "updated_at": now}},
+            )
+            if result.modified_count:
+                logger.info(f"[WEBHOOK] FASTag order {order_id} marked paid")
+        else:
+            # Sathi booking intent
+            intent = await db.payment_intents.find_one({"order_id": order_id}, {"_id": 0})
+            if intent:
+                await _create_job_from_intent(intent)
         logger.info(f"[WEBHOOK] {order_id} payment SUCCESS")
 
     return {"ok": True}
@@ -2779,6 +2990,7 @@ async def verify_payment(order_id: str, current: dict = Depends(_require_user)):
 
 api.include_router(auth_router)
 api.include_router(users_router)
+api.include_router(fastag_router)
 api.include_router(states_router)
 api.include_router(sathis_router)
 api.include_router(help_router)
@@ -2950,6 +3162,10 @@ async def create_indexes():
     # articles
     await db.articles.create_index([("slug", 1)], unique=True, sparse=True)
     await db.articles.create_index([("is_published", 1), ("category", 1)])
+    # fastag orders
+    await db.fastag_orders.create_index([("order_id", 1)], unique=True)
+    await db.fastag_orders.create_index([("customer_phone", 1), ("created_at", -1)])
+    await db.fastag_orders.create_index([("status", 1), ("created_at", -1)])
     logger.info("MongoDB indexes ensured")
 
 @app.on_event("startup")

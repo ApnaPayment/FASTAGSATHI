@@ -9,6 +9,9 @@ import ScrollToTop from "@/components/layout/ScrollToTop";
 import RedirectTo from "@/components/layout/RedirectTo";
 
 import LandingPage from "@/components/landing/LandingPage";
+import BuyFasTagPage from "@/pages/BuyFasTagPage";
+import BuyFasTagOrderPage from "@/pages/BuyFasTagOrderPage";
+import BuyFasTagTrackPage from "@/pages/BuyFasTagTrackPage";
 import HowItWorksPage from "@/pages/HowItWorksPage";
 import FeaturesPage from "@/pages/FeaturesPage";
 import PricingPage from "@/pages/PricingPage";
@@ -57,6 +60,10 @@ function App() {
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<LandingPage />} />
+            {/* Buy FASTag */}
+            <Route path="buy-fastag" element={<BuyFasTagPage />} />
+            <Route path="buy-fastag/order" element={<BuyFasTagOrderPage />} />
+            <Route path="buy-fastag/track" element={<BuyFasTagTrackPage />} />
             <Route path="how-it-works" element={<HowItWorksPage />} />
             <Route path="features" element={<FeaturesPage />} />
             <Route path="pricing" element={<PricingPage />} />
