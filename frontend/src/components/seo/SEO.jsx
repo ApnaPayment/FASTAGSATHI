@@ -77,7 +77,12 @@ export default function SEO({
     upsertMeta({ name: "twitter:description", content: description });
     upsertMeta({ name: "twitter:image", content: image });
 
-    // JSON-LD
+    // JSON-LD — remove any prerendered scripts (no data-seo attr) first to
+    // prevent duplicates when React hydrates a prerendered page.
+    document.head
+      .querySelectorAll('script[type="application/ld+json"]:not([data-seo])')
+      .forEach((el) => el.remove());
+
     const added = [];
     ldArray.forEach((ld) => {
       const s = document.createElement("script");

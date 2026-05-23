@@ -223,11 +223,11 @@ const serviceSchema = {
 const homepageFaq = {
   "@context":"https://schema.org","@type":"FAQPage",
   mainEntity:[
-    { "@type":"Question", name:"What is ApnaFastag?", acceptedAnswer:{ "@type":"Answer", text:"ApnaFastag is India's first peer-to-peer FASTag rescue network. Verified Sathis at toll plazas resolve FASTag disputes, KYC, blacklist, and recharge issues — usually in under 8 minutes." }},
-    { "@type":"Question", name:"How much does it cost?", acceptedAnswer:{ "@type":"Answer", text:"₹49 to ₹499 per issue. You only pay after your problem is resolved. No subscription." }},
-    { "@type":"Question", name:"Which toll plazas are covered?", acceptedAnswer:{ "@type":"Answer", text:"60+ toll plazas across India on NH-48, NH-44, NH-19 in Maharashtra, Haryana, Karnataka, Gujarat and Tamil Nadu. Expanding to 200+ by Q2 2026." }},
-    { "@type":"Question", name:"What FASTag issues can be resolved?", acceptedAnswer:{ "@type":"Answer", text:"Disputes, refunds, blacklist removal, KYC updates, RC mismatch, recharge failures, double deductions, and emergency SOS." }},
-    { "@type":"Question", name:"How to become a FASTag Sathi?", acceptedAnswer:{ "@type":"Answer", text:"Apply on the Become a Sathi page. Be near a toll plaza, pass verification. Sathis earn ₹25,000–₹60,000/month." }},
+    { "@type":"Question", name:"What is ApnaFastag?", acceptedAnswer:{ "@type":"Answer", text:"ApnaFastag is India's first peer-to-peer FASTag rescue network. Verified local experts called Sathis are stationed at toll plazas and resolve FASTag disputes, KYC, blacklist, and recharge issues on-spot — usually in under 8 minutes." }},
+    { "@type":"Question", name:"Is ApnaFastag affiliated with NHAI or any bank?", acceptedAnswer:{ "@type":"Answer", text:"No, ApnaFastag is an independent peer-to-peer assistance platform. We escalate to NHAI/banks on your behalf." }},
+    { "@type":"Question", name:"How much does it cost?", acceptedAnswer:{ "@type":"Answer", text:"Free to sign up. You pay ₹49–₹499 only when a Sathi successfully resolves your issue. No subscription fees." }},
+    { "@type":"Question", name:"Where are Sathis available?", acceptedAnswer:{ "@type":"Answer", text:"Currently live at 60+ toll plazas across NH-48, NH-44, NH-19 in Maharashtra, Haryana, Karnataka, Gujarat and Tamil Nadu. Expanding to 200+ plazas by Q2 2026." }},
+    { "@type":"Question", name:"What FASTag issues can a Sathi resolve?", acceptedAnswer:{ "@type":"Answer", text:"Sathis resolve FASTag disputes and refunds, blacklist removal, KYC updates, RC mismatch, recharge failures, double deductions, and emergency SOS at toll plazas." }},
   ],
 };
 
