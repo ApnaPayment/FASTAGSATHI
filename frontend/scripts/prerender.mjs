@@ -545,7 +545,7 @@ function emit() {
     let html = template.replace(/<\/head>/i, `${head}\n  </head>`);
     // Inject body content for all crawlers (SSG body)
     if (body) {
-      html = html.replace('<div id="root"></div>', `<div id="root">${body}</div>`);
+      html = html.replace('<div id="root"></div>', `<div id="root" data-ssg="1">${body}</div>`);
     }
     if (route === "/") {
       fs.writeFileSync(path.join(BUILD_DIR, "index.html"), html);

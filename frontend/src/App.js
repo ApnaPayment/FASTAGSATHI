@@ -41,6 +41,13 @@ import AdminPage from "@/pages/AdminPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
 function App() {
+  // Remove SSG pre-render immediately on mount so users never see unstyled flash
+  React.useEffect(() => {
+    const root = document.getElementById("root");
+    if (root) root.removeAttribute("data-ssg");
+    document.getElementById("ssg-hide")?.remove();
+  }, []);
+
   return (
     <AuthProvider>
       <BrowserRouter>
