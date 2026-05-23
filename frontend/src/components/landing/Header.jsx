@@ -4,6 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Languages, Menu, X, User, LogOut, LayoutDashboard, ScanSearch, ChevronUp, Briefcase } from "lucide-react";
 import { track } from "@/lib/analytics";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBranding } from "@/contexts/BrandingContext";
 
 const NAV = [
   { label: "How it Works", to: "/how-it-works" },
@@ -22,6 +23,7 @@ export default function Header() {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
   const { user, logout } = useAuth();
+  const { logo, siteName, tagline } = useBranding();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -49,14 +51,24 @@ export default function Header() {
         {/* Left: logo */}
         <div className="flex items-center">
           <Link to="/" data-testid="brand-logo" className="flex items-center gap-2 group">
-            <div className="relative w-9 h-9 md:w-10 md:h-10 rounded-xl bg-[#0A0A0A] flex items-center justify-center shadow-[3px_3px_0_#FF6B00]">
-              <span className="font-display font-black text-white text-lg leading-none">A</span>
-              <span className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-[#FF6B00] border-2 border-white" />
-            </div>
-            <div className="flex flex-col leading-none">
-              <span className="font-display font-black text-base md:text-lg tracking-tight text-[#0A0A0A]">ApnaFastag</span>
-              <span className="font-hindi text-[10px] md:text-[11px] text-[#4B5563] -mt-0.5">अपना फास्टैग साथी</span>
-            </div>
+            {logo ? (
+              <img
+                src={logo}
+                alt={siteName}
+                className="h-9 md:h-10 w-auto max-w-[160px] object-contain"
+              />
+            ) : (
+              <>
+                <div className="relative w-9 h-9 md:w-10 md:h-10 rounded-xl bg-[#0A0A0A] flex items-center justify-center shadow-[3px_3px_0_#FF6B00]">
+                  <span className="font-display font-black text-white text-lg leading-none">A</span>
+                  <span className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-[#FF6B00] border-2 border-white" />
+                </div>
+                <div className="flex flex-col leading-none">
+                  <span className="font-display font-black text-base md:text-lg tracking-tight text-[#0A0A0A]">{siteName}</span>
+                  <span className="font-hindi text-[10px] md:text-[11px] text-[#4B5563] -mt-0.5">{tagline}</span>
+                </div>
+              </>
+            )}
           </Link>
         </div>
 

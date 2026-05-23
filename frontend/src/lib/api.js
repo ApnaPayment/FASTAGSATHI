@@ -149,6 +149,19 @@ export const adminApi = {
   updateArticle: (slug, d)=> api.patch(`/api/admin/articles/${slug}`, d, { headers: adminHeaders() }),
   deleteArticle: (slug)   => api.delete(`/api/admin/articles/${slug}`, { headers: adminHeaders() }),
   seedArticles:  ()       => api.post("/api/admin/seed-articles", {}, { headers: adminHeaders() }),
+  // Branding
+  getBranding:    ()     => api.get("/api/admin/branding", { headers: adminHeaders() }),
+  updateBranding: (data) => api.patch("/api/admin/branding", data, { headers: adminHeaders() }),
+  uploadLogo: (file) => {
+    const fd = new FormData(); fd.append("file", file);
+    return api.post("/api/admin/branding/upload-logo", fd, { headers: adminHeaders() });
+  },
+  uploadFavicon: (file) => {
+    const fd = new FormData(); fd.append("file", file);
+    return api.post("/api/admin/branding/upload-favicon", fd, { headers: adminHeaders() });
+  },
+  deleteLogo:    () => api.delete("/api/admin/branding/logo",    { headers: adminHeaders() }),
+  deleteFavicon: () => api.delete("/api/admin/branding/favicon", { headers: adminHeaders() }),
 };
 
 export default api;

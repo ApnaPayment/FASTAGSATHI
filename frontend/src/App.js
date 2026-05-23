@@ -3,6 +3,7 @@ import "@/App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import { AuthProvider } from "@/contexts/AuthContext";
+import { BrandingProvider } from "@/contexts/BrandingContext";
 import Layout from "@/components/layout/Layout";
 import ScrollToTop from "@/components/layout/ScrollToTop";
 import RedirectTo from "@/components/layout/RedirectTo";
@@ -49,6 +50,7 @@ function App() {
   }, []);
 
   return (
+    <BrandingProvider>
     <AuthProvider>
       <BrowserRouter>
         <ScrollToTop />
@@ -116,6 +118,7 @@ function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+    </BrandingProvider>
   );
 }
 

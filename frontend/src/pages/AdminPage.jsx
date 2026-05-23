@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { adminApi, setAdminSecret, getAdminSecret, clearAdminSecret } from "@/lib/api";
+import { useBranding } from "@/contexts/BrandingContext";
 import {
   Users, Briefcase, MapPin, ClipboardList, CheckCircle2, XCircle,
   Clock, Loader2, LogOut, RefreshCw, ChevronDown, BadgeCheck, Shield,
@@ -11,7 +12,7 @@ import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import { BANKS as SEED_BANKS, STATES as SEED_STATES } from "@/data/seed";
 
-const TABS = ["Dashboard", "Applications", "Jobs", "Sathis", "Promo Codes", "Settlements", "Plazas", "Sitemap", "Content"];
+const TABS = ["Dashboard", "Applications", "Jobs", "Sathis", "Promo Codes", "Settlements", "Plazas", "Sitemap", "Content", "Branding"];
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 const fullUrl = (url) => { if (!url) return ""; if (url.startsWith("http") || url.startsWith("data:")) return url; if (BACKEND.includes("localhost") && !window.location.hostname.includes("localhost")) return ""; return `${BACKEND}${url}`; };
@@ -188,6 +189,7 @@ function Dashboard({ onLogout }) {
         {tab === "Plazas"       && <PlazasTab />}
         {tab === "Sitemap"      && <SitemapTab />}
         {tab === "Content"      && <ContentTab />}
+        {tab === "Branding"     && <BrandingTab />}
       </main>
     </div>
   );
@@ -2463,6 +2465,223 @@ function SitemapTab() {
           templateNote='JSON array: [{"slug":"sbi-fastag","name":"SBI FASTag","shortName":"SBI","helpline":"1800-11-0018","smsCode":"FTBAL","marketShare":18}]'
         />
       )}
+    </div>
+  );
+}
+
+// ─── Branding Tab ─────────────────────────────────────────────────────────────
+
+function UploadZone({ label, hint, accept, current, onUpload, onDelete, uploading }) {
+  const inputRef = useRef(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleFile = (file) => {
+    if (file) onUpload(file);
+  };
+
+  return (
+    <div className="bg-white border-2 border-[#E5E7EB] rounded-2xl p-6 flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-bold text-[#0A0A0A] text-base">{label}</h3>
+          <p className="text-xs text-[#6B7280] mt-0.5">{hint}</p>
+        </div>
+        {current && (
+          <button
+            onClick={onDelete}
+            className="text-xs text-red-500 hover:text-red-700 font-semibold border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50 transition-colors"
+          >
+            Remove
+          </button>
+        )}
+      </div>
+
+      {/* Current preview */}
+      {current && (
+        <div className="bg-[#F9FAFB] rounded-xl p-4 flex items-center justify-center min-h-[80px] border border-[#E5E7EB]">
+          <img src={current} alt={label} className="max-h-16 max-w-full object-contain" />
+        </div>
+      )}
+
+      {/* Drop zone */}
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+        onClick={() => inputRef.current?.click()}
+        className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center gap-2 cursor-pointer transition-colors ${
+          dragOver ? "border-[#FF6B00] bg-[#FFF7F0]" : "border-[#D1D5DB] hover:border-[#FF6B00] hover:bg-[#FFF7F0]"
+        }`}
+      >
+        {uploading ? (
+          <Loader2 className="w-6 h-6 text-[#FF6B00] animate-spin" />
+        ) : (
+          <Upload className="w-6 h-6 text-[#9CA3AF]" />
+        )}
+        <span className="text-sm font-semibold text-[#4B5563]">
+          {uploading ? "Uploading…" : "Click or drag & drop"}
+        </span>
+        <span className="text-xs text-[#9CA3AF]">{accept}</span>
+        <input ref={inputRef} type="file" accept={accept} className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
+      </div>
+    </div>
+  );
+}
+
+function BrandingTab() {
+  const { logo, favicon, siteName, tagline, reload } = useBranding();
+  const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [form, setForm] = useState({ site_name: siteName, tagline });
+
+  useEffect(() => { setForm({ site_name: siteName, tagline }); }, [siteName, tagline]);
+
+  const toast = (text, ok = true) => {
+    setMsg({ text, ok });
+    setTimeout(() => setMsg(null), 3500);
+  };
+
+  const handleUploadLogo = async (file) => {
+    setUploadingLogo(true);
+    try {
+      await adminApi.uploadLogo(file);
+      await reload();
+      toast("Logo updated successfully");
+    } catch (e) {
+      toast(e?.response?.data?.detail || "Logo upload failed", false);
+    } finally { setUploadingLogo(false); }
+  };
+
+  const handleUploadFavicon = async (file) => {
+    setUploadingFavicon(true);
+    try {
+      await adminApi.uploadFavicon(file);
+      await reload();
+      toast("Favicon updated successfully");
+    } catch (e) {
+      toast(e?.response?.data?.detail || "Favicon upload failed", false);
+    } finally { setUploadingFavicon(false); }
+  };
+
+  const handleDeleteLogo = async () => {
+    if (!window.confirm("Remove the current logo?")) return;
+    await adminApi.deleteLogo();
+    await reload();
+    toast("Logo removed");
+  };
+
+  const handleDeleteFavicon = async () => {
+    if (!window.confirm("Remove the current favicon?")) return;
+    await adminApi.deleteFavicon();
+    await reload();
+    toast("Favicon removed");
+  };
+
+  const handleSaveText = async () => {
+    setSaving(true);
+    try {
+      await adminApi.updateBranding(form);
+      await reload();
+      toast("Branding text saved");
+    } catch (e) {
+      toast("Save failed", false);
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="space-y-8 max-w-3xl">
+      <div>
+        <h2 className="text-2xl font-black text-[#0A0A0A]">Branding</h2>
+        <p className="text-sm text-[#6B7280] mt-1">Upload your logo and favicon. Changes go live instantly across the site.</p>
+      </div>
+
+      {msg && (
+        <div className={`rounded-xl px-4 py-3 text-sm font-semibold ${msg.ok ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+          {msg.text}
+        </div>
+      )}
+
+      {/* Upload cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <UploadZone
+          label="Company Logo"
+          hint="Shown in the header navbar. PNG, SVG, JPG (max 5 MB). Recommended: 400×120 px."
+          accept=".png,.jpg,.jpeg,.svg,.webp"
+          current={logo}
+          onUpload={handleUploadLogo}
+          onDelete={handleDeleteLogo}
+          uploading={uploadingLogo}
+        />
+        <UploadZone
+          label="Favicon"
+          hint="Browser tab icon. PNG, ICO, SVG (max 2 MB). Recommended: 64×64 px."
+          accept=".png,.ico,.svg,.jpg,.jpeg"
+          current={favicon}
+          onUpload={handleUploadFavicon}
+          onDelete={handleDeleteFavicon}
+          uploading={uploadingFavicon}
+        />
+      </div>
+
+      {/* Live preview */}
+      <div className="bg-white border-2 border-[#E5E7EB] rounded-2xl p-6 space-y-3">
+        <h3 className="font-bold text-[#0A0A0A]">Live Header Preview</h3>
+        <div className="bg-[#F8F9FA] border border-[#E5E7EB] rounded-xl px-6 py-4 flex items-center">
+          {logo ? (
+            <img src={logo} alt={form.site_name} className="h-10 w-auto max-w-[160px] object-contain" />
+          ) : (
+            <div className="flex items-center gap-2">
+              <div className="relative w-10 h-10 rounded-xl bg-[#0A0A0A] flex items-center justify-center shadow-[3px_3px_0_#FF6B00]">
+                <span className="font-bold text-white text-lg">A</span>
+                <span className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-[#FF6B00] border-2 border-white" />
+              </div>
+              <div className="flex flex-col leading-none">
+                <span className="font-bold text-base text-[#0A0A0A]">{form.site_name || "ApnaFastag"}</span>
+                <span className="text-[10px] text-[#4B5563] -mt-0.5">{form.tagline || "अपना फास्टैग साथी"}</span>
+              </div>
+            </div>
+          )}
+        </div>
+        <p className="text-xs text-[#9CA3AF]">
+          {logo ? "Custom logo is active. Remove it to fall back to the text logo." : "No logo uploaded — text logo with site name & tagline is shown."}
+        </p>
+      </div>
+
+      {/* Text settings */}
+      <div className="bg-white border-2 border-[#E5E7EB] rounded-2xl p-6 space-y-5">
+        <h3 className="font-bold text-[#0A0A0A]">Text Fallback (shown when no logo is uploaded)</h3>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-[#374151] mb-1.5">Site Name</label>
+            <input
+              className="w-full border-2 border-[#E5E7EB] rounded-xl px-4 py-2.5 text-sm focus:border-[#FF6B00] focus:outline-none"
+              value={form.site_name}
+              onChange={(e) => setForm((f) => ({ ...f, site_name: e.target.value }))}
+              placeholder="ApnaFastag"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-[#374151] mb-1.5">Tagline (Hindi / sub-text)</label>
+            <input
+              className="w-full border-2 border-[#E5E7EB] rounded-xl px-4 py-2.5 text-sm focus:border-[#FF6B00] focus:outline-none"
+              value={form.tagline}
+              onChange={(e) => setForm((f) => ({ ...f, tagline: e.target.value }))}
+              placeholder="अपना फास्टैग साथी"
+            />
+          </div>
+        </div>
+        <button
+          onClick={handleSaveText}
+          disabled={saving}
+          className="inline-flex items-center gap-2 bg-[#0A0A0A] text-white font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-[#333] disabled:opacity-50 transition-colors"
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+          {saving ? "Saving…" : "Save Text Settings"}
+        </button>
+      </div>
     </div>
   );
 }

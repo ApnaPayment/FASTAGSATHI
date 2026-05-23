@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, UploadFile, File, Query, Request
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, UploadFile, File, Query, Request, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
@@ -280,6 +280,21 @@ async def get_sathi(slug: str):
 # ─── Help / Content public routes ────────────────────────────────────────────
 
 help_router = APIRouter(prefix="/help", tags=["help"])
+
+# ─── Public branding endpoint ─────────────────────────────────────────────────
+
+@app.get("/api/branding", tags=["branding"])
+async def get_branding():
+    """Return site branding (logo, favicon, name). Safe to cache 5 min."""
+    doc = await db.site_settings.find_one({"key": "branding"}, {"_id": 0})
+    if not doc:
+        return {"logo_url": None, "favicon_url": None, "site_name": "ApnaFastag", "tagline": "अपना फास्टैग साथी"}
+    return {
+        "logo_url":   doc.get("logo_url"),
+        "favicon_url": doc.get("favicon_url"),
+        "site_name":  doc.get("site_name", "ApnaFastag"),
+        "tagline":    doc.get("tagline", "अपना फास्टैग साथी"),
+    }
 
 @help_router.get("")
 async def list_help(
@@ -1402,6 +1417,119 @@ async def admin_delete_article(slug: str):
 async def seed_articles_endpoint():
     count = await _seed_articles()
     return {"ok": True, "upserted": count}
+
+# ─── Admin branding endpoints ─────────────────────────────────────────────────
+
+@admin_router.get("/branding", dependencies=[Depends(_check_admin)])
+async def admin_get_branding():
+    doc = await db.site_settings.find_one({"key": "branding"}, {"_id": 0})
+    if not doc:
+        return {"logo_url": None, "favicon_url": None, "site_name": "ApnaFastag", "tagline": "अपना फास्टैग साथी"}
+    return doc
+
+@admin_router.patch("/branding", dependencies=[Depends(_check_admin)])
+async def admin_update_branding(data: dict = Body(...)):
+    allowed = {"site_name", "tagline"}
+    update = {k: v for k, v in data.items() if k in allowed}
+    if not update:
+        raise HTTPException(status_code=400, detail="No valid fields")
+    update["updated_at"] = datetime.utcnow().isoformat()
+    await db.site_settings.update_one(
+        {"key": "branding"}, {"$set": update}, upsert=True
+    )
+    return {"ok": True}
+
+@admin_router.post("/branding/upload-logo", dependencies=[Depends(_check_admin)])
+async def admin_upload_logo(file: UploadFile = File(...)):
+    ext = Path(file.filename).suffix.lower() if file.filename else ".png"
+    if ext not in {".jpg", ".jpeg", ".png", ".webp", ".svg"}:
+        raise HTTPException(status_code=400, detail="Only jpg/png/webp/svg allowed")
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Empty file")
+    if len(contents) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Logo must be under 5 MB")
+
+    if ext == ".svg":
+        data_url = "data:image/svg+xml;base64," + base64.b64encode(contents).decode()
+    else:
+        try:
+            from PIL import Image
+            import io
+            img = Image.open(io.BytesIO(contents))
+            if img.mode in ("RGBA", "LA", "P"):
+                background = Image.new("RGBA", img.size, (255, 255, 255, 255))
+                if img.mode == "P":
+                    img = img.convert("RGBA")
+                background.paste(img, mask=img.split()[-1] if img.mode == "RGBA" else None)
+                img = background.convert("RGB")
+            else:
+                img = img.convert("RGB")
+            img.thumbnail((800, 300), Image.LANCZOS)
+            buf = io.BytesIO()
+            img.save(buf, format="PNG", optimize=True)
+            buf.seek(0)
+            data_url = "data:image/png;base64," + base64.b64encode(buf.read()).decode()
+        except Exception as e:
+            logger.warning(f"Logo resize failed ({e}), storing as-is")
+            mime = "image/jpeg" if ext in {".jpg", ".jpeg"} else "image/png"
+            data_url = f"data:{mime};base64," + base64.b64encode(contents).decode()
+
+    await db.site_settings.update_one(
+        {"key": "branding"},
+        {"$set": {"logo_url": data_url, "updated_at": datetime.utcnow().isoformat()}},
+        upsert=True,
+    )
+    logger.info(f"Site logo uploaded ({len(data_url)} chars)")
+    return {"ok": True, "logo_url": data_url}
+
+@admin_router.post("/branding/upload-favicon", dependencies=[Depends(_check_admin)])
+async def admin_upload_favicon(file: UploadFile = File(...)):
+    ext = Path(file.filename).suffix.lower() if file.filename else ".png"
+    if ext not in {".jpg", ".jpeg", ".png", ".webp", ".ico", ".svg"}:
+        raise HTTPException(status_code=400, detail="Only png/ico/svg/jpg allowed")
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Empty file")
+    if len(contents) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Favicon must be under 2 MB")
+
+    if ext == ".svg":
+        data_url = "data:image/svg+xml;base64," + base64.b64encode(contents).decode()
+    elif ext == ".ico":
+        data_url = "data:image/x-icon;base64," + base64.b64encode(contents).decode()
+    else:
+        try:
+            from PIL import Image
+            import io
+            img = Image.open(io.BytesIO(contents))
+            img = img.convert("RGBA")
+            img.thumbnail((64, 64), Image.LANCZOS)
+            buf = io.BytesIO()
+            img.save(buf, format="PNG", optimize=True)
+            buf.seek(0)
+            data_url = "data:image/png;base64," + base64.b64encode(buf.read()).decode()
+        except Exception as e:
+            logger.warning(f"Favicon resize failed ({e}), storing as-is")
+            data_url = "data:image/png;base64," + base64.b64encode(contents).decode()
+
+    await db.site_settings.update_one(
+        {"key": "branding"},
+        {"$set": {"favicon_url": data_url, "updated_at": datetime.utcnow().isoformat()}},
+        upsert=True,
+    )
+    logger.info(f"Site favicon uploaded ({len(data_url)} chars)")
+    return {"ok": True, "favicon_url": data_url}
+
+@admin_router.delete("/branding/logo", dependencies=[Depends(_check_admin)])
+async def admin_delete_logo():
+    await db.site_settings.update_one({"key": "branding"}, {"$unset": {"logo_url": ""}})
+    return {"ok": True}
+
+@admin_router.delete("/branding/favicon", dependencies=[Depends(_check_admin)])
+async def admin_delete_favicon():
+    await db.site_settings.update_one({"key": "branding"}, {"$unset": {"favicon_url": ""}})
+    return {"ok": True}
 
 # ─── Article seed data ────────────────────────────────────────────────────────
 
