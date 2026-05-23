@@ -62,7 +62,7 @@
   },
   "scripts": {
     "start": "craco start",
-    "build": "craco build",
+    "build": "craco build && node scripts/prerender.mjs",
     "build:ssg": "craco build && node scripts/prerender.mjs",
     "test": "craco test"
   },

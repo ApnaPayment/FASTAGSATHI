@@ -2,13 +2,12 @@ import { useEffect } from "react";
 
 const SITE = {
   name: "ApnaFastag",
-  url: "https://apnafastag.in",
+  url: "https://www.apnafastag.com",
   defaultDescription: "India's first real-time peer-to-peer rescue network for FASTag chaos — disputes, KYC, recharge fails, emergency SOS. Verified Sathis at 60+ toll plazas.",
-  defaultImage: "https://apnafastag.in/og-default.png",
+  defaultImage: "https://www.apnafastag.com/og-default.png",
   twitter: "@apnafastag",
 };
 
-// Helper: ensure a <meta name|property> tag exists with the given content.
 function upsertMeta({ name, property, content }) {
   if (!content) return null;
   const sel = name ? `meta[name="${name}"]` : `meta[property="${property}"]`;
@@ -37,13 +36,6 @@ function upsertLink(rel, href) {
   return el;
 }
 
-/**
- * SEO — vanilla, library-free, React-19-safe meta + JSON-LD manager.
- * Manages title, description, canonical, OG/Twitter tags, JSON-LD scripts.
- *
- * Each instance tracks the JSON-LD scripts it added so they're cleanly removed
- * on unmount / route change.
- */
 export default function SEO({
   title,
   description = SITE.defaultDescription,
@@ -67,7 +59,6 @@ export default function SEO({
     if (keywords) upsertMeta({ name: "keywords", content: keywords });
     upsertLink("canonical", canonical);
 
-    // robots
     upsertMeta({ name: "robots", content: noindex ? "noindex,nofollow" : "index,follow,max-image-preview:large" });
 
     // OG
@@ -86,7 +77,7 @@ export default function SEO({
     upsertMeta({ name: "twitter:description", content: description });
     upsertMeta({ name: "twitter:image", content: image });
 
-    // JSON-LD — append, track for cleanup
+    // JSON-LD
     const added = [];
     ldArray.forEach((ld) => {
       const s = document.createElement("script");
@@ -98,8 +89,6 @@ export default function SEO({
     });
 
     return () => {
-      // Remove only the JSON-LD scripts this instance added — meta tags
-      // get overwritten by the next page's SEO, which is the correct behavior.
       added.forEach((s) => { if (s.parentNode) s.parentNode.removeChild(s); });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -108,14 +97,19 @@ export default function SEO({
   return null;
 }
 
-// Reusable schema builders ---------------------------------------------------
+// ── Schema builders ──────────────────────────────────────────────────────────
 
 export const orgSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "ApnaFastag",
   url: SITE.url,
-  logo: `${SITE.url}/logo.png`,
+  logo: {
+    "@type": "ImageObject",
+    url: `${SITE.url}/logo.png`,
+    width: 200,
+    height: 60,
+  },
   sameAs: [
     "https://twitter.com/apnafastag",
     "https://www.instagram.com/apnafastag",
@@ -126,8 +120,14 @@ export const orgSchema = {
     telephone: "+91-1800-000-0000",
     contactType: "customer support",
     areaServed: "IN",
-    availableLanguage: ["en", "hi", "mr", "ta"],
+    availableLanguage: ["en", "hi", "mr", "ta", "te", "kn"],
   },
+  foundingDate: "2025",
+  areaServed: {
+    "@type": "Country",
+    name: "India",
+  },
+  description: SITE.defaultDescription,
 };
 
 export const websiteSchema = {
@@ -135,10 +135,54 @@ export const websiteSchema = {
   "@type": "WebSite",
   name: "ApnaFastag",
   url: SITE.url,
-  potentialAction: {
-    "@type": "SearchAction",
-    target: `${SITE.url}/coverage?q={search_term_string}`,
-    "query-input": "required name=search_term_string",
+  description: SITE.defaultDescription,
+  inLanguage: "en-IN",
+  potentialAction: [
+    {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${SITE.url}/help?search={search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
+  ],
+};
+
+// Service schema for the Sathi rescue service
+export const serviceSchema = {
+  "@context": "https://schema.org",
+  "@type": "Service",
+  name: "FASTag Rescue by Sathi",
+  serviceType: "FASTag Issue Resolution",
+  provider: orgSchema,
+  areaServed: {
+    "@type": "Country",
+    name: "India",
+  },
+  description: "Verified Sathis resolve FASTag disputes, KYC, blacklist, recharge failures, and SOS at toll plazas across India — usually in under 8 minutes.",
+  offers: {
+    "@type": "Offer",
+    price: "49",
+    priceCurrency: "INR",
+    priceSpecification: {
+      "@type": "PriceSpecification",
+      minPrice: "49",
+      maxPrice: "499",
+      priceCurrency: "INR",
+    },
+    description: "Pay only when your FASTag issue is resolved",
+  },
+  hasOfferCatalog: {
+    "@type": "OfferCatalog",
+    name: "FASTag Services",
+    itemListElement: [
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "FASTag Dispute & Refund" } },
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "FASTag Blacklist Fix" } },
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "FASTag KYC Update" } },
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "FASTag Recharge Assistance" } },
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Emergency SOS at Toll" } },
+    ],
   },
 };
 
@@ -159,11 +203,9 @@ export function placeSchema(plaza, state) {
       addressRegion: state?.name || "India",
       addressCountry: "IN",
     },
-    containedInPlace: {
-      "@type": "Road",
-      name: plaza.highway,
-    },
+    containedInPlace: { "@type": "Road", name: plaza.highway },
     url: `${SITE.url}/toll/${plaza.slug}`,
+    hasMap: `https://www.google.com/maps?q=${plaza.lat},${plaza.lng}`,
   };
 }
 
@@ -172,16 +214,20 @@ export function articleSchema(post) {
     "@context": "https://schema.org",
     "@type": "Article",
     headline: post.title,
-    description: post.excerpt,
-    image: post.cover,
-    datePublished: post.date,
-    author: { "@type": "Organization", name: "ApnaFastag" },
+    description: post.excerpt || post.meta_description,
+    image: post.cover || SITE.defaultImage,
+    datePublished: post.date || post.created_at,
+    dateModified: post.updated_at || post.date || post.created_at,
+    author: { "@type": "Organization", name: "ApnaFastag", url: SITE.url },
     publisher: {
       "@type": "Organization",
       name: "ApnaFastag",
       logo: { "@type": "ImageObject", url: `${SITE.url}/logo.png` },
     },
-    mainEntityOfPage: `${SITE.url}/blog/${post.slug}`,
+    mainEntityOfPage: `${SITE.url}${post.slug ? `/help/${post.slug}` : `/blog/${post.slug}`}`,
+    inLanguage: "en-IN",
+    about: { "@type": "Thing", name: "FASTag" },
+    keywords: post.meta_keywords || post.category,
   };
 }
 
@@ -194,7 +240,9 @@ export function webAppSchema({ name, description, url }) {
     url,
     applicationCategory: "UtilityApplication",
     operatingSystem: "Any",
+    inLanguage: "en-IN",
     offers: { "@type": "Offer", price: "0", priceCurrency: "INR" },
+    provider: orgSchema,
   };
 }
 
@@ -212,6 +260,7 @@ export function breadcrumbSchema(items) {
 }
 
 export function faqSchema(qa) {
+  if (!qa || qa.length === 0) return null;
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -222,3 +271,41 @@ export function faqSchema(qa) {
     })),
   };
 }
+
+export function howToSchema({ name, description, steps }) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    name,
+    description,
+    inLanguage: "en-IN",
+    step: steps.map((s, i) => ({
+      "@type": "HowToStep",
+      position: i + 1,
+      name: s.name,
+      text: s.text,
+    })),
+  };
+}
+
+export function localBusinessSchema({ name, city, state, lat, lng, url }) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name,
+    url,
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: city,
+      addressRegion: state,
+      addressCountry: "IN",
+    },
+    geo: lat && lng ? { "@type": "GeoCoordinates", latitude: lat, longitude: lng } : undefined,
+    priceRange: "₹49–₹499",
+    openingHours: "Mo-Su 00:00-23:59",
+    telephone: "+91-1800-000-0000",
+    areaServed: { "@type": "Country", name: "India" },
+  };
+}
+
+export const SITE_URL = SITE.url;
