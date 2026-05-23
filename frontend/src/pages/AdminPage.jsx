@@ -2937,11 +2937,11 @@ function BrandingTab() {
         {activeSection === "logo" && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <UploadZone label="Company Logo" accept=".png,.jpg,.jpeg,.svg,.webp"
-                hint="Header navbar. PNG/SVG (max 5 MB). Ideal: 400×120 px."
+              <UploadZone label="Company Logo" accept=".svg,.png,.jpg,.jpeg"
+                hint="SVG, PNG or JPG · max 2 MB · served as original format. Ideal: 400×120 px."
                 current={site.logo} onUpload={handleUploadLogo} onDelete={handleDeleteLogo} uploading={uploadingLogo} />
-              <UploadZone label="Favicon" accept=".png,.ico,.svg,.jpg,.jpeg"
-                hint="Browser tab icon. PNG/ICO/SVG (max 2 MB). Ideal: 64×64 px."
+              <UploadZone label="Favicon" accept=".svg,.png,.jpg,.jpeg"
+                hint="SVG, PNG or JPG · max 512 KB · served as original format. Ideal: 64×64 px."
                 current={site.favicon} onUpload={handleUploadFavicon} onDelete={handleDeleteFavicon} uploading={uploadingFavicon} />
             </div>
             {/* Live header preview */}

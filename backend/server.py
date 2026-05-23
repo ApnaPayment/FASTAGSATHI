@@ -1708,91 +1708,97 @@ async def admin_update_branding(data: dict = Body(...)):
 
 @admin_router.post("/branding/upload-logo", dependencies=[Depends(_check_admin)])
 async def admin_upload_logo(file: UploadFile = File(...)):
-    ext = Path(file.filename).suffix.lower() if file.filename else ".png"
-    if ext not in {".jpg", ".jpeg", ".png", ".webp", ".svg"}:
-        raise HTTPException(status_code=400, detail="Only jpg/png/webp/svg allowed")
+    """Accept SVG, PNG, or JPG. Format is preserved exactly — no conversion."""
+    ext = Path(file.filename).suffix.lower() if file.filename else ""
+    ALLOWED = {".svg": "image/svg+xml", ".png": "image/png",
+               ".jpg": "image/jpeg",    ".jpeg": "image/jpeg"}
+    if ext not in ALLOWED:
+        raise HTTPException(status_code=400, detail="Only SVG, PNG, or JPG allowed")
+
     contents = await file.read()
     if not contents:
         raise HTTPException(status_code=400, detail="Empty file")
-    if len(contents) > 5 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Logo must be under 5 MB")
+    if len(contents) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Logo must be under 2 MB")
+
+    content_type = ALLOWED[ext]
 
     if ext == ".svg":
-        data_url = "data:image/svg+xml;base64," + base64.b64encode(contents).decode()
+        # SVG is already optimally scalable — store as-is
+        final_bytes = contents
     else:
+        # Resize raster images to max 800×300 while keeping original format
         try:
             from PIL import Image
             import io
             img = Image.open(io.BytesIO(contents))
-            if img.mode in ("RGBA", "LA", "P"):
-                background = Image.new("RGBA", img.size, (255, 255, 255, 255))
-                if img.mode == "P":
-                    img = img.convert("RGBA")
-                background.paste(img, mask=img.split()[-1] if img.mode == "RGBA" else None)
-                img = background.convert("RGB")
-            else:
-                img = img.convert("RGB")
             img.thumbnail((800, 300), Image.LANCZOS)
             buf = io.BytesIO()
-            img.save(buf, format="PNG", optimize=True)
-            buf.seek(0)
-            data_url = "data:image/png;base64," + base64.b64encode(buf.read()).decode()
+            pil_fmt = "JPEG" if ext in {".jpg", ".jpeg"} else "PNG"
+            save_kw = {"optimize": True, "quality": 92} if pil_fmt == "JPEG" else {"optimize": True}
+            img.save(buf, format=pil_fmt, **save_kw)
+            final_bytes = buf.getvalue()
         except Exception as e:
             logger.warning(f"Logo resize failed ({e}), storing as-is")
-            mime = "image/jpeg" if ext in {".jpg", ".jpeg"} else "image/png"
-            data_url = f"data:{mime};base64," + base64.b64encode(contents).decode()
+            final_bytes = contents
 
     import time as _time
     logo_ts = int(_time.time())
+    data_url = f"data:{content_type};base64," + base64.b64encode(final_bytes).decode()
     await db.site_settings.update_one(
         {"key": "branding"},
         {"$set": {"logo_url": data_url, "logo_ts": logo_ts, "updated_at": datetime.utcnow().isoformat()}},
         upsert=True,
     )
-    logger.info(f"Site logo uploaded ({len(data_url)} chars)")
-    logo_serve_url = f"{BACKEND_SITE}/api/branding/logo-image?t={logo_ts}"
-    return {"ok": True, "logo_url": logo_serve_url}
+    logger.info(f"Logo uploaded — {ext}, {len(final_bytes):,} bytes")
+    return {"ok": True, "logo_url": f"{BACKEND_SITE}/api/branding/logo-image?t={logo_ts}"}
+
 
 @admin_router.post("/branding/upload-favicon", dependencies=[Depends(_check_admin)])
 async def admin_upload_favicon(file: UploadFile = File(...)):
-    ext = Path(file.filename).suffix.lower() if file.filename else ".png"
-    if ext not in {".jpg", ".jpeg", ".png", ".webp", ".ico", ".svg"}:
-        raise HTTPException(status_code=400, detail="Only png/ico/svg/jpg allowed")
+    """Accept SVG, PNG, or JPG for favicon. Format is preserved — no conversion."""
+    ext = Path(file.filename).suffix.lower() if file.filename else ""
+    ALLOWED = {".svg": "image/svg+xml", ".png": "image/png",
+               ".jpg": "image/jpeg",    ".jpeg": "image/jpeg"}
+    if ext not in ALLOWED:
+        raise HTTPException(status_code=400, detail="Only SVG, PNG, or JPG allowed")
+
     contents = await file.read()
     if not contents:
         raise HTTPException(status_code=400, detail="Empty file")
-    if len(contents) > 2 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Favicon must be under 2 MB")
+    if len(contents) > 512 * 1024:
+        raise HTTPException(status_code=400, detail="Favicon must be under 512 KB")
+
+    content_type = ALLOWED[ext]
 
     if ext == ".svg":
-        data_url = "data:image/svg+xml;base64," + base64.b64encode(contents).decode()
-    elif ext == ".ico":
-        data_url = "data:image/x-icon;base64," + base64.b64encode(contents).decode()
+        final_bytes = contents
     else:
+        # Keep original format, resize to max 64×64
         try:
             from PIL import Image
             import io
             img = Image.open(io.BytesIO(contents))
-            img = img.convert("RGBA")
             img.thumbnail((64, 64), Image.LANCZOS)
             buf = io.BytesIO()
-            img.save(buf, format="PNG", optimize=True)
-            buf.seek(0)
-            data_url = "data:image/png;base64," + base64.b64encode(buf.read()).decode()
+            pil_fmt = "JPEG" if ext in {".jpg", ".jpeg"} else "PNG"
+            save_kw = {"optimize": True, "quality": 92} if pil_fmt == "JPEG" else {"optimize": True}
+            img.save(buf, format=pil_fmt, **save_kw)
+            final_bytes = buf.getvalue()
         except Exception as e:
             logger.warning(f"Favicon resize failed ({e}), storing as-is")
-            data_url = "data:image/png;base64," + base64.b64encode(contents).decode()
+            final_bytes = contents
 
     import time as _time
     fav_ts = int(_time.time())
+    data_url = f"data:{content_type};base64," + base64.b64encode(final_bytes).decode()
     await db.site_settings.update_one(
         {"key": "branding"},
         {"$set": {"favicon_url": data_url, "favicon_ts": fav_ts, "updated_at": datetime.utcnow().isoformat()}},
         upsert=True,
     )
-    logger.info(f"Site favicon uploaded ({len(data_url)} chars)")
-    fav_serve_url = f"{BACKEND_SITE}/api/branding/favicon-image?t={fav_ts}"
-    return {"ok": True, "favicon_url": fav_serve_url}
+    logger.info(f"Favicon uploaded — {ext}, {len(final_bytes):,} bytes")
+    return {"ok": True, "favicon_url": f"{BACKEND_SITE}/api/branding/favicon-image?t={fav_ts}"}
 
 @admin_router.delete("/branding/logo", dependencies=[Depends(_check_admin)])
 async def admin_delete_logo():
