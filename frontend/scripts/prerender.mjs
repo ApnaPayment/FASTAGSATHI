@@ -532,7 +532,7 @@ function buildSitemap() {
 
 /* ─── EMIT ─── */
 
-function emit() {
+async function emit() {
   if (!fs.existsSync(TEMPLATE)) { console.error("❌ build/index.html not found. Run npm run build first."); process.exit(1); }
   let template = fs.readFileSync(TEMPLATE, "utf8");
   template = template
@@ -540,9 +540,34 @@ function emit() {
     .replace(/<meta\s+name="description"[^>]*>/i, "")
     .replace(/<meta\s+name="theme-color"[^>]*>/i, '<meta name="theme-color" content="#FF6B00" />');
 
+  // ── Fetch live branding from the API at build time ──────────────────────────
+  // Injected as window.__BRANDING__ into every page so BrandingContext can
+  // initialise with correct data on frame-1 (zero flash on first visit).
+  // logo_url / favicon_url are excluded — base64 data-URLs can be 100 KB+
+  // and would bloat every HTML file. They load from localStorage / API instead.
+  let brandingSnippet = "";
+  try {
+    const backendUrl = process.env.REACT_APP_BACKEND_URL || "https://fastagsathi-production.up.railway.app";
+    const res = await fetch(`${backendUrl}/api/branding`, { signal: AbortSignal.timeout(8000) });
+    if (res.ok) {
+      const d = await res.json();
+      // Strip large binary fields before baking into HTML
+      const { logo_url, favicon_url, ...slim } = d; // eslint-disable-line no-unused-vars
+      // Escape </script> sequences to prevent HTML injection
+      const json = JSON.stringify(slim).replace(/<\//g, "<\\/");
+      // Use ||= pattern so localStorage (set by the browser inline script) wins
+      brandingSnippet = `<script>window.__BRANDING__=window.__BRANDING__||${json};</script>`;
+      console.log("✅ Branding fetched and will be injected into every page");
+    }
+  } catch (e) {
+    console.log(`⚠  Branding fetch skipped (${e.message}) — pages will load branding via API on first visit`);
+  }
+
   let count = 0;
   for (const { path: route, head, body } of routes) {
-    let html = template.replace(/<\/head>/i, `${head}\n  </head>`);
+    // Inject branding snippet + head meta right before </head>
+    const headWithBranding = brandingSnippet ? `${brandingSnippet}\n${head}` : head;
+    let html = template.replace(/<\/head>/i, `${headWithBranding}\n  </head>`);
     // Inject body content for all crawlers (SSG body)
     if (body) {
       html = html.replace('<div id="root"></div>', `<div id="root" data-ssg="1">${body}</div>`);
@@ -564,4 +589,4 @@ function emit() {
   console.log(`✅ Sitemap written → ${sitemapPath} (${count} URLs)`);
 }
 
-emit();
+emit().catch(e => { console.error(e); process.exit(1); });

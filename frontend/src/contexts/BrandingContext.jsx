@@ -84,13 +84,37 @@ function mapApiToContext(d) {
 // ── Context ───────────────────────────────────────────────────────────────────
 const BrandingContext = createContext({ ...SITE_DEFAULTS, reload: () => {} });
 
-export function BrandingProvider({ children }) {
-  // Initialise instantly from localStorage (if available) → zero flash on
-  // repeat visits.  Falls back to SITE_DEFAULTS on the very first visit.
+/**
+ * Priority chain for the initial React state (all synchronous — zero network):
+ *
+ *  1. localStorage  — written by fetchBranding() after every API response;
+ *                     also seeded into window.__BRANDING__ by the inline <script>
+ *                     in index.html so it's available before React loads.
+ *
+ *  2. window.__BRANDING__ — injected into every HTML page by prerender.mjs at
+ *                     build time (excludes logo/favicon to keep HTML compact).
+ *                     Covers first-ever visits where localStorage is empty.
+ *
+ *  3. SITE_DEFAULTS — absolute last resort (dev mode, CI, empty cache).
+ */
+function getInitialState() {
+  // 1. localStorage (most fresh — updated after every API call in the browser)
   const cached = readCache();
-  const [site, setSite] = useState(
-    cached ? cached : { ...SITE_DEFAULTS }
-  );
+  if (cached) return { ...cached, loading: false };
+
+  // 2. window.__BRANDING__ (baked into HTML by prerender or by inline script above)
+  if (typeof window !== "undefined" && window.__BRANDING__) {
+    return { ...mapApiToContext(window.__BRANDING__), loading: false };
+  }
+
+  // 3. SITE_DEFAULTS
+  return { ...SITE_DEFAULTS }; // loading: true — fetchBranding() sets it false
+}
+
+export function BrandingProvider({ children }) {
+  // Lazy initialiser — runs getInitialState exactly once, synchronously,
+  // before the first render so no frame ever shows wrong data.
+  const [site, setSite] = useState(getInitialState);
 
   const fetchBranding = async () => {
     try {

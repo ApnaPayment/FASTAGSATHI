@@ -24,6 +24,10 @@
         <title>ApnaFastag — FASTag Help at Every Toll Plaza</title>
         <!-- Hide SSG pre-rendered body until React mounts (prevents flash of unstyled content) -->
         <style id="ssg-hide">#root[data-ssg]>*{visibility:hidden!important}</style>
+        <!-- Synchronously seed window.__BRANDING__ from localStorage so BrandingContext
+             initialises with real data on frame-1 even if the prerendered HTML is stale.
+             Must run before any React code; do NOT move this script. -->
+        <script>!function(){try{var b=localStorage.getItem("apnafastag_branding_v2");if(b)window.__BRANDING__=JSON.parse(b)}catch(e){}}();</script>
         <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
     </head>
     <body>
