@@ -104,10 +104,10 @@ export default function DisputeTrackerPage() {
         breadcrumb={[{ label: "Tools", to: "/" }, { label: "Dispute tracker" }]}
       />
 
-      <section className="py-16 bg-white">
-        <div className="max-w-3xl mx-auto px-6">
-          <div className="bg-[#F8F9FA] border-2 border-[#0A0A0A] rounded-3xl p-7 shadow-[6px_6px_0_#FF6B00]">
-            <div className="flex gap-3">
+      <section className="pt-2 pb-12 bg-white">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6">
+          <div className="bg-[#F8F9FA] border-2 border-[#0A0A0A] rounded-3xl p-5 sm:p-7 shadow-[6px_6px_0_#FF6B00]">
+            <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#4B5563]" />
                 <input
@@ -123,7 +123,7 @@ export default function DisputeTrackerPage() {
                 onClick={check}
                 disabled={loading || !ref.trim()}
                 data-testid="dispute-check-btn"
-                className="bg-[#FF6B00] text-white font-bold px-6 rounded-full hover:bg-[#E66000] shadow-[0_4px_0_#0A0A0A] disabled:opacity-60 inline-flex items-center gap-2"
+                className="bg-[#FF6B00] text-white font-bold px-6 py-3 rounded-full hover:bg-[#E66000] shadow-[0_4px_0_#0A0A0A] disabled:opacity-60 inline-flex items-center justify-center gap-2 w-full sm:w-auto"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Track"}
               </button>

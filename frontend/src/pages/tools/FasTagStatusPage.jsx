@@ -68,18 +68,18 @@ export default function FasTagStatusPage() {
         breadcrumb={[{ label: "Tools", to: "/" }, { label: "FASTag Status" }]}
       />
 
-      <section className="py-12 bg-[#F8F9FA]">
-        <div className="max-w-2xl mx-auto px-6">
+      <section className="pt-2 pb-12 bg-[#F8F9FA]">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6">
 
           {/* Input card */}
-          <div className="bg-white border-2 border-[#0A0A0A] rounded-3xl p-7 shadow-[8px_8px_0_#FF6B00]">
+          <div className="bg-white border-2 border-[#0A0A0A] rounded-3xl p-5 sm:p-7 shadow-[6px_6px_0_#FF6B00]">
             <div className="w-12 h-12 rounded-2xl bg-[#FF6B00]/15 flex items-center justify-center mb-4">
               <Car className="w-6 h-6 text-[#FF6B00]" />
             </div>
             <h2 className="font-display font-black text-2xl">Check FASTag status</h2>
             <p className="text-sm text-[#4B5563] mt-1">Live lookup — works for all NHAI-linked banks.</p>
 
-            <form onSubmit={check} className="mt-5 flex gap-3">
+            <form onSubmit={check} className="mt-5 flex flex-col sm:flex-row gap-3">
               <div className="flex-1 flex items-center gap-2 bg-[#F8F9FA] border-2 border-[#E5E7EB] focus-within:border-[#FF6B00] rounded-xl px-4 py-3 transition-colors">
                 <Car className="w-4 h-4 text-[#4B5563] flex-shrink-0" />
                 <input
@@ -95,7 +95,7 @@ export default function FasTagStatusPage() {
                 type="submit"
                 disabled={loading || !vehicle.trim()}
                 data-testid="status-check-btn"
-                className="bg-[#FF6B00] text-white font-bold px-6 rounded-xl hover:bg-[#E66000] shadow-[0_4px_0_#0A0A0A] disabled:opacity-50 flex items-center gap-2 transition-all active:translate-y-1 active:shadow-none"
+                className="bg-[#FF6B00] text-white font-bold px-6 py-3 rounded-xl hover:bg-[#E66000] shadow-[0_4px_0_#0A0A0A] disabled:opacity-50 flex items-center justify-center gap-2 transition-all active:translate-y-1 active:shadow-none w-full sm:w-auto"
               >
                 {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
                 {loading ? "Checking…" : "Check"}

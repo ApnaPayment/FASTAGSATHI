@@ -40,9 +40,9 @@ export default function BalanceCheckPage() {
         breadcrumb={[{ label: "Tools", to: "/" }, { label: "Balance check" }]}
       />
 
-      <section className="py-16 bg-white">
-        <div className="max-w-2xl mx-auto px-6">
-          <div className="bg-[#F8F9FA] border-2 border-[#0A0A0A] rounded-3xl p-7 md:p-10 shadow-[6px_6px_0_#FF6B00]">
+      <section className="pt-2 pb-12 bg-white">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6">
+          <div className="bg-[#F8F9FA] border-2 border-[#0A0A0A] rounded-3xl p-5 sm:p-7 md:p-10 shadow-[6px_6px_0_#FF6B00]">
             <label className="block text-sm font-semibold">Vehicle number
               <input value={vehicle} onChange={(e) => setVehicle(e.target.value.toUpperCase())} placeholder="MH 12 AB 4521" data-testid="balance-vehicle" className="mt-1 w-full bg-white border-2 border-[#E5E7EB] focus:border-[#FF6B00] rounded-xl px-4 py-3 outline-none uppercase font-mono" />
             </label>
