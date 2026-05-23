@@ -8,4 +8,8 @@ Disallow: /my-jobs
 Disallow: /dashboard
 Disallow: /login
 
+# Primary sitemap index (contains links to all sub-sitemaps)
 Sitemap: https://www.apnafastag.com/sitemap.xml
+
+# Backend-direct sitemap index (dynamic pages — plazas, states, banks, help, Sathis)
+Sitemap: https://fastagsathi-production.up.railway.app/sitemap.xml

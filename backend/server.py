@@ -3031,7 +3031,10 @@ app.include_router(api)
 
 # ─── Dynamic sitemap ──────────────────────────────────────────────────────────
 
-SITE = "https://www.apnafastag.com"
+SITE         = "https://www.apnafastag.com"
+# Backend's own public URL — used so the sitemapindex <loc> entries for sub-sitemaps
+# resolve to actual XML endpoints (not the frontend SPA which returns HTML).
+BACKEND_SITE = "https://fastagsathi-production.up.railway.app"
 
 # ─── Sitemap helpers ──────────────────────────────────────────────────────────
 
@@ -3065,7 +3068,7 @@ async def sitemap_index():
         "sitemap-help.xml",
         "sitemap-sathis.xml",
     ]
-    rows = [f'  <sitemap><loc>{SITE}/{s}</loc><lastmod>{today}</lastmod></sitemap>' for s in subs]
+    rows = [f'  <sitemap><loc>{BACKEND_SITE}/{s}</loc><lastmod>{today}</lastmod></sitemap>' for s in subs]
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
     xml += '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     xml += "\n".join(rows)

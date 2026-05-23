@@ -1,6 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Auto-generated at build time by scripts/prerender.mjs             -->
-<!-- Full sitemap index served at https://www.apnafastag.com/sitemap.xml -->
+<!--
+  ApnaFastag — Sitemap Index
+  Static pages + dynamic content (plazas, states, banks, help articles, Sathi profiles)
+  are served from the API backend. All <loc> URLs are on www.apnafastag.com.
+-->
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <sitemap><loc>https://www.apnafastag.com/sitemap.xml</loc></sitemap>
+  <sitemap>
+    <loc>https://fastagsathi-production.up.railway.app/sitemap-static.xml</loc>
+  </sitemap>
+  <sitemap>
+    <loc>https://fastagsathi-production.up.railway.app/sitemap-plazas.xml</loc>
+  </sitemap>
+  <sitemap>
+    <loc>https://fastagsathi-production.up.railway.app/sitemap-states.xml</loc>
+  </sitemap>
+  <sitemap>
+    <loc>https://fastagsathi-production.up.railway.app/sitemap-banks.xml</loc>
+  </sitemap>
+  <sitemap>
+    <loc>https://fastagsathi-production.up.railway.app/sitemap-highways.xml</loc>
+  </sitemap>
+  <sitemap>
+    <loc>https://fastagsathi-production.up.railway.app/sitemap-cities.xml</loc>
+  </sitemap>
+  <sitemap>
+    <loc>https://fastagsathi-production.up.railway.app/sitemap-help.xml</loc>
+  </sitemap>
+  <sitemap>
+    <loc>https://fastagsathi-production.up.railway.app/sitemap-sathis.xml</loc>
+  </sitemap>
 </sitemapindex>
