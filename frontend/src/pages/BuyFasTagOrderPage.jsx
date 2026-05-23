@@ -84,6 +84,8 @@ export default function BuyFasTagOrderPage() {
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState("");
 
+  const preselectedBank = searchParams.get("bank");
+
   useEffect(() => {
     track("page_view", { page: "buy_fastag_order" });
     fastagOrderApi.prices()
@@ -91,13 +93,13 @@ export default function BuyFasTagOrderPage() {
         const available = r.data.filter((p) => p.is_available !== false);
         setPrices(available);
         // If bank pre-selected from URL and available, jump to step 2
-        if (searchParams.get("bank") && available.find((p) => p.bank_slug === searchParams.get("bank"))) {
+        if (preselectedBank && available.find((p) => p.bank_slug === preselectedBank)) {
           setStep("vehicle");
         }
       })
       .catch(() => {})
       .finally(() => setLoadingPrices(false));
-  }, []);
+  }, [preselectedBank]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedPrice = prices.find((p) => p.bank_slug === bankSlug);
   const bankMeta = SEED_BANKS.find((b) => b.slug === bankSlug);

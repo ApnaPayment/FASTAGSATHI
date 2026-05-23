@@ -2525,8 +2525,8 @@ function FasTagOrdersTab() {
     try { const r = await adminApi.fastagPrices(); setPrices(r.data); } catch {}
   }, []);
 
-  useEffect(() => { fetchOrders(1); fetchStats(); fetchPrices(); }, [statusFilter]);
-  useEffect(() => { const t = setTimeout(() => fetchOrders(1), 350); return () => clearTimeout(t); }, [search]);
+  useEffect(() => { fetchOrders(1); fetchStats(); fetchPrices(); }, [statusFilter, fetchOrders, fetchStats, fetchPrices]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { const t = setTimeout(() => fetchOrders(1), 350); return () => clearTimeout(t); }, [search, fetchOrders]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openEdit = (order) => {
     setSelectedOrder(order);

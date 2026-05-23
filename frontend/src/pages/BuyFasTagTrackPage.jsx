@@ -72,13 +72,16 @@ export default function BuyFasTagTrackPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const initPaymentId = searchParams.get("payment_id");
+  const initPhone = searchParams.get("phone");
+
   useEffect(() => {
     track("page_view", { page: "buy_fastag_track" });
     // Auto-track if redirected back from payment
-    if (searchParams.get("payment_id") && searchParams.get("phone")) {
-      fetchOrder(searchParams.get("payment_id"), searchParams.get("phone"));
+    if (initPaymentId && initPhone) {
+      fetchOrder(initPaymentId, initPhone);
     }
-  }, []);
+  }, [initPaymentId, initPhone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchOrder = async (oid, ph) => {
     if (!oid || !ph) { setError("Please enter both order ID and phone number"); return; }
