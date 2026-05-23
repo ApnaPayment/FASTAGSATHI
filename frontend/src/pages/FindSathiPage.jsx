@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import PageHero from "@/components/layout/PageHero";
 import SEO from "@/components/seo/SEO";
-import { MapPin, Search, Compass, AlertCircle, Star, BadgeCheck, ArrowRight, Milestone } from "lucide-react";
+import { MapPin, Search, Compass, AlertCircle, Star, BadgeCheck, ArrowRight, Milestone, Siren } from "lucide-react";
 import { motion } from "framer-motion";
 import MapView from "@/components/map/MapView";
 import useGeolocation from "@/hooks/useGeolocation";
@@ -25,6 +25,8 @@ const CITY_FALLBACKS = [
 ];
 
 export default function FindSathiPage() {
+  const [searchParams] = useSearchParams();
+  const isSOS = searchParams.get("sos") === "1";
   const geo = useGeolocation();
   const [tab, setTab] = useState("sathi");
   const [allSathis, setAllSathis] = useState(SATHIS);
@@ -65,11 +67,25 @@ export default function FindSathiPage() {
       />
 
       <PageHero
-        eyebrow="Live"
-        title={<>Find a <span className="text-[#FF6B00]">Sathi near you.</span></>}
-        sub="We use your phone's GPS to show verified Sathis and toll plazas within 25 km. Pick by plaza or tap any Sathi marker."
-        breadcrumb={[{ label: "Find a Sathi" }]}
+        eyebrow={isSOS ? "🚨 Emergency" : "Live"}
+        title={isSOS
+          ? <><span className="text-[#DC2626]">SOS —</span> Sathi on the way.</>
+          : <>Find a <span className="text-[#FF6B00]">Sathi near you.</span></>
+        }
+        sub={isSOS
+          ? "Share your location below and we'll connect you with the nearest available Sathi immediately. Average response: under 90 seconds."
+          : "We use your phone's GPS to show verified Sathis and toll plazas within 25 km. Pick by plaza or tap any Sathi marker."
+        }
+        breadcrumb={[{ label: isSOS ? "SOS" : "Find a Sathi" }]}
       />
+
+      {isSOS && (
+        <div className="bg-[#DC2626] text-white px-6 py-3 flex items-center justify-center gap-3 text-sm font-bold">
+          <Siren className="w-4 h-4 animate-pulse flex-shrink-0" />
+          SOS mode active — nearest available Sathis shown first
+          <Siren className="w-4 h-4 animate-pulse flex-shrink-0" />
+        </div>
+      )}
 
       <section className="py-12 bg-[#F8F9FA]">
         <div className="max-w-7xl mx-auto px-6 md:px-10 lg:px-12">
