@@ -2819,157 +2819,240 @@ function UploadZone({ label, hint, accept, current, onUpload, onDelete, uploadin
 }
 
 function BrandingTab() {
-  const { logo, favicon, siteName, tagline, reload } = useBranding();
-  const [saving, setSaving] = useState(false);
+  const site = useBranding();
+  const [activeSection, setActiveSection] = useState("logo");
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
-  const [form, setForm] = useState({ site_name: siteName, tagline });
 
-  useEffect(() => { setForm({ site_name: siteName, tagline }); }, [siteName, tagline]);
+  // Single form for all text settings (populated from context on load)
+  const [form, setForm] = useState({
+    site_name: "", tagline: "", description: "", legal_name: "", founded_year: "",
+    support_email: "", hiring_email: "", press_email: "", legal_email: "",
+    helpline: "", whatsapp: "",
+    address_line1: "", address_city: "", address_state: "", address_pincode: "", address_country: "",
+    social_instagram: "", social_twitter: "", social_youtube: "", social_facebook: "", social_linkedin: "",
+    footer_tagline: "",
+  });
 
-  const toast = (text, ok = true) => {
-    setMsg({ text, ok });
-    setTimeout(() => setMsg(null), 3500);
-  };
+  // Populate form from context once loaded
+  useEffect(() => {
+    if (site.loading) return;
+    setForm({
+      site_name:        site.siteName       || "",
+      tagline:          site.tagline        || "",
+      description:      site.description    || "",
+      legal_name:       site.legalName      || "",
+      founded_year:     site.foundedYear    || "",
+      support_email:    site.supportEmail   || "",
+      hiring_email:     site.hiringEmail    || "",
+      press_email:      site.pressEmail     || "",
+      legal_email:      site.legalEmail     || "",
+      helpline:         site.helpline       || "",
+      whatsapp:         site.whatsapp       || "",
+      address_line1:    site.addressLine1   || "",
+      address_city:     site.addressCity    || "",
+      address_state:    site.addressState   || "",
+      address_pincode:  site.addressPincode || "",
+      address_country:  site.addressCountry || "",
+      social_instagram: site.socialInstagram || "",
+      social_twitter:   site.socialTwitter   || "",
+      social_youtube:   site.socialYoutube   || "",
+      social_facebook:  site.socialFacebook  || "",
+      social_linkedin:  site.socialLinkedin  || "",
+      footer_tagline:   site.footerTagline   || "",
+    });
+  }, [site.loading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const f = (k) => ({ value: form[k] || "", onChange: (e) => setForm((p) => ({ ...p, [k]: e.target.value })) });
+  const inp = "w-full border-2 border-[#E5E7EB] rounded-xl px-4 py-2.5 text-sm focus:border-[#FF6B00] focus:outline-none transition-colors";
+
+  const toast = (text, ok = true) => { setMsg({ text, ok }); setTimeout(() => setMsg(null), 3500); };
 
   const handleUploadLogo = async (file) => {
     setUploadingLogo(true);
-    try {
-      await adminApi.uploadLogo(file);
-      await reload();
-      toast("Logo updated successfully");
-    } catch (e) {
-      toast(e?.response?.data?.detail || "Logo upload failed", false);
-    } finally { setUploadingLogo(false); }
+    try { await adminApi.uploadLogo(file); await site.reload(); toast("Logo updated"); }
+    catch (e) { toast(e?.response?.data?.detail || "Logo upload failed", false); }
+    finally { setUploadingLogo(false); }
   };
-
   const handleUploadFavicon = async (file) => {
     setUploadingFavicon(true);
-    try {
-      await adminApi.uploadFavicon(file);
-      await reload();
-      toast("Favicon updated successfully");
-    } catch (e) {
-      toast(e?.response?.data?.detail || "Favicon upload failed", false);
-    } finally { setUploadingFavicon(false); }
+    try { await adminApi.uploadFavicon(file); await site.reload(); toast("Favicon updated"); }
+    catch (e) { toast(e?.response?.data?.detail || "Favicon upload failed", false); }
+    finally { setUploadingFavicon(false); }
   };
+  const handleDeleteLogo    = async () => { if (!window.confirm("Remove logo?")) return; await adminApi.deleteLogo();    await site.reload(); toast("Logo removed"); };
+  const handleDeleteFavicon = async () => { if (!window.confirm("Remove favicon?")) return; await adminApi.deleteFavicon(); await site.reload(); toast("Favicon removed"); };
 
-  const handleDeleteLogo = async () => {
-    if (!window.confirm("Remove the current logo?")) return;
-    await adminApi.deleteLogo();
-    await reload();
-    toast("Logo removed");
-  };
-
-  const handleDeleteFavicon = async () => {
-    if (!window.confirm("Remove the current favicon?")) return;
-    await adminApi.deleteFavicon();
-    await reload();
-    toast("Favicon removed");
-  };
-
-  const handleSaveText = async () => {
+  const handleSave = async () => {
     setSaving(true);
-    try {
-      await adminApi.updateBranding(form);
-      await reload();
-      toast("Branding text saved");
-    } catch (e) {
-      toast("Save failed", false);
-    } finally { setSaving(false); }
+    try { await adminApi.updateBranding(form); await site.reload(); toast("Settings saved — live across the site"); }
+    catch { toast("Save failed", false); }
+    finally { setSaving(false); }
   };
+
+  const SECTIONS = [
+    { id: "logo",     label: "Logo & Favicon" },
+    { id: "company",  label: "Company Profile" },
+    { id: "contact",  label: "Contact Details" },
+    { id: "address",  label: "Address" },
+    { id: "social",   label: "Social Links" },
+  ];
 
   return (
-    <div className="space-y-8 max-w-3xl">
-      <div>
-        <h2 className="text-2xl font-black text-[#0A0A0A]">Branding</h2>
-        <p className="text-sm text-[#6B7280] mt-1">Upload your logo and favicon. Changes go live instantly across the site.</p>
+    <div className="flex gap-8 max-w-5xl">
+      {/* Side nav */}
+      <div className="hidden md:flex flex-col gap-1 w-44 flex-shrink-0 pt-1">
+        {SECTIONS.map((s) => (
+          <button key={s.id} onClick={() => setActiveSection(s.id)}
+            className={`text-left px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors ${activeSection === s.id ? "bg-[#FF6B00] text-white" : "text-[#374151] hover:bg-[#F3F4F6]"}`}>
+            {s.label}
+          </button>
+        ))}
       </div>
 
-      {msg && (
-        <div className={`rounded-xl px-4 py-3 text-sm font-semibold ${msg.ok ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
-          {msg.text}
+      {/* Mobile section select */}
+      <div className="md:hidden w-full mb-4">
+        <select className="w-full border-2 border-[#E5E7EB] rounded-xl px-4 py-2.5 text-sm"
+          value={activeSection} onChange={(e) => setActiveSection(e.target.value)}>
+          {SECTIONS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+        </select>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 space-y-6">
+        <div>
+          <h2 className="text-2xl font-black text-[#0A0A0A]">{SECTIONS.find((s) => s.id === activeSection)?.label}</h2>
+          <p className="text-sm text-[#6B7280] mt-1">Changes go live across the entire site instantly.</p>
         </div>
-      )}
 
-      {/* Upload cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <UploadZone
-          label="Company Logo"
-          hint="Shown in the header navbar. PNG, SVG, JPG (max 5 MB). Recommended: 400×120 px."
-          accept=".png,.jpg,.jpeg,.svg,.webp"
-          current={logo}
-          onUpload={handleUploadLogo}
-          onDelete={handleDeleteLogo}
-          uploading={uploadingLogo}
-        />
-        <UploadZone
-          label="Favicon"
-          hint="Browser tab icon. PNG, ICO, SVG (max 2 MB). Recommended: 64×64 px."
-          accept=".png,.ico,.svg,.jpg,.jpeg"
-          current={favicon}
-          onUpload={handleUploadFavicon}
-          onDelete={handleDeleteFavicon}
-          uploading={uploadingFavicon}
-        />
-      </div>
+        {msg && (
+          <div className={`rounded-xl px-4 py-3 text-sm font-semibold ${msg.ok ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+            {msg.text}
+          </div>
+        )}
 
-      {/* Live preview */}
-      <div className="bg-white border-2 border-[#E5E7EB] rounded-2xl p-6 space-y-3">
-        <h3 className="font-bold text-[#0A0A0A]">Live Header Preview</h3>
-        <div className="bg-[#F8F9FA] border border-[#E5E7EB] rounded-xl px-6 py-4 flex items-center">
-          {logo ? (
-            <img src={logo} alt={form.site_name} className="h-10 w-auto max-w-[160px] object-contain" />
-          ) : (
-            <div className="flex items-center gap-2">
-              <div className="relative w-10 h-10 rounded-xl bg-[#0A0A0A] flex items-center justify-center shadow-[3px_3px_0_#FF6B00]">
-                <span className="font-bold text-white text-lg">A</span>
-                <span className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-[#FF6B00] border-2 border-white" />
-              </div>
-              <div className="flex flex-col leading-none">
-                <span className="font-bold text-base text-[#0A0A0A]">{form.site_name || "ApnaFastag"}</span>
-                <span className="text-[10px] text-[#4B5563] -mt-0.5">{form.tagline || "अपना फास्टैग साथी"}</span>
+        {/* ── Logo & Favicon ── */}
+        {activeSection === "logo" && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <UploadZone label="Company Logo" accept=".png,.jpg,.jpeg,.svg,.webp"
+                hint="Header navbar. PNG/SVG (max 5 MB). Ideal: 400×120 px."
+                current={site.logo} onUpload={handleUploadLogo} onDelete={handleDeleteLogo} uploading={uploadingLogo} />
+              <UploadZone label="Favicon" accept=".png,.ico,.svg,.jpg,.jpeg"
+                hint="Browser tab icon. PNG/ICO/SVG (max 2 MB). Ideal: 64×64 px."
+                current={site.favicon} onUpload={handleUploadFavicon} onDelete={handleDeleteFavicon} uploading={uploadingFavicon} />
+            </div>
+            {/* Live header preview */}
+            <div className="bg-white border-2 border-[#E5E7EB] rounded-2xl p-5">
+              <p className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wider mb-3">Header preview</p>
+              <div className="bg-[#F8F9FA] rounded-xl px-6 py-4 flex items-center">
+                {site.logo ? (
+                  <img src={site.logo} alt="logo" className="h-10 w-auto max-w-[160px] object-contain" />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="relative w-10 h-10 rounded-xl bg-[#0A0A0A] flex items-center justify-center shadow-[3px_3px_0_#FF6B00]">
+                      <span className="font-bold text-white text-lg">{(form.site_name || "A")[0]}</span>
+                    </div>
+                    <div className="flex flex-col leading-none">
+                      <span className="font-bold text-base text-[#0A0A0A]">{form.site_name || "ApnaFastag"}</span>
+                      <span className="text-[10px] text-[#4B5563]">{form.tagline || "अपना फास्टैग साथी"}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          )}
-        </div>
-        <p className="text-xs text-[#9CA3AF]">
-          {logo ? "Custom logo is active. Remove it to fall back to the text logo." : "No logo uploaded — text logo with site name & tagline is shown."}
-        </p>
-      </div>
+          </div>
+        )}
 
-      {/* Text settings */}
-      <div className="bg-white border-2 border-[#E5E7EB] rounded-2xl p-6 space-y-5">
-        <h3 className="font-bold text-[#0A0A0A]">Text Fallback (shown when no logo is uploaded)</h3>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-[#374151] mb-1.5">Site Name</label>
-            <input
-              className="w-full border-2 border-[#E5E7EB] rounded-xl px-4 py-2.5 text-sm focus:border-[#FF6B00] focus:outline-none"
-              value={form.site_name}
-              onChange={(e) => setForm((f) => ({ ...f, site_name: e.target.value }))}
-              placeholder="ApnaFastag"
-            />
+        {/* ── Company Profile ── */}
+        {activeSection === "company" && (
+          <div className="bg-white border-2 border-[#E5E7EB] rounded-2xl p-6 space-y-5">
+            {[
+              { k: "site_name",    l: "Site / Brand Name",       ph: "ApnaFastag" },
+              { k: "tagline",      l: "Tagline / Sub-text",       ph: "अपना फास्टैग साथी" },
+              { k: "description",  l: "Short Description",        ph: "India's first real-time FASTag rescue network…", ta: true },
+              { k: "legal_name",   l: "Legal Company Name",       ph: "ApnaFastag Technologies Pvt. Ltd." },
+              { k: "founded_year", l: "Founded Year",             ph: "2024" },
+              { k: "footer_tagline", l: "Footer Tagline",         ph: "Made with chai on NH-48." },
+            ].map((fld) => (
+              <div key={fld.k}>
+                <label className="block text-sm font-semibold text-[#374151] mb-1.5">{fld.l}</label>
+                {fld.ta
+                  ? <textarea className={inp} rows={3} placeholder={fld.ph} {...f(fld.k)} />
+                  : <input className={inp} placeholder={fld.ph} {...f(fld.k)} />}
+              </div>
+            ))}
           </div>
-          <div>
-            <label className="block text-sm font-semibold text-[#374151] mb-1.5">Tagline (Hindi / sub-text)</label>
-            <input
-              className="w-full border-2 border-[#E5E7EB] rounded-xl px-4 py-2.5 text-sm focus:border-[#FF6B00] focus:outline-none"
-              value={form.tagline}
-              onChange={(e) => setForm((f) => ({ ...f, tagline: e.target.value }))}
-              placeholder="अपना फास्टैग साथी"
-            />
+        )}
+
+        {/* ── Contact Details ── */}
+        {activeSection === "contact" && (
+          <div className="bg-white border-2 border-[#E5E7EB] rounded-2xl p-6 space-y-5">
+            {[
+              { k: "support_email", l: "Support / General Email", ph: "help@yourdomain.com",    type: "email" },
+              { k: "hiring_email",  l: "Hiring Email",            ph: "hiring@yourdomain.com",  type: "email" },
+              { k: "press_email",   l: "Press / PR Email",        ph: "press@yourdomain.com",   type: "email" },
+              { k: "legal_email",   l: "Legal Email",             ph: "legal@yourdomain.com",   type: "email" },
+              { k: "helpline",      l: "Helpline Number",         ph: "1800-XXX-XXXX" },
+              { k: "whatsapp",      l: "WhatsApp Number",         ph: "+91 98765 43210" },
+            ].map((fld) => (
+              <div key={fld.k}>
+                <label className="block text-sm font-semibold text-[#374151] mb-1.5">{fld.l}</label>
+                <input className={inp} type={fld.type || "text"} placeholder={fld.ph} {...f(fld.k)} />
+              </div>
+            ))}
+            <p className="text-xs text-[#9CA3AF]">Used in Contact page, Footer, Careers apply links, Legal pages, and Press page.</p>
           </div>
-        </div>
-        <button
-          onClick={handleSaveText}
-          disabled={saving}
-          className="inline-flex items-center gap-2 bg-[#0A0A0A] text-white font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-[#333] disabled:opacity-50 transition-colors"
-        >
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-          {saving ? "Saving…" : "Save Text Settings"}
-        </button>
+        )}
+
+        {/* ── Address ── */}
+        {activeSection === "address" && (
+          <div className="bg-white border-2 border-[#E5E7EB] rounded-2xl p-6 space-y-5">
+            {[
+              { k: "address_line1",   l: "Street / Office Address", ph: "4th Floor, XYZ Tower, MG Road" },
+              { k: "address_city",    l: "City",                     ph: "Pune" },
+              { k: "address_state",   l: "State",                    ph: "Maharashtra" },
+              { k: "address_pincode", l: "Pincode",                  ph: "411001" },
+              { k: "address_country", l: "Country",                  ph: "India" },
+            ].map((fld) => (
+              <div key={fld.k}>
+                <label className="block text-sm font-semibold text-[#374151] mb-1.5">{fld.l}</label>
+                <input className={inp} placeholder={fld.ph} {...f(fld.k)} />
+              </div>
+            ))}
+            <p className="text-xs text-[#9CA3AF]">Shown on Contact page and used for business address in structured data.</p>
+          </div>
+        )}
+
+        {/* ── Social Links ── */}
+        {activeSection === "social" && (
+          <div className="bg-white border-2 border-[#E5E7EB] rounded-2xl p-6 space-y-5">
+            {[
+              { k: "social_instagram", l: "Instagram URL",  ph: "https://instagram.com/yourpage" },
+              { k: "social_twitter",   l: "Twitter / X URL", ph: "https://twitter.com/yourhandle" },
+              { k: "social_youtube",   l: "YouTube URL",    ph: "https://youtube.com/@yourchannel" },
+              { k: "social_facebook",  l: "Facebook URL",   ph: "https://facebook.com/yourpage" },
+              { k: "social_linkedin",  l: "LinkedIn URL",   ph: "https://linkedin.com/company/yourco" },
+            ].map((fld) => (
+              <div key={fld.k}>
+                <label className="block text-sm font-semibold text-[#374151] mb-1.5">{fld.l}</label>
+                <input className={inp} type="url" placeholder={fld.ph} {...f(fld.k)} />
+              </div>
+            ))}
+            <p className="text-xs text-[#9CA3AF]">Social icons appear in the Footer. Leave blank to hide an icon.</p>
+          </div>
+        )}
+
+        {/* Save button — shown for all text sections */}
+        {activeSection !== "logo" && (
+          <button onClick={handleSave} disabled={saving}
+            className="inline-flex items-center gap-2 bg-[#FF6B00] text-white font-bold px-6 py-3 rounded-xl hover:bg-[#E66000] disabled:opacity-50 transition-colors shadow-[0_4px_0_#0A0A0A]">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {saving ? "Saving…" : "Save Changes"}
+          </button>
+        )}
       </div>
     </div>
   );

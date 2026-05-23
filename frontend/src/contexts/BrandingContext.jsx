@@ -1,22 +1,66 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 
-const BrandingContext = createContext({
-  logo: null,
-  favicon: null,
-  siteName: "ApnaFastag",
-  tagline: "अपना फास्टैग साथी",
-  loading: true,
-  reload: () => {},
-});
+export const SITE_DEFAULTS = {
+  logo:           null,
+  favicon:        null,
+  siteName:       "ApnaFastag",
+  tagline:        "अपना फास्टैग साथी",
+  description:    "India's first real-time, peer-to-peer rescue network for FASTag chaos.",
+  legalName:      "ApnaFastag Technologies Pvt. Ltd.",
+  foundedYear:    "2024",
+  supportEmail:   "help@apnafastag.com",
+  hiringEmail:    "hiring@apnafastag.com",
+  pressEmail:     "press@apnafastag.com",
+  legalEmail:     "legal@apnafastag.com",
+  helpline:       "1800-XXX-XXXX",
+  whatsapp:       "+91 80000 00000",
+  addressLine1:   "",
+  addressCity:    "Pune",
+  addressState:   "Maharashtra",
+  addressPincode: "",
+  addressCountry: "India",
+  socialInstagram: "",
+  socialTwitter:   "",
+  socialYoutube:   "",
+  socialFacebook:  "",
+  socialLinkedin:  "",
+  footerTagline:  "Made with chai on NH-48.",
+  loading:        true,
+};
+
+const BrandingContext = createContext({ ...SITE_DEFAULTS, reload: () => {} });
+
+function mapApiToContext(d) {
+  return {
+    logo:            d.logo_url         || null,
+    favicon:         d.favicon_url      || null,
+    siteName:        d.site_name        || SITE_DEFAULTS.siteName,
+    tagline:         d.tagline          || SITE_DEFAULTS.tagline,
+    description:     d.description      || SITE_DEFAULTS.description,
+    legalName:       d.legal_name       || SITE_DEFAULTS.legalName,
+    foundedYear:     d.founded_year     || SITE_DEFAULTS.foundedYear,
+    supportEmail:    d.support_email    || SITE_DEFAULTS.supportEmail,
+    hiringEmail:     d.hiring_email     || SITE_DEFAULTS.hiringEmail,
+    pressEmail:      d.press_email      || SITE_DEFAULTS.pressEmail,
+    legalEmail:      d.legal_email      || SITE_DEFAULTS.legalEmail,
+    helpline:        d.helpline         || SITE_DEFAULTS.helpline,
+    whatsapp:        d.whatsapp         || SITE_DEFAULTS.whatsapp,
+    addressLine1:    d.address_line1    || "",
+    addressCity:     d.address_city     || SITE_DEFAULTS.addressCity,
+    addressState:    d.address_state    || SITE_DEFAULTS.addressState,
+    addressPincode:  d.address_pincode  || "",
+    addressCountry:  d.address_country  || SITE_DEFAULTS.addressCountry,
+    socialInstagram: d.social_instagram || "",
+    socialTwitter:   d.social_twitter   || "",
+    socialYoutube:   d.social_youtube   || "",
+    socialFacebook:  d.social_facebook  || "",
+    socialLinkedin:  d.social_linkedin  || "",
+    footerTagline:   d.footer_tagline   || SITE_DEFAULTS.footerTagline,
+  };
+}
 
 export function BrandingProvider({ children }) {
-  const [branding, setBranding] = useState({
-    logo: null,
-    favicon: null,
-    siteName: "ApnaFastag",
-    tagline: "अपना फास्टैग साथी",
-    loading: true,
-  });
+  const [site, setSite] = useState({ ...SITE_DEFAULTS });
 
   const fetchBranding = async () => {
     try {
@@ -24,37 +68,28 @@ export function BrandingProvider({ children }) {
       const res = await fetch(`${base}/api/branding`);
       if (!res.ok) throw new Error("branding fetch failed");
       const d = await res.json();
-      setBranding({
-        logo: d.logo_url || null,
-        favicon: d.favicon_url || null,
-        siteName: d.site_name || "ApnaFastag",
-        tagline: d.tagline || "अपना फास्टैग साथी",
-        loading: false,
-      });
+      setSite({ ...mapApiToContext(d), loading: false });
     } catch {
-      // Silently fall back to defaults — site still works
-      setBranding((b) => ({ ...b, loading: false }));
+      setSite((b) => ({ ...b, loading: false }));
     }
   };
 
-  useEffect(() => {
-    fetchBranding();
-  }, []);
+  useEffect(() => { fetchBranding(); }, []);
 
-  // Inject dynamic favicon whenever favicon changes
+  // Inject dynamic favicon whenever it changes
   useEffect(() => {
-    if (!branding.favicon) return;
+    if (!site.favicon) return;
     let link = document.querySelector("link[rel~='icon']");
     if (!link) {
       link = document.createElement("link");
       link.rel = "icon";
       document.head.appendChild(link);
     }
-    link.href = branding.favicon;
-  }, [branding.favicon]);
+    link.href = site.favicon;
+  }, [site.favicon]);
 
   return (
-    <BrandingContext.Provider value={{ ...branding, reload: fetchBranding }}>
+    <BrandingContext.Provider value={{ ...site, reload: fetchBranding }}>
       {children}
     </BrandingContext.Provider>
   );

@@ -412,18 +412,41 @@ help_router = APIRouter(prefix="/help", tags=["help"])
 
 # ─── Public branding endpoint ─────────────────────────────────────────────────
 
+SITE_DEFAULTS: dict = {
+    "site_name":        "ApnaFastag",
+    "tagline":          "अपना फास्टैग साथी",
+    "description":      "India's first real-time, peer-to-peer rescue network for FASTag chaos.",
+    "legal_name":       "ApnaFastag Technologies Pvt. Ltd.",
+    "founded_year":     "2024",
+    "support_email":    "help@apnafastag.com",
+    "hiring_email":     "hiring@apnafastag.com",
+    "press_email":      "press@apnafastag.com",
+    "legal_email":      "legal@apnafastag.com",
+    "helpline":         "1800-XXX-XXXX",
+    "whatsapp":         "+91 80000 00000",
+    "address_line1":    "",
+    "address_city":     "Pune",
+    "address_state":    "Maharashtra",
+    "address_pincode":  "",
+    "address_country":  "India",
+    "social_instagram": "",
+    "social_twitter":   "",
+    "social_youtube":   "",
+    "social_facebook":  "",
+    "social_linkedin":  "",
+    "footer_tagline":   "Made with chai on NH-48.",
+    "logo_url":         None,
+    "favicon_url":      None,
+}
+
 @app.get("/api/branding", tags=["branding"])
 async def get_branding():
-    """Return site branding (logo, favicon, name). Safe to cache 5 min."""
-    doc = await db.site_settings.find_one({"key": "branding"}, {"_id": 0})
-    if not doc:
-        return {"logo_url": None, "favicon_url": None, "site_name": "ApnaFastag", "tagline": "अपना फास्टैग साथी"}
-    return {
-        "logo_url":   doc.get("logo_url"),
-        "favicon_url": doc.get("favicon_url"),
-        "site_name":  doc.get("site_name", "ApnaFastag"),
-        "tagline":    doc.get("tagline", "अपना फास्टैग साथी"),
-    }
+    """Return all public site settings — logo, contact, social, company info."""
+    doc = await db.site_settings.find_one({"key": "branding"}, {"_id": 0, "key": 0, "updated_at": 0})
+    result = dict(SITE_DEFAULTS)
+    if doc:
+        result.update({k: v for k, v in doc.items() if k in SITE_DEFAULTS})
+    return result
 
 @help_router.get("")
 async def list_help(
@@ -1622,15 +1645,17 @@ async def admin_update_fastag_price(bank_slug: str, data: dict = Body(...)):
 
 @admin_router.get("/branding", dependencies=[Depends(_check_admin)])
 async def admin_get_branding():
-    doc = await db.site_settings.find_one({"key": "branding"}, {"_id": 0})
-    if not doc:
-        return {"logo_url": None, "favicon_url": None, "site_name": "ApnaFastag", "tagline": "अपना फास्टैग साथी"}
-    return doc
+    doc = await db.site_settings.find_one({"key": "branding"}, {"_id": 0, "key": 0})
+    result = dict(SITE_DEFAULTS)
+    if doc:
+        result.update({k: v for k, v in doc.items() if k in SITE_DEFAULTS or k == "updated_at"})
+    return result
 
 @admin_router.patch("/branding", dependencies=[Depends(_check_admin)])
 async def admin_update_branding(data: dict = Body(...)):
-    allowed = {"site_name", "tagline"}
-    update = {k: v for k, v in data.items() if k in allowed}
+    # Allow all text fields in SITE_DEFAULTS (but not logo/favicon — those have dedicated upload endpoints)
+    text_fields = {k for k in SITE_DEFAULTS if k not in ("logo_url", "favicon_url")}
+    update = {k: v for k, v in data.items() if k in text_fields}
     if not update:
         raise HTTPException(status_code=400, detail="No valid fields")
     update["updated_at"] = datetime.utcnow().isoformat()
