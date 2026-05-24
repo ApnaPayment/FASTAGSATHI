@@ -6,6 +6,7 @@ import TrustBar from "./TrustBar";
 import HowItWorks from "./HowItWorks";
 import IssueTypes from "./IssueTypes";
 import Features from "./Features";
+import TrustSection from "./TrustSection";
 import BecomeSathi from "./BecomeSathi";
 import Testimonials from "./Testimonials";
 import FAQ from "./FAQ";
@@ -49,6 +50,7 @@ export default function LandingPage() {
       <HowItWorks />
       <IssueTypes />
       <Features />
+      <TrustSection />
       <BecomeSathi />
       <Testimonials />
       <FAQ />
