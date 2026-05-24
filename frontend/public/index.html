@@ -7,10 +7,14 @@
         <meta name="description" content="ApnaFastag — FASTag help at every toll plaza" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-        <!-- display=optional: uses cached font if available, skips swap reflow (CLS fix) -->
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Work+Sans:wght@400;500;600;700&display=optional" />
-        <!-- Noto Devanagari loaded async so Hindi text doesn't block LCP -->
+        <!-- All fonts loaded async (media=print trick) — breaks the HTML→FontCSS→woff2 render-blocking chain.
+             display=optional: no reflow if font misses first render (CLS fix).
+             Noto Devanagari uses display=swap — Hindi text is below-fold so swap is acceptable. -->
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Work+Sans:wght@400;500;600;700&display=optional" media="print" onload="this.media='all'" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" media="print" onload="this.media='all'" />
+        <noscript>
+          <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Work+Sans:wght@400;500;600;700&display=optional" />
+        </noscript>
         <!--
         manifest.json provides metadata used when your web app is installed on a
         user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
