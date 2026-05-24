@@ -1,4 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Work+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap');
+/* Fonts loaded via <link> in index.html — avoids render-blocking @import */
+
+/* Fallback font metrics tuned to Outfit so text doesn't jump on font-swap (CLS fix) */
+@font-face {
+    font-family: 'Outfit Fallback';
+    src: local('Arial');
+    ascent-override: 100%;
+    descent-override: 25%;
+    line-gap-override: 0%;
+    size-adjust: 103%;
+}
 
 @tailwind base;
 @tailwind components;
@@ -32,7 +42,7 @@ html, body {
 }
 
 h1, h2, h3, h4, h5, h6, .font-display {
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Outfit', 'Outfit Fallback', sans-serif;
     letter-spacing: -0.02em;
 }
 

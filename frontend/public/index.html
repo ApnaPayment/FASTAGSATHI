@@ -7,7 +7,10 @@
         <meta name="description" content="ApnaFastag — FASTag help at every toll plaza" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap" rel="stylesheet" />
+        <!-- display=optional: uses cached font if available, skips swap reflow (CLS fix) -->
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Work+Sans:wght@400;500;600;700&display=optional" />
+        <!-- Noto Devanagari loaded async so Hindi text doesn't block LCP -->
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" media="print" onload="this.media='all'" />
         <!--
         manifest.json provides metadata used when your web app is installed on a
         user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
@@ -22,8 +25,8 @@
         Learn how to configure a non-root public URL by running `npm run build`.
         -->
         <title>ApnaFastag — FASTag Help at Every Toll Plaza</title>
-        <!-- Hide SSG pre-rendered body until React mounts (prevents flash of unstyled content) -->
-        <style id="ssg-hide">#root[data-ssg]>*{visibility:hidden!important}</style>
+        <!-- Hide only the auth-sensitive header until React hydrates; main content paints immediately (LCP fix) -->
+        <style id="ssg-hide">#root[data-ssg] [data-testid="site-header"]{visibility:hidden!important}</style>
         <!-- Synchronously seed window.__BRANDING__ from localStorage so BrandingContext
              initialises with real data on frame-1 even if the prerendered HTML is stale.
              Must run before any React code; do NOT move this script. -->

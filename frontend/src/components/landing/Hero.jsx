@@ -19,11 +19,8 @@ export default function Hero() {
       <div className="relative max-w-7xl mx-auto px-6 md:px-10 lg:px-12 grid lg:grid-cols-12 gap-10 lg:gap-12 items-center">
         {/* Left: copy */}
         <div className="lg:col-span-7">
-          {/* Pill badge */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+          {/* Pill badge — no entrance animation so it's visible immediately on hydration (LCP) */}
+          <div
             data-testid="hero-badge"
             className="inline-flex items-center gap-2 bg-white border-2 border-[#0A0A0A] rounded-full pl-2 pr-4 py-1.5 mb-6 shadow-[3px_3px_0_#FF6B00]"
           >
@@ -34,14 +31,10 @@ export default function Hero() {
               <span className="inline-block w-2 h-2 rounded-full bg-[#059669] mr-1.5 animate-pulse" />
               2,184 Sathis online across India
             </span>
-          </motion.div>
+          </div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.05 }}
-            className="font-display font-black text-[44px] leading-[0.95] sm:text-6xl lg:text-[78px] lg:leading-[0.92] tracking-tight text-[#0A0A0A]"
-          >
+          {/* H1 is the LCP element — rendered statically, no opacity:0 start */}
+          <h1 className="font-display font-black text-[44px] leading-[0.95] sm:text-6xl lg:text-[78px] lg:leading-[0.92] tracking-tight text-[#0A0A0A]">
             Stuck at a toll?{" "}
             <span className="relative inline-block">
               <span className="relative z-10">Your Sathi</span>
@@ -60,12 +53,12 @@ export default function Hero() {
               </svg>
             </span>{" "}
             arrives in <span className="text-[#FF6B00]">90 seconds.</span>
-          </motion.h1>
+          </h1>
 
           <motion.p
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.15 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
             className="mt-6 text-lg md:text-xl text-[#4B5563] max-w-2xl leading-relaxed"
           >
             India's first real-time, peer-to-peer rescue network for FASTag chaos —{" "}
@@ -75,9 +68,9 @@ export default function Hero() {
 
           {/* Dual CTAs */}
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.25 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
             id="cta"
             className="mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4"
           >
@@ -105,7 +98,7 @@ export default function Hero() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.45 }}
+            transition={{ delay: 0.35 }}
             className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3"
           >
             <div className="flex items-center gap-2" data-testid="trust-verified">
