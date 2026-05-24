@@ -1,6 +1,7 @@
 import React from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { trackPageView } from "@/lib/analytics";
 
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
@@ -44,6 +45,12 @@ import SathiDashboardPage from "@/pages/SathiDashboardPage";
 import AdminPage from "@/pages/AdminPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
+function RouteTracker() {
+  const location = useLocation();
+  React.useEffect(() => { trackPageView(location.pathname + location.search); }, [location]);
+  return null;
+}
+
 function App() {
   // Remove SSG pre-render immediately on mount so users never see unstyled flash
   React.useEffect(() => {
@@ -57,6 +64,7 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <ScrollToTop />
+        <RouteTracker />
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<LandingPage />} />

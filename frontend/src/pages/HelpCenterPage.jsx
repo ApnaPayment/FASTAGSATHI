@@ -70,7 +70,7 @@ export default function HelpCenterPage() {
           <p className="text-[#4B5563] mt-2">Our support team answers 24×7 in 4 languages.</p>
           <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
             <Link to="/contact" className="bg-[#FF6B00] text-white font-bold px-7 py-3.5 rounded-full">Contact support</Link>
-            <a href="https://wa.me/918000000000" className="border-2 border-[#0A0A0A] font-bold px-7 py-3.5 rounded-full">WhatsApp us</a>
+            <a href="https://wa.me/918000000000" onClick={() => track("whatsapp_click", { src: "help_center" })} className="border-2 border-[#0A0A0A] font-bold px-7 py-3.5 rounded-full">WhatsApp us</a>
           </div>
         </div>
       </section>

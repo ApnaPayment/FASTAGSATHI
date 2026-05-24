@@ -99,6 +99,7 @@ export default function ContactPage() {
                 {c.href ? (
                   <a href={c.href} target={c.href.startsWith("http") ? "_blank" : undefined}
                     rel="noopener noreferrer"
+                    onClick={() => track(c.t === "WhatsApp" ? "whatsapp_click" : c.t === "Helpline" ? "call_click" : "email_click", { src: "contact_page" })}
                     className="font-display font-bold text-lg hover:text-[#FF6B00] transition-colors break-all">
                     {c.v}
                   </a>
