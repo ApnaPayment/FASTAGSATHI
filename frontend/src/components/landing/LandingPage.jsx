@@ -4,6 +4,7 @@ import SEO, { orgSchema, websiteSchema, serviceSchema, faqSchema } from "@/compo
 import Hero from "./Hero";
 import TrustBar from "./TrustBar";
 import HowItWorks from "./HowItWorks";
+import IssueTypes from "./IssueTypes";
 import Features from "./Features";
 import BecomeSathi from "./BecomeSathi";
 import Testimonials from "./Testimonials";
@@ -46,6 +47,7 @@ export default function LandingPage() {
       <Hero />
       <TrustBar />
       <HowItWorks />
+      <IssueTypes />
       <Features />
       <BecomeSathi />
       <Testimonials />
