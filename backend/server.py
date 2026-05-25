@@ -1419,6 +1419,57 @@ async def admin_delete_bank(slug: str):
         raise HTTPException(404, "Bank not found")
     return {"ok": True}
 
+@admin_router.post("/banks/{slug}/upload-logo", dependencies=[Depends(_check_admin)])
+async def admin_upload_bank_logo(slug: str, file: UploadFile = File(...)):
+    """Upload a logo image for a bank. Stored as base64 data URL in db.banks."""
+    bank = await db.banks.find_one({"slug": slug})
+    if not bank:
+        raise HTTPException(404, "Bank not found")
+
+    ext = Path(file.filename).suffix.lower() if file.filename else ""
+    ALLOWED = {".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
+    if ext not in ALLOWED:
+        raise HTTPException(400, "Only SVG, PNG, or JPG allowed")
+
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(400, "Empty file")
+    if len(contents) > 1 * 1024 * 1024:
+        raise HTTPException(400, "Logo must be under 1 MB")
+
+    content_type = ALLOWED[ext]
+
+    if ext != ".svg":
+        try:
+            from PIL import Image
+            import io as _io
+            img = Image.open(_io.BytesIO(contents))
+            img.thumbnail((200, 200), Image.LANCZOS)
+            buf = _io.BytesIO()
+            pil_fmt = "JPEG" if ext in {".jpg", ".jpeg"} else "PNG"
+            save_kw = {"optimize": True, "quality": 90} if pil_fmt == "JPEG" else {"optimize": True}
+            img.save(buf, format=pil_fmt, **save_kw)
+            final_bytes = buf.getvalue()
+        except Exception as e:
+            logger.warning(f"Bank logo resize failed ({e}), storing as-is")
+            final_bytes = contents
+    else:
+        final_bytes = contents
+
+    data_url = f"data:{content_type};base64," + base64.b64encode(final_bytes).decode()
+    await db.banks.update_one(
+        {"slug": slug},
+        {"$set": {"logo": data_url, "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    logger.info(f"Bank logo uploaded for {slug} — {ext}, {len(final_bytes):,} bytes")
+    return {"ok": True, "logo": data_url}
+
+@admin_router.delete("/banks/{slug}/logo", dependencies=[Depends(_check_admin)])
+async def admin_delete_bank_logo(slug: str):
+    """Remove a bank's uploaded logo (reverts to colored badge)."""
+    await db.banks.update_one({"slug": slug}, {"$unset": {"logo": ""}})
+    return {"ok": True}
+
 @admin_router.post("/banks/import", dependencies=[Depends(_check_admin)])
 async def admin_import_banks(banks: List[dict]):
     imported = skipped = 0

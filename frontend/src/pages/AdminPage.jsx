@@ -2210,6 +2210,155 @@ function GenericDataTable({ label, icon: Icon, fetchFn, createFn, updateFn, dele
   );
 }
 
+/* ─── Banks Logo Tab ─────────────────────────────────────────────── */
+function BanksLogoTab() {
+  const [banks, setBanks]         = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [uploading, setUploading] = useState(null); // slug being uploaded
+  const [removing, setRemoving]   = useState(null); // slug being removed
+  const [error, setError]         = useState("");
+  const [success, setSuccess]     = useState("");
+  const fileInputRef = useRef(null);
+  const [pendingSlug, setPendingSlug] = useState(null);
+
+  // Merge seed data with DB data (DB logo takes precedence)
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await adminApi.banks({ limit: 100 });
+      const dbBanks = res.data?.banks || [];
+      const dbMap = Object.fromEntries(dbBanks.map((b) => [b.slug, b]));
+      // Start with seed, overlay DB fields
+      const merged = SEED_BANKS.map((s) => ({ ...s, ...(dbMap[s.slug] || {}) }));
+      // Add any DB-only banks not in seed
+      dbBanks.forEach((b) => { if (!SEED_BANKS.find((s) => s.slug === b.slug)) merged.push(b); });
+      setBanks(merged);
+    } catch (e) {
+      setError("Failed to load banks");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const triggerUpload = (slug) => {
+    setPendingSlug(slug);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !pendingSlug) return;
+    e.target.value = "";
+    setUploading(pendingSlug);
+    setError(""); setSuccess("");
+    try {
+      await adminApi.uploadBankLogo(pendingSlug, file);
+      setSuccess(`Logo updated for ${pendingSlug}`);
+      await load();
+    } catch (err) {
+      setError(err?.response?.data?.detail || "Upload failed");
+    } finally {
+      setUploading(null);
+      setPendingSlug(null);
+    }
+  };
+
+  const handleRemove = async (slug) => {
+    if (!window.confirm("Remove this bank's logo?")) return;
+    setRemoving(slug);
+    setError(""); setSuccess("");
+    try {
+      await adminApi.deleteBankLogo(slug);
+      setSuccess(`Logo removed for ${slug}`);
+      await load();
+    } catch (err) {
+      setError("Failed to remove logo");
+    } finally {
+      setRemoving(null);
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-xl font-bold text-[#0A0A0A] flex items-center gap-2">
+            <Landmark className="w-5 h-5 text-[#FF6B00]" /> Bank Logos
+          </h2>
+          <p className="text-sm text-[#6B7280] mt-1">Upload PNG, SVG, or JPG logos (max 1 MB each). Logos appear on the homepage trust section and bank pages.</p>
+        </div>
+        <button onClick={load} className="p-2 rounded-lg border border-[#E5E7EB] hover:bg-[#F9FAFB] transition-colors" title="Refresh">
+          <RefreshCw className={`w-4 h-4 text-[#6B7280] ${loading ? "animate-spin" : ""}`} />
+        </button>
+      </div>
+
+      {error   && <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{error}</div>}
+      {success && <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">{success}</div>}
+
+      {/* Hidden file input */}
+      <input ref={fileInputRef} type="file" accept=".png,.jpg,.jpeg,.svg" className="hidden" onChange={handleFileChange} />
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-[#FF6B00]" /></div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {banks.map((bank) => {
+            const hasLogo = bank.logo && (bank.logo.startsWith("data:") || bank.logo.startsWith("http"));
+            const isUp    = uploading === bank.slug;
+            const isRm    = removing  === bank.slug;
+            return (
+              <div key={bank.slug} className="bg-white border-2 border-[#E5E7EB] rounded-2xl p-4 flex flex-col items-center gap-3 hover:border-[#FF6B00]/40 transition-colors">
+                {/* Logo preview */}
+                <div
+                  className="w-16 h-16 rounded-xl flex items-center justify-center border overflow-hidden"
+                  style={{ backgroundColor: `${bank.color}22`, borderColor: `${bank.color}44` }}
+                >
+                  {hasLogo ? (
+                    <img src={bank.logo} alt={bank.shortName} className="w-full h-full object-contain p-1" />
+                  ) : (
+                    <span className="text-sm font-black" style={{ color: bank.color }}>{bank.shortName}</span>
+                  )}
+                </div>
+
+                {/* Bank name */}
+                <div className="text-center">
+                  <div className="text-xs font-bold text-[#0A0A0A] leading-tight">{bank.name}</div>
+                  <div className="text-[10px] text-[#9CA3AF] mt-0.5">{hasLogo ? "✓ Logo uploaded" : "No logo"}</div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-col gap-1.5 w-full">
+                  <button
+                    onClick={() => triggerUpload(bank.slug)}
+                    disabled={isUp || isRm}
+                    className="w-full flex items-center justify-center gap-1.5 bg-[#FF6B00] text-white text-xs font-bold px-3 py-2 rounded-lg hover:bg-[#E66000] disabled:opacity-50 transition-colors"
+                  >
+                    {isUp ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                    {isUp ? "Uploading…" : hasLogo ? "Replace" : "Upload"}
+                  </button>
+                  {hasLogo && (
+                    <button
+                      onClick={() => handleRemove(bank.slug)}
+                      disabled={isUp || isRm}
+                      className="w-full flex items-center justify-center gap-1.5 bg-white border border-red-200 text-red-500 text-xs font-bold px-3 py-2 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
+                    >
+                      {isRm ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                      {isRm ? "Removing…" : "Remove"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SitemapTab() {
   const [subTab, setSubTab] = useState("Overview");
   const [stats, setStats] = useState(null);
@@ -2435,37 +2584,7 @@ function SitemapTab() {
       )}
 
       {/* ── Banks ── */}
-      {subTab === "Banks" && (
-        <GenericDataTable
-          label="Bank"
-          icon={Landmark}
-          fetchFn={(p) => adminApi.banks(p)}
-          createFn={(d) => adminApi.createBank(d)}
-          updateFn={(slug, d) => adminApi.updateBank(slug, d)}
-          deleteFn={(slug) => adminApi.deleteBank(slug)}
-          importFn={(list) => adminApi.importBanks(list)}
-          columns={[
-            { key: "name",       label: "Bank" },
-            { key: "shortName",  label: "Short" },
-            { key: "helpline",   label: "Helpline" },
-            { key: "smsCode",    label: "SMS Code" },
-            { key: "marketShare",label: "Market %", render: (r) => r.marketShare != null ? `${r.marketShare}%` : "—" },
-            { key: "is_active",  label: "Active", render: (r) => r.is_active !== false ? <CheckCircle className="w-4 h-4 text-green-500" /> : <AlertTriangle className="w-4 h-4 text-red-400" /> },
-          ]}
-          formFields={[
-            { key: "name",        label: "Bank Name",      required: true,  placeholder: "SBI FASTag" },
-            { key: "slug",        label: "Slug",           required: true,  placeholder: "sbi-fastag", disabled: true },
-            { key: "shortName",   label: "Short Name",     required: true,  placeholder: "SBI" },
-            { key: "helpline",    label: "Helpline",       placeholder: "1800-11-0018" },
-            { key: "smsCode",     label: "SMS Code",       placeholder: "FTBAL" },
-            { key: "marketShare", label: "Market Share %", type: "number",  placeholder: "18" },
-            { key: "color",       label: "Brand Color",    placeholder: "#22409A" },
-            { key: "logo",        label: "Logo URL",       placeholder: "/banks/sbi.svg" },
-            { key: "is_active",   label: "Active (in sitemap)", type: "toggle" },
-          ]}
-          templateNote='JSON array: [{"slug":"sbi-fastag","name":"SBI FASTag","shortName":"SBI","helpline":"1800-11-0018","smsCode":"FTBAL","marketShare":18}]'
-        />
-      )}
+      {subTab === "Banks" && <BanksLogoTab />}
     </div>
   );
 }

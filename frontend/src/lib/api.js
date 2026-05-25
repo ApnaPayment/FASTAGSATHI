@@ -142,11 +142,13 @@ export const adminApi = {
   deleteCity:   (slug)   => api.delete(`/api/admin/cities/${slug}`, { headers: adminHeaders() }),
   importCities: (list)   => api.post("/api/admin/cities/import", list, { headers: adminHeaders() }),
   // Bank management
-  banks:       (params) => api.get("/api/admin/banks", { params, headers: adminHeaders() }),
-  createBank:  (data)   => api.post("/api/admin/banks", data, { headers: adminHeaders() }),
-  updateBank:  (slug, d)=> api.patch(`/api/admin/banks/${slug}`, d, { headers: adminHeaders() }),
-  deleteBank:  (slug)   => api.delete(`/api/admin/banks/${slug}`, { headers: adminHeaders() }),
-  importBanks: (list)   => api.post("/api/admin/banks/import", list, { headers: adminHeaders() }),
+  banks:           (params)      => api.get("/api/admin/banks", { params, headers: adminHeaders() }),
+  createBank:      (data)        => api.post("/api/admin/banks", data, { headers: adminHeaders() }),
+  updateBank:      (slug, d)     => api.patch(`/api/admin/banks/${slug}`, d, { headers: adminHeaders() }),
+  deleteBank:      (slug)        => api.delete(`/api/admin/banks/${slug}`, { headers: adminHeaders() }),
+  importBanks:     (list)        => api.post("/api/admin/banks/import", list, { headers: adminHeaders() }),
+  uploadBankLogo:  (slug, file)  => { const fd = new FormData(); fd.append("file", file); return api.post(`/api/admin/banks/${slug}/upload-logo`, fd, { headers: { ...adminHeaders(), "Content-Type": "multipart/form-data" } }); },
+  deleteBankLogo:  (slug)        => api.delete(`/api/admin/banks/${slug}/logo`, { headers: adminHeaders() }),
   // Sitemap
   sitemapStats:  () => api.get("/api/admin/sitemap-stats", { headers: adminHeaders() }),
   seedGeoData:   () => api.post("/api/admin/seed-geo-data", {}, { headers: adminHeaders() }),

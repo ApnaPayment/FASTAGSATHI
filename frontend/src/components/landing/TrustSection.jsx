@@ -2,7 +2,28 @@ import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ShieldCheck, ArrowRight } from "lucide-react";
-import { BANKS } from "@/data/seed";
+import { BANKS as SEED_BANKS } from "@/data/seed";
+import { adminApi } from "@/lib/api";
+
+// Merge seed bank data with DB logos. Falls back gracefully if API fails.
+function useBanksWithLogos() {
+  const [banks, setBanks] = useState(SEED_BANKS);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await adminApi.banks({ limit: 100 });
+        const dbBanks = res.data?.banks || [];
+        if (!cancelled && dbBanks.length) {
+          const dbMap = Object.fromEntries(dbBanks.map((b) => [b.slug, b]));
+          setBanks(SEED_BANKS.map((s) => ({ ...s, ...(dbMap[s.slug] || {}) })));
+        }
+      } catch { /* silently use seed data */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  return banks;
+}
 
 // Count-up hook — fires once when `active` flips true
 function useCountUp(target, duration = 1600) {
@@ -97,6 +118,7 @@ function StatCounter({ target, suffix, label, color, note }) {
 }
 
 export default function TrustSection() {
+  const BANKS = useBanksWithLogos();
   return (
     <section
       id="trust"
@@ -144,31 +166,37 @@ export default function TrustSection() {
           <p className="text-[11px] uppercase tracking-widest font-bold text-white/40 mb-6">
             Works with all major FASTag-issuing banks
           </p>
-          <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
-            {BANKS.map((bank) => (
-              <Link
-                key={bank.slug}
-                to={`/bank/${bank.slug}`}
-                data-testid={`bank-logo-${bank.slug}`}
-                className="group flex flex-col items-center gap-2"
-              >
-                {/* Colored badge — stands in for logo until SVGs are available */}
-                <div
-                  className="w-12 h-12 rounded-2xl flex items-center justify-center border border-white/10 group-hover:scale-105 transition-transform"
-                  style={{ backgroundColor: `${bank.color}22`, borderColor: `${bank.color}44` }}
+          <div className="grid grid-cols-4 sm:grid-cols-9 gap-3">
+            {BANKS.map((bank) => {
+              const hasLogo = bank.logo && (bank.logo.startsWith("data:") || bank.logo.startsWith("http"));
+              return (
+                <Link
+                  key={bank.slug}
+                  to={`/bank/${bank.slug}`}
+                  data-testid={`bank-logo-${bank.slug}`}
+                  className="group flex flex-col items-center gap-2"
                 >
-                  <span
-                    className="text-[11px] font-black leading-none text-center"
-                    style={{ color: bank.color === "#22409A" ? "#5B8ADE" : bank.color === "#004C8F" ? "#5B9BD5" : bank.color === "#003087" ? "#5B82C7" : bank.color }}
+                  <div
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center border overflow-hidden group-hover:scale-105 transition-transform"
+                    style={{ backgroundColor: `${bank.color}22`, borderColor: `${bank.color}44` }}
                   >
+                    {hasLogo ? (
+                      <img src={bank.logo} alt={bank.shortName} className="w-full h-full object-contain p-1.5" />
+                    ) : (
+                      <span
+                        className="text-[11px] font-black leading-none text-center"
+                        style={{ color: bank.color === "#22409A" ? "#5B8ADE" : bank.color === "#004C8F" ? "#5B9BD5" : bank.color === "#003087" ? "#5B82C7" : bank.color }}
+                      >
+                        {bank.shortName}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[9px] font-semibold text-white/35 uppercase tracking-wide text-center leading-tight hidden sm:block">
                     {bank.shortName}
                   </span>
-                </div>
-                <span className="text-[9px] font-semibold text-white/35 uppercase tracking-wide text-center leading-tight hidden sm:block">
-                  {bank.shortName}
-                </span>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         </div>
 
