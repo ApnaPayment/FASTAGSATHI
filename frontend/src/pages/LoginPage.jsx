@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import PageHero from "@/components/layout/PageHero";
 import SEO from "@/components/seo/SEO";
@@ -9,12 +9,21 @@ import { sathiDashApi } from "@/lib/api";
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
 
-// ── Google One-Tap / Sign-In button ──────────────────────────────────────────
-function GoogleButton({ onSuccess, onError, loading }) {
-  const btnRef = useRef(null);
+// ── Google Sign-In button — waits for GSI script to finish loading ────────────
+function GoogleButton({ onSuccess }) {
+  const btnRef  = useRef(null);
+  const [ready, setReady] = useState(!!window.google);
 
+  // Poll until window.google is available (script loads async)
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID || !window.google || !btnRef.current) return;
+    if (window.google) { setReady(true); return; }
+    const id = setInterval(() => { if (window.google) { setReady(true); clearInterval(id); } }, 100);
+    return () => clearInterval(id);
+  }, []);
+
+  // Render the button once Google SDK is ready
+  useEffect(() => {
+    if (!ready || !btnRef.current) return;
     window.google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
       callback: (res) => onSuccess(res.credential),
@@ -23,12 +32,17 @@ function GoogleButton({ onSuccess, onError, loading }) {
       type: "standard", theme: "outline", size: "large",
       text: "continue_with", shape: "pill", width: "100%",
     });
-  }, [onSuccess]);
+  }, [ready, onSuccess]);
 
-  if (!GOOGLE_CLIENT_ID) return null; // hide until configured
+  if (!GOOGLE_CLIENT_ID) return null;
 
   return (
-    <div className="w-full" ref={btnRef} />
+    <div className="w-full min-h-[44px] flex items-center justify-center">
+      {!ready && (
+        <div className="w-full h-11 rounded-full bg-[#F3F4F6] animate-pulse" />
+      )}
+      <div ref={btnRef} className={ready ? "w-full" : "hidden"} />
+    </div>
   );
 }
 
@@ -91,14 +105,15 @@ export default function LoginPage() {
   };
 
   // Google login
-  const handleGoogle = async (credential) => {
+  const handleGoogle = useCallback(async (credential) => {
     setErr(null);
     setLoading(true);
     const r = await googleLogin(credential);
     setLoading(false);
     if (!r.ok) { setErr(r.error); return; }
     await goNext(r.is_new_user);
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleLogin]);
 
   // Step 3 — profile
   const submitProfile = async (e) => {
