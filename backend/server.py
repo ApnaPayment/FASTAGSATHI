@@ -2056,7 +2056,7 @@ def _gemini_article_prompt(topic: str, category: str, related_bank: str = "", re
     }
     lsi = lsi_hints.get(category, lsi_hints["General"])
 
-    return f"""You are a senior SEO content strategist and subject-matter expert writing for ApnaFastag.com — India's leading FASTag assistance platform. Verified local agents called "Sathis" help drivers resolve toll plaza problems in real time.
+    return f"""You are a senior SEO content strategist writing for ApnaFastag.com — India's leading FASTag assistance platform. Verified local agents called "Sathis" help drivers resolve toll plaza problems in real time.
 
 ARTICLE BRIEF
 Topic: "{topic}"
@@ -2066,22 +2066,28 @@ Category: {category}
 Year: {year}
 
 YOUR TASK
-Write a deeply researched, genuinely helpful, long-form SEO article (1800–2500 words) that ranks on Page 1 of Google for the target topic. This is NOT filler content — every sentence must deliver real value to an Indian driver.
+Write a deeply researched, genuinely helpful SEO article (1800-2500 words) on the topic above.
 
-RETURN ONLY a raw JSON object. No markdown fences, no text before or after. Schema:
+IMPORTANT — OUTPUT FORMAT
+Respond in exactly two sections separated by the delimiter lines shown. Do not add any text outside these sections.
 
+===META===
+(a single valid JSON object — no HTML inside this section)
+===BODY===
+(pure HTML body — no JSON, no markdown fences)
+===END===
+
+META JSON SCHEMA (no body field, no HTML values):
 {{
-  "title": "Keyword-first title, 55-65 chars. Include the year {year} if it helps freshness.",
-  "slug": "keyword-first-slug-using-hyphens-max-65-chars",
-  "excerpt": "Compelling meta description 145-160 chars. State the problem, promise the solution, include main keyword.",
-  "toc": ["Section heading 1", "Section heading 2", "Section heading 3", "Section heading 4", "Section heading 5", "Section heading 6"],
-  "body": "SEE BODY REQUIREMENTS BELOW",
-  "meta_description": "Unique meta description 145-160 chars — different from excerpt, includes primary + secondary keyword.",
-  "meta_title": "SEO title tag 50-60 chars — keyword near the front",
+  "title": "Keyword-first title 55-65 chars, include year {year}",
+  "slug": "keyword-slug-max-65-chars",
+  "excerpt": "145-160 char meta description: state the problem, promise the solution, include main keyword.",
+  "meta_title": "SEO title tag 50-60 chars, keyword near front",
+  "meta_description": "145-160 chars, different from excerpt, includes primary + secondary keyword",
   "meta_keywords": "10-12 comma-separated keywords including LSI terms",
-  "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"],
+  "tags": ["tag1","tag2","tag3","tag4","tag5"],
   "faq_pairs": [
-    {{"q": "Exact question a driver types into Google?", "a": "Direct answer in the first sentence (40-60 words), then 1-2 sentences of supporting detail. Real information only."}},
+    {{"q": "Real long-tail question 1?", "a": "Direct 40-60 word answer then 1-2 sentences detail."}},
     {{"q": "Question 2?", "a": "Answer 2."}},
     {{"q": "Question 3?", "a": "Answer 3."}},
     {{"q": "Question 4?", "a": "Answer 4."}},
@@ -2093,71 +2099,53 @@ RETURN ONLY a raw JSON object. No markdown fences, no text before or after. Sche
   "read_min": 8
 }}
 
-BODY REQUIREMENTS (write this as the value of "body" key — pure HTML string):
+BODY HTML REQUIREMENTS (write after ===BODY=== delimiter, raw HTML only):
 
-Structure the body EXACTLY as follows using proper HTML tags:
+1. INTRODUCTION — 1 paragraph, 80-120 words. Hook on the pain point, include primary keyword in first 100 words.
 
-1. INTRODUCTION (1 paragraph, 80-120 words)
-   - Hook: name the exact pain point in the first sentence
-   - Brief answer / preview of what the article covers
-   - Include primary keyword naturally in first 100 words
+2. TABLE OF CONTENTS
+   <nav class="toc"><h2>In This Guide</h2><ul><li><a href="#section1">Heading 1</a></li>...</ul></nav>
 
-2. TABLE OF CONTENTS (HTML <nav> with anchor links)
-   <nav class="toc"><h2>In This Guide</h2><ul><li><a href="#section1">...</a></li>...</ul></nav>
+3. SECTION 1 — Context / Why This Matters
+   <h2 id="section1">...</h2>
+   Include: <div class="quick-answer"><strong>Quick Answer:</strong> 40-60 word direct answer.</div>
+   Weave in LSI keywords: {lsi}
+   200-250 words.
 
-3. SECTION 1 — Context / Why This Matters (H2 + H3 subsections)
-   - Use <h2 id="section1"> with anchor id
-   - 200-250 words
-   - Include a quick-answer box: <div class="quick-answer"><strong>Quick Answer:</strong> [40-60 word direct answer to the topic]</div>
-   - Weave in LSI keywords: {lsi}
+4. SECTION 2 — Step-by-Step Guide
+   <h2 id="section2">...</h2>
+   Each step as <h3>Step N: Title</h3> + <p>details</p>
+   Include real portal URLs, USSD codes, SMS keywords. 400-500 words.
 
-4. SECTION 2 — Step-by-Step Guide (H2 + numbered H3 steps)
-   - Use <h2 id="section2">
-   - Each major step as <h3>Step N: [Title]</h3> followed by <p> explanation
-   - Use <ol> for ordered steps, <ul> for tips/notes
-   - Include real details: official portal URLs, exact menu paths, actual USSD codes, real SMS keywords
-   - 400-500 words
+5. SECTION 3 — Comparison Table
+   <h2 id="section3">...</h2>
+   HTML <table> with <thead>/<tbody>. Compare methods/banks/options. 150-200 words + table.
 
-5. SECTION 3 — Comparison Table or Key Facts (H2)
-   - Use <h2 id="section3">
-   - Include a proper HTML <table> with <thead> and <tbody>
-   - For bank articles: compare features, charges, helpline numbers
-   - For process articles: compare methods (app vs SMS vs portal vs missed call)
-   - 150-200 words + table
+6. SECTION 4 — Common Problems & Fixes
+   <h2 id="section4">...</h2>
+   4-5 problems, each as <h3>Problem</h3> + <p>Solution with specific steps</p>. 300-400 words.
 
-6. SECTION 4 — Common Problems & Solutions (H2 + H3 per problem)
-   - Use <h2 id="section4">
-   - List 4-5 real problems drivers face
-   - Each as <h3>[Problem heading]</h3> + <p>[Solution with specific steps]</p>
-   - 300-400 words
+7. SECTION 5 — When to Contact a Sathi
+   <h2 id="section5">...</h2>
+   What a Sathi is. 3-4 situations needing Sathi vs self-service.
+   Must include: <p>Find a verified Sathi near your toll plaza at <strong>apnafastag.com</strong> — available at 700+ plazas. Response in under 90 seconds.</p>
+   150-200 words.
 
-7. SECTION 5 — When to Contact a Sathi (H2)
-   - Use <h2 id="section5">
-   - Explain what a Sathi is (verified local FASTag expert near toll plazas)
-   - List 3-4 situations where a Sathi is needed vs self-service
-   - Include: <p>Find a verified Sathi near your toll plaza at <strong>apnafastag.com</strong> — available at 700+ plazas across India. Response in under 90 seconds.</p>
-   - 150-200 words
+8. CONCLUSION
+   <h2 id="section6">...</h2>
+   3 bullet takeaways. CTA to bookmark apnafastag.com. 100-150 words.
 
-8. CONCLUSION (H2 + 1-2 paragraphs)
-   - Use <h2 id="section6">
-   - Summarise key takeaways in 3 bullet points
-   - CTA: remind user to bookmark apnafastag.com and find a Sathi if stuck
-   - 100-150 words
-
-CONTENT QUALITY RULES:
-- Minimum 1800 words in the body
-- Every factual claim must be accurate — use real NHAI helpline 1033, real bank-specific numbers where applicable
-- No vague filler like "FASTag is very important for modern India" — be specific
-- Indian English spelling (colour not color, authorised not authorized)
-- Bold (<strong>) the first mention of every key term
-- The quick-answer box in Section 1 is optimised for Google Featured Snippets — keep it to 40-60 words, start with a verb
-- FAQ answers: first sentence answers directly, never start with "Yes" or "No" alone
-- All 8 FAQ questions must be real long-tail queries a driver would type
-- faq_pairs must contain exactly 8 items"""
+QUALITY RULES:
+- Minimum 1800 words total in body
+- Indian English (colour, authorised, etc.)
+- Bold first mention of every key term with <strong>
+- NHAI helpline 1033, real bank-specific numbers where relevant
+- FAQ answers: start with a direct statement, not "Yes" or "No" alone"""
 
 
 async def _call_gemini(prompt: str) -> dict:
-    """Call Gemini API and parse JSON response. Raises HTTPException on failure."""
+    """Call Gemini API. Response uses ===META=== / ===BODY=== / ===END=== delimiters
+    so HTML never lives inside a JSON string — avoids all escaping issues."""
     if not GEMINI_API_KEY:
         raise HTTPException(status_code=503, detail="GEMINI_API_KEY not set in environment")
     try:
@@ -2174,53 +2162,67 @@ async def _call_gemini(prompt: str) -> dict:
         }
         chosen = next((n for n in preferred if n in available), None)
         if chosen is None:
-            # Last resort: pick any available generateContent model
             chosen = next(iter(available), None)
         if chosen is None:
             raise HTTPException(status_code=503, detail="No Gemini model available for this API key")
         logger.info(f"[Gemini] Using model: {chosen}")
+
         model = genai.GenerativeModel(chosen)
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.65,
+                max_output_tokens=8192,
+            ),
+        )
 
-        # response_mime_type forces valid JSON output (supported on 1.5+ models)
-        gen_cfg_kwargs = dict(temperature=0.65, max_output_tokens=8192)
         try:
-            gen_cfg = genai.types.GenerationConfig(response_mime_type="application/json", **gen_cfg_kwargs)
+            raw = response.text.strip()
         except Exception:
-            gen_cfg = genai.types.GenerationConfig(**gen_cfg_kwargs)
+            raw = response.candidates[0].content.parts[-1].text.strip()
 
-        response = model.generate_content(prompt, generation_config=gen_cfg)
+        # ── Parse delimiter format  ===META=== ... ===BODY=== ... ===END=== ──
+        META_D = "===META==="
+        BODY_D = "===BODY==="
+        END_D  = "===END==="
 
-        # Extract text — on 2.5 thinking models, .text skips the thinking block
+        if META_D in raw and BODY_D in raw:
+            meta_start = raw.index(META_D) + len(META_D)
+            body_start = raw.index(BODY_D) + len(BODY_D)
+            meta_text  = raw[meta_start : raw.index(BODY_D)].strip()
+            body_text  = raw[body_start : raw.index(END_D) if END_D in raw else len(raw)].strip()
+        else:
+            # Fallback: old behaviour — full response is JSON with embedded body
+            logger.warning("[Gemini] Delimiter not found, attempting full-JSON parse")
+            meta_text = raw
+            body_text = None
+
+        # Clean and parse the metadata JSON
+        if meta_text.startswith("```"):
+            meta_text = meta_text.split("```", 2)[1]
+            if meta_text.startswith("json"):
+                meta_text = meta_text[4:]
+            meta_text = meta_text.strip()
+        brace_s = meta_text.find("{")
+        brace_e = meta_text.rfind("}")
+        if brace_s != -1 and brace_e > brace_s:
+            meta_text = meta_text[brace_s : brace_e + 1]
+
         try:
-            text = response.text.strip()
-        except Exception:
-            # Fallback: grab first text part from candidates
-            text = response.candidates[0].content.parts[-1].text.strip()
-
-        # Strip markdown fences that some models still emit despite mime_type
-        if text.startswith("```"):
-            text = text.split("```", 2)[1]
-            if text.startswith("json"):
-                text = text[4:]
-            text = text.strip()
-
-        # Find outermost { ... } in case of leading/trailing prose
-        brace_start = text.find("{")
-        brace_end   = text.rfind("}")
-        if brace_start != -1 and brace_end > brace_start:
-            text = text[brace_start:brace_end + 1]
-
-        try:
-            return json.loads(text)
+            data = json.loads(meta_text)
         except json.JSONDecodeError:
-            # Try once more after stripping control characters that break JSON
             import re as _re
-            text_clean = _re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", text)
-            return json.loads(text_clean)
+            data = json.loads(_re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", meta_text))
+
+        # Attach body from its own section (no JSON escaping needed)
+        if body_text is not None:
+            data["body"] = body_text
+
+        return data
 
     except json.JSONDecodeError as e:
-        raw = text[:800] if "text" in dir() else "N/A"  # type: ignore[name-defined]
-        logger.error(f"Gemini JSON parse error: {e}\nRaw (800 chars): {raw}")
+        snippet = meta_text[:600] if "meta_text" in dir() else raw[:600] if "raw" in dir() else "N/A"  # type: ignore
+        logger.error(f"Gemini META JSON parse error: {e}\nRaw META (600): {snippet}")
         raise HTTPException(status_code=500, detail="AI returned malformed JSON — please try again")
     except ImportError:
         raise HTTPException(status_code=503, detail="google-generativeai package not installed")
