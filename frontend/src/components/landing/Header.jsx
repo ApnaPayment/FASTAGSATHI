@@ -124,12 +124,12 @@ export default function Header() {
         {/* ── Right actions ── */}
         <div className="flex items-center gap-2">
 
-          {/* Primary CTA */}
+          {/* Primary CTA — visible on all screen sizes */}
           <Link
             to="/find"
             data-testid="header-cta-find"
             onClick={() => track("cta_find_sathi_click", { src: "header" })}
-            className="hidden md:inline-flex items-center bg-[#FF6B00] text-white font-bold text-sm px-5 py-2.5 rounded-full hover:bg-[#E66000] transition-all shadow-[0_4px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[0_6px_0_#0A0A0A]"
+            className="inline-flex items-center bg-[#FF6B00] text-white font-bold text-xs md:text-sm px-3 md:px-5 py-2 md:py-2.5 rounded-full hover:bg-[#E66000] transition-all shadow-[0_4px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[0_6px_0_#0A0A0A]"
           >
             Find a Sathi
           </Link>
