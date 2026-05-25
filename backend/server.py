@@ -2163,16 +2163,21 @@ async def _call_gemini(prompt: str) -> dict:
     try:
         import google.generativeai as genai
         genai.configure(api_key=GEMINI_API_KEY)
-        # Use Pro for long-form content quality; fallback to Flash if Pro quota hit
-        try:
-            model = genai.GenerativeModel("gemini-1.5-pro")
-        except Exception:
-            model = genai.GenerativeModel("gemini-1.5-flash")
+        # Try models in order of preference; newer Flash models are widely available
+        model = None
+        for model_name in ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-latest"]:
+            try:
+                model = genai.GenerativeModel(model_name)
+                break
+            except Exception:
+                continue
+        if model is None:
+            raise HTTPException(status_code=503, detail="No Gemini model available for this API key")
         response = model.generate_content(
             prompt,
             generation_config=genai.types.GenerationConfig(
                 temperature=0.65,
-                max_output_tokens=8192,   # long articles need more tokens
+                max_output_tokens=8192,
             ),
         )
         text = response.text.strip()
