@@ -18,7 +18,7 @@ const TEMPLATE  = path.join(BUILD_DIR, "index.html");
 
 const SITE_URL    = "https://apnafastag.com";
 const DEFAULT_IMG = `${SITE_URL}/og-default.png`;
-const DEFAULT_DESC= "India's first real-time peer-to-peer rescue network for FASTag chaos — disputes, KYC, recharge fails, emergency SOS. Verified Sathis at 60+ toll plazas.";
+const DEFAULT_DESC= "India's first peer-to-peer FASTag rescue network. 1,500+ verified Sathis at 700+ toll plazas — disputes, KYC, recharge failures, SOS resolved in 90 seconds. Backed by IDFC First, Kotak, ICICI & Bajaj Finserv.";
 
 /* ─── DATA ─── */
 
@@ -226,7 +226,7 @@ const homepageFaq = {
     { "@type":"Question", name:"What is ApnaFastag?", acceptedAnswer:{ "@type":"Answer", text:"ApnaFastag is India's first peer-to-peer FASTag rescue network. Verified local experts called Sathis are stationed at toll plazas and resolve FASTag disputes, KYC, blacklist, and recharge issues on-spot — usually in under 8 minutes." }},
     { "@type":"Question", name:"Is ApnaFastag affiliated with NHAI or any bank?", acceptedAnswer:{ "@type":"Answer", text:"No, ApnaFastag is an independent peer-to-peer assistance platform. We escalate to NHAI/banks on your behalf." }},
     { "@type":"Question", name:"How much does it cost?", acceptedAnswer:{ "@type":"Answer", text:"Free to sign up. You pay ₹49–₹499 only when a Sathi successfully resolves your issue. No subscription fees." }},
-    { "@type":"Question", name:"Where are Sathis available?", acceptedAnswer:{ "@type":"Answer", text:"Currently live at 60+ toll plazas across NH-48, NH-44, NH-19 in Maharashtra, Haryana, Karnataka, Gujarat and Tamil Nadu. Expanding to 200+ plazas by Q2 2026." }},
+    { "@type":"Question", name:"Where are Sathis available?", acceptedAnswer:{ "@type":"Answer", text:"1,500+ verified Sathis are active at 700+ toll plazas across PAN India — NH-48, NH-44, NH-19 and more, spanning Maharashtra, Haryana, Karnataka, Gujarat, Rajasthan, Tamil Nadu and beyond." }},
     { "@type":"Question", name:"What FASTag issues can a Sathi resolve?", acceptedAnswer:{ "@type":"Answer", text:"Sathis resolve FASTag disputes and refunds, blacklist removal, KYC updates, RC mismatch, recharge failures, double deductions, and emergency SOS at toll plazas." }},
   ],
 };
@@ -258,7 +258,7 @@ function bodyLanding() {
       <a href="/become-a-sathi" style="border:2px solid #0A0A0A;color:#0A0A0A;padding:14px 28px;border-radius:50px;font-weight:700;text-decoration:none;font-size:1rem">Earn ₹45k/month as Sathi</a>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:20px;margin-bottom:48px">
-      <div style="background:#F8F9FA;border-radius:16px;padding:20px;text-align:center"><div style="font-size:2rem;font-weight:900;color:#FF6B00">60+</div><div style="color:#4B5563;font-size:.9rem">Toll Plazas</div></div>
+      <div style="background:#F8F9FA;border-radius:16px;padding:20px;text-align:center"><div style="font-size:2rem;font-weight:900;color:#FF6B00">700+</div><div style="color:#4B5563;font-size:.9rem">Toll Plazas</div></div>
       <div style="background:#F8F9FA;border-radius:16px;padding:20px;text-align:center"><div style="font-size:2rem;font-weight:900;color:#FF6B00">8 min</div><div style="color:#4B5563;font-size:.9rem">Avg Resolution Time</div></div>
       <div style="background:#F8F9FA;border-radius:16px;padding:20px;text-align:center"><div style="font-size:2rem;font-weight:900;color:#FF6B00">₹49</div><div style="color:#4B5563;font-size:.9rem">Starting Price</div></div>
       <div style="background:#F8F9FA;border-radius:16px;padding:20px;text-align:center"><div style="font-size:2rem;font-weight:900;color:#FF6B00">4.8★</div><div style="color:#4B5563;font-size:.9rem">Average Rating</div></div>
@@ -472,7 +472,7 @@ const routes = [
   { path:"/features",      head:buildHead({ title:"Features — FASTag dispute, KYC, SOS rescue at toll plazas", canonical:`${SITE_URL}/features` }) },
   { path:"/pricing",       head:buildHead({ title:"Pricing — Pay only when your FASTag issue is fixed. From ₹49.", description:"₹49–₹499 per resolved issue. No subscription. No hidden fees.", canonical:`${SITE_URL}/pricing` }) },
   { path:"/become-a-sathi",head:buildHead({ title:"Become a FASTag Sathi — earn ₹25k–₹60k/month at your toll", description:"Join India's fastest-growing toll plaza network. Verify once, earn every day resolving FASTag issues.", canonical:`${SITE_URL}/become-a-sathi`, keywords:"become fastag sathi, fastag agent income, toll plaza job" }) },
-  { path:"/coverage",      head:buildHead({ title:"Coverage — 60+ toll plazas across India with verified Sathis", canonical:`${SITE_URL}/coverage` }) },
+  { path:"/coverage",      head:buildHead({ title:"Coverage — 700+ toll plazas across India with verified Sathis", canonical:`${SITE_URL}/coverage` }) },
   { path:"/about",         head:buildHead({ title:"About ApnaFastag — built by drivers, for drivers", canonical:`${SITE_URL}/about` }) },
   { path:"/blog",          head:buildHead({ title:"Blog — FASTag fixes, toll rates, Sathi guides", canonical:`${SITE_URL}/blog` }) },
   { path:"/help",          head:buildHead({ title:"FASTag Help Center — 1000+ guides & answers", description:"Every FASTag question answered — disputes, blacklist, KYC, recharge, balance check. All 8 banks, all states.", canonical:`${SITE_URL}/help`, keywords:"fastag help, fastag faq, fastag guide, fastag problems solutions" }) },

@@ -34,14 +34,14 @@ export default function LandingPage() {
     <div data-testid="home-page">
       <SEO
         title="ApnaFastag — Stuck at a toll? Your Sathi arrives in 90 seconds."
-        description="India's first peer-to-peer FASTag rescue network. Verified Sathis resolve disputes, KYC, recharge failures and SOS at 60+ toll plazas — usually under 8 minutes. Pay only when fixed."
+        description="India's first peer-to-peer FASTag rescue network. 1,500+ verified Sathis at 700+ toll plazas resolve disputes, KYC, recharge failures and SOS — usually in 90 seconds. Pay only when fixed."
         path="/"
         keywords="fastag help, toll dispute, fastag mischarge refund, fastag sathi, toll plaza assistance, fastag blacklisted fix, nhai dispute, fastag recharge failed"
         jsonLd={[orgSchema, websiteSchema, serviceSchema, faqSchema([
           { q: "What is ApnaFastag?", a: "ApnaFastag is India's first peer-to-peer FASTag rescue network. Verified local experts called Sathis are stationed at toll plazas and resolve FASTag disputes, KYC, blacklist, and recharge issues on-spot — usually in under 8 minutes." },
           { q: "Is ApnaFastag affiliated with NHAI or any bank?", a: "No, ApnaFastag is an independent peer-to-peer assistance platform. We escalate to NHAI/banks on your behalf." },
           { q: "How much does it cost?", a: "Free to sign up. You pay ₹49–₹499 only when a Sathi successfully resolves your issue. No subscription fees." },
-          { q: "Where are Sathis available?", a: "Currently live at 60+ toll plazas across NH-48, NH-44, NH-19 in Maharashtra, Haryana, Karnataka, Gujarat and Tamil Nadu. Expanding to 200+ plazas by Q2 2026." },
+          { q: "Where are Sathis available?", a: "1,500+ verified Sathis are active at 700+ toll plazas across PAN India — on NH-48, NH-44, NH-19 and more, spanning Maharashtra, Haryana, Karnataka, Gujarat, Rajasthan, Tamil Nadu and beyond." },
           { q: "What FASTag issues can a Sathi resolve?", a: "Sathis resolve FASTag disputes and refunds, blacklist removal, KYC updates, RC mismatch, recharge failures, double deductions, and emergency SOS at toll plazas." },
         ])]}
       />

@@ -29,7 +29,7 @@ export default function Hero() {
             </span>
             <span className="text-xs font-semibold text-[#0A0A0A]">
               <span className="inline-block w-2 h-2 rounded-full bg-[#059669] mr-1.5 animate-pulse" />
-              2,184 Sathis online across India
+              1,500+ Sathis across 700+ plazas
             </span>
           </div>
 

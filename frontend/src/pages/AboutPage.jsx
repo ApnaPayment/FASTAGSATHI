@@ -12,11 +12,13 @@ const TEAM = [
 ];
 
 const MILESTONES = [
-  { y: "Sep 2024", t: "First commit. Founders walk 11 toll plazas on NH-48 with Google Forms." },
-  { y: "Jan 2025", t: "Seed round closed. First 10 Sathis onboarded at Khalapur and Lonavla." },
-  { y: "Jun 2025", t: "Launched in MH, KA, HR. Crossed 10,000 resolved disputes." },
-  { y: "Dec 2025", t: "₹1.2 Cr in mischarges reversed for commuters. 2,184 active Sathis." },
-  { y: "Jan 2026", t: "Public launch of ApnaFastag.in. You are here." },
+  { y: "2019", t: "Apna Payment Services founded in Jaipur. Started offering FASTag issuance services across Rajasthan toll plazas." },
+  { y: "2021", t: "Incorporated as Pvt. Ltd. (RoC Jaipur). Became authorised partner of IDFC First Bank and Kotak Mahindra Bank for FASTag issuance." },
+  { y: "2022", t: "ICICI Bank and Bajaj Finserv partnerships added. Crossed 10 lakh FASTag issuances across PAN India." },
+  { y: "2023", t: "Network expanded to 700+ toll plazas. 1,500+ verified Sathis active across India." },
+  { y: "2024", t: "Crossed 30 lakh (3 million) FASTag issuances PAN India. Largest independent FASTag Sathi network in India." },
+  { y: "2025", t: "Launched ApnaFastag — turning our Sathi network into India's first peer-to-peer FASTag rescue service." },
+  { y: "Jan 2026", t: "ApnaFastag.in goes public. Building India's biggest FASTag Sathi network. You are here." },
 ];
 
 export default function AboutPage() {
@@ -37,10 +39,10 @@ export default function AboutPage() {
 
       <section className="py-16 bg-white">
         <div className="max-w-4xl mx-auto px-6 md:px-10 lg:px-12 space-y-5 text-lg text-[#0A0A0A] leading-relaxed">
-          <p>India crossed 7 crore active FASTag accounts in 2024. The infrastructure to issue tags scaled brilliantly. The infrastructure to fix tag problems did not.</p>
-          <p>Helplines have 14-minute waits. Bank apps don't show real-time toll deductions. NHAI's complaint portal asks for documents most drivers don't carry. Plaza staff are paid to keep lanes moving, not to argue about ₹245.</p>
-          <p>So we built a network of local people — tea vendors, mechanics, off-duty toll staff, agents — who already know the plaza, already speak the language, and now have the tools, training, and incentives to fix your problem in 8 minutes flat.</p>
-          <p>That's it. That's the whole company.</p>
+          <p>Since 2019, Apna Payment Services has been at the heart of India's FASTag ecosystem. We've issued over 30 lakh FASTag cards across PAN India as an authorised partner of IDFC First Bank, Kotak Mahindra Bank, ICICI Bank, and Bajaj Finserv.</p>
+          <p>We didn't just issue tags — we stationed agents at toll plazas. Over six years, those agents became our Sathis: 1,500+ verified people across 700+ toll plazas who know every lane supervisor, every bank escalation number, and every shortcut to getting your FASTag fixed fast.</p>
+          <p>Helplines have 14-minute waits. Bank apps don't show real-time deductions. NHAI's complaint portal asks for documents most drivers don't carry. So we built ApnaFastag — turning our existing Sathi network into India's first peer-to-peer FASTag rescue service.</p>
+          <p>One tap, 90 seconds, problem solved. That's it.</p>
         </div>
       </section>
 

@@ -30,6 +30,7 @@ export const BANKS = [
   { slug: "kotak-fastag", name: "Kotak FASTag",       shortName: "Kotak", color: "#ED1C24", logo: "/banks/kotak.svg", smsCode: "FASTAG", helpline: "1800-209-0000", marketShare: 6  },
   { slug: "yes-fastag",   name: "Yes Bank FASTag",    shortName: "Yes",   color: "#003087", logo: "/banks/yes.svg",   smsCode: "FASTAG", helpline: "1800-1200",     marketShare: 5  },
   { slug: "idfc-fastag",  name: "IDFC First FASTag",  shortName: "IDFC",  color: "#6B2D8B", logo: "/banks/idfc.svg",  smsCode: "FASTAG", helpline: "1800-10-888",   marketShare: 4  },
+  { slug: "bajaj-fastag", name: "Bajaj Finserv FASTag", shortName: "Bajaj", color: "#1B4AA3", logo: "/banks/bajaj.svg", smsCode: "FASTAG", helpline: "1800-209-7070", marketShare: 4  },
 ];
 
 export const HIGHWAYS = [

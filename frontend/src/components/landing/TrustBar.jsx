@@ -16,9 +16,9 @@ const PLAZAS = [
 ];
 
 const STATS = [
-  { value: "52,840+", label: "Disputes Resolved", color: "#FF6B00" },
-  { value: "2,184", label: "Verified Sathis", color: "#059669" },
-  { value: "₹1.2Cr+", label: "Mischarges Reversed", color: "#0A0A0A" },
+  { value: "30 Lakh+", label: "FASTag Issued", color: "#FF6B00" },
+  { value: "1,500+", label: "Verified Sathis", color: "#059669" },
+  { value: "700+", label: "Toll Plazas", color: "#0A0A0A" },
   { value: "90s", label: "Avg Response", color: "#FF6B00" },
 ];
 

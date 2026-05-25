@@ -39,16 +39,20 @@ function useCountUp(target, duration = 1600) {
 
 // Format large numbers for display
 function fmt(n, opts = {}) {
-  if (opts.crore) return `₹${(n / 1_00_00_000).toFixed(1)}Cr`;
+  if (opts.crore) {
+    // Display as Lakh (1L = 100,000)
+    const lakh = n / 100000;
+    return lakh >= 10 ? `${Math.floor(lakh)} L` : `${lakh.toFixed(1)} L`;
+  }
   if (n >= 1000) return n.toLocaleString("en-IN");
   return String(n);
 }
 
 const STATS = [
-  { target: 52840, suffix: "+", label: "Disputes resolved",  color: "#FF6B00" },
-  { target: 2184,  suffix: "",  label: "Verified Sathis",    color: "#059669" },
-  { target: 63,    suffix: "+", label: "Toll plazas live",   color: "#FFD60A" },
-  { target: 480,   suffix: "s", label: "Avg resolution",     color: "#FF6B00", note: "under 8 min" },
+  { target: 3000000, suffix: "+", label: "FASTag issued PAN India", color: "#FF6B00", crore: true },
+  { target: 1500,    suffix: "+", label: "Verified Sathis",          color: "#059669" },
+  { target: 700,     suffix: "+", label: "Toll plazas covered",      color: "#FFD60A" },
+  { target: 90,      suffix: "s", label: "Avg response time",        color: "#FF6B00", note: "since 2019" },
 ];
 
 // "Resolved today" ticking counter — seeds at a believable base and ticks up
