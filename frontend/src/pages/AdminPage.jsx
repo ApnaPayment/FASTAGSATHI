@@ -2423,7 +2423,7 @@ function SitemapTab() {
               <button onClick={() => downloadSitemap("/sitemap.xml")} className="flex items-center gap-1.5 text-xs font-bold bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl px-3 py-2 transition-colors">
                 <Download className="w-3.5 h-3.5" /> Download index
               </button>
-              <a href={`${BACKEND_URL}/sitemap.xml`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs font-bold bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl px-3 py-2 transition-colors">
+              <a href={`${window.location.origin}/sitemap.xml`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs font-bold bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl px-3 py-2 transition-colors">
                 <ExternalLink className="w-3.5 h-3.5" /> Open in browser
               </a>
             </div>
@@ -2451,7 +2451,7 @@ function SitemapTab() {
                       <button onClick={() => downloadSitemap(cat.url)} className="flex-1 flex items-center justify-center gap-1 text-xs font-bold border border-[#E5E7EB] rounded-lg py-1.5 hover:border-[#FF6B00] transition-colors">
                         <Download className="w-3 h-3" /> Download
                       </button>
-                      <a href={`${BACKEND_URL}${cat.url}`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-1 text-xs font-bold border border-[#E5E7EB] rounded-lg py-1.5 hover:border-[#FF6B00] transition-colors">
+                      <a href={`${window.location.origin}${cat.url}`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-1 text-xs font-bold border border-[#E5E7EB] rounded-lg py-1.5 hover:border-[#FF6B00] transition-colors">
                         <ExternalLink className="w-3 h-3" /> Preview
                       </a>
                     </div>
@@ -2490,7 +2490,7 @@ function SitemapTab() {
                 <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-green-700 underline flex items-center gap-1">
                   Open Google Search Console <ExternalLink className="w-3.5 h-3.5" />
                 </a>
-                <p className="text-xs text-green-600 mt-1 font-mono">Sitemap URL: {BACKEND_URL}/sitemap.xml</p>
+                <p className="text-xs text-green-600 mt-1 font-mono">Sitemap URL: {window.location.origin}/sitemap.xml</p>
               </div>
             </div>
           </div>
