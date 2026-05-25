@@ -8,13 +8,14 @@ import {
 import { track } from "@/lib/analytics";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranding } from "@/contexts/BrandingContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
-// Primary nav — keep it tight, 4 items max
+// Nav keys — labels resolved from translations at render time
 const NAV = [
-  { label: "How it Works",   to: "/how-it-works" },
-  { label: "Become a Sathi", to: "/become-a-sathi" },
-  { label: "Help",           to: "/help" },
-  { label: "Buy FASTag",     to: "/buy-fastag", highlight: true },
+  { key: "nav.howItWorks",  to: "/how-it-works" },
+  { key: "nav.becomeSathi", to: "/become-a-sathi" },
+  { key: "nav.help",        to: "/help" },
+  { key: "nav.buyFastag",   to: "/buy-fastag", highlight: true },
 ];
 
 export default function Header() {
@@ -24,6 +25,7 @@ export default function Header() {
   const { pathname } = useLocation();
   const { user, logout } = useAuth();
   const { logo, siteName, tagline } = useBranding();
+  const { t } = useLanguage();
   const userMenuRef = useRef(null);
 
   // Scroll shadow
@@ -88,31 +90,32 @@ export default function Header() {
         {/* ── Desktop nav (center) ── */}
         <nav className="hidden lg:flex items-center gap-5 flex-1 justify-center">
           {NAV.map((n) => {
+            const label = t(n.key);
             const active = pathname === n.to || (n.to !== "/" && pathname.startsWith(n.to));
             if (n.highlight) return (
               <Link
                 key={n.to}
                 to={n.to}
-                data-testid={`nav-link-${n.label.replace(/\s+/g, "-").toLowerCase()}`}
+                data-testid={`nav-link-${n.key}`}
                 className={`text-sm font-bold px-4 py-1.5 rounded-full border-2 transition-all ${
                   active
                     ? "bg-[#FF6B00] border-[#FF6B00] text-white"
                     : "border-[#FF6B00] text-[#FF6B00] hover:bg-[#FF6B00] hover:text-white"
                 }`}
               >
-                {n.label}
+                {label}
               </Link>
             );
             return (
               <Link
                 key={n.to}
                 to={n.to}
-                data-testid={`nav-link-${n.label.replace(/\s+/g, "-").toLowerCase()}`}
+                data-testid={`nav-link-${n.key}`}
                 className={`text-sm font-semibold transition-colors relative group ${
                   active ? "text-[#FF6B00]" : "text-[#0A0A0A] hover:text-[#FF6B00]"
                 }`}
               >
-                {n.label}
+                {label}
                 <span className={`absolute -bottom-1 left-0 h-0.5 bg-[#FF6B00] transition-all duration-300 ${
                   active ? "w-full" : "w-0 group-hover:w-full"
                 }`} />
@@ -131,7 +134,7 @@ export default function Header() {
             onClick={() => track("cta_find_sathi_click", { src: "header" })}
             className="inline-flex items-center bg-[#FF6B00] text-white font-bold text-xs md:text-sm px-3 md:px-5 py-2 md:py-2.5 rounded-full hover:bg-[#E66000] transition-all shadow-[0_4px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[0_6px_0_#0A0A0A]"
           >
-            Find a Sathi
+            {t("nav.findSathi")}
           </Link>
 
           {/* User dropdown */}
@@ -146,7 +149,7 @@ export default function Header() {
               }`}
             >
               <User className="w-4 h-4" />
-              {user ? (user.name ? user.name.split(" ")[0] : `··${user.phone.slice(-4)}`) : "Account"}
+              {user ? (user.name ? user.name.split(" ")[0] : `··${user.phone?.slice(-4) || ""}`) : t("nav.account")}
               <ChevronDown className={`w-3.5 h-3.5 transition-transform ${userOpen ? "rotate-180" : ""}`} />
             </button>
 
@@ -165,14 +168,14 @@ export default function Header() {
                     onClick={() => setUserOpen(false)}
                     className="flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-[#0A0A0A] hover:bg-[#F8F9FA] transition-colors"
                   >
-                    <ScanSearch className="w-4 h-4 text-[#FF6B00]" /> FASTag Status
+                    <ScanSearch className="w-4 h-4 text-[#FF6B00]" /> {t("nav.fastagStatus")}
                   </Link>
                   <Link
                     to="/buy-fastag"
                     onClick={() => setUserOpen(false)}
                     className="flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-[#0A0A0A] hover:bg-[#F8F9FA] transition-colors border-t border-[#F3F4F6]"
                   >
-                    <Tag className="w-4 h-4 text-[#FF6B00]" /> Buy FASTag
+                    <Tag className="w-4 h-4 text-[#FF6B00]" /> {t("nav.buyFastag")}
                   </Link>
 
                   <div className="border-t-2 border-[#F3F4F6]" />
@@ -184,21 +187,21 @@ export default function Header() {
                         onClick={() => setUserOpen(false)}
                         className="flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-[#0A0A0A] hover:bg-[#F8F9FA] transition-colors"
                       >
-                        <Briefcase className="w-4 h-4 text-[#FF6B00]" /> My Jobs
+                        <Briefcase className="w-4 h-4 text-[#FF6B00]" /> {t("nav.myJobs")}
                       </Link>
                       <Link
                         to="/dashboard"
                         onClick={() => setUserOpen(false)}
                         className="flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-[#0A0A0A] hover:bg-[#F8F9FA] transition-colors border-t border-[#F3F4F6]"
                       >
-                        <LayoutDashboard className="w-4 h-4 text-[#FF6B00]" /> Dashboard
+                        <LayoutDashboard className="w-4 h-4 text-[#FF6B00]" /> {t("nav.dashboard")}
                       </Link>
                       <button
                         onClick={() => { logout(); setUserOpen(false); }}
                         data-testid="header-logout"
                         className="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-red-500 hover:bg-red-50 transition-colors border-t border-[#F3F4F6]"
                       >
-                        <LogOut className="w-4 h-4" /> Sign out
+                        <LogOut className="w-4 h-4" /> {t("nav.signOut")}
                       </button>
                     </>
                   ) : (
@@ -208,7 +211,7 @@ export default function Header() {
                       onClick={() => setUserOpen(false)}
                       className="flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-[#0A0A0A] hover:bg-[#F8F9FA] transition-colors"
                     >
-                      <User className="w-4 h-4 text-[#FF6B00]" /> Sathi Login
+                      <User className="w-4 h-4 text-[#FF6B00]" /> {t("nav.sathiLogin")}
                     </Link>
                   )}
                 </motion.div>
@@ -251,7 +254,7 @@ export default function Header() {
                       : "text-[#0A0A0A] hover:bg-[#F8F9FA]"
                   }`}
                 >
-                  {n.label}
+                  {t(n.key)}
                 </Link>
               ))}
 
@@ -261,7 +264,7 @@ export default function Header() {
                 to="/tools/fastag-status"
                 className="flex items-center gap-2 text-base font-semibold px-3 py-3 rounded-xl text-[#0A0A0A] hover:bg-[#F8F9FA]"
               >
-                <ScanSearch className="w-4 h-4 text-[#FF6B00]" /> FASTag Status
+                <ScanSearch className="w-4 h-4 text-[#FF6B00]" /> {t("nav.fastagStatus")}
               </Link>
 
               {user && (
@@ -270,13 +273,13 @@ export default function Header() {
                     to="/my-jobs"
                     className="flex items-center gap-2 text-base font-semibold px-3 py-3 rounded-xl text-[#0A0A0A] hover:bg-[#F8F9FA]"
                   >
-                    <Briefcase className="w-4 h-4 text-[#FF6B00]" /> My Jobs
+                    <Briefcase className="w-4 h-4 text-[#FF6B00]" /> {t("nav.myJobs")}
                   </Link>
                   <Link
                     to="/dashboard"
                     className="flex items-center gap-2 text-base font-semibold px-3 py-3 rounded-xl text-[#0A0A0A] hover:bg-[#F8F9FA]"
                   >
-                    <LayoutDashboard className="w-4 h-4 text-[#FF6B00]" /> Dashboard
+                    <LayoutDashboard className="w-4 h-4 text-[#FF6B00]" /> {t("nav.dashboard")}
                   </Link>
                 </>
               )}
@@ -288,7 +291,7 @@ export default function Header() {
                   data-testid="mobile-cta-find"
                   className="flex justify-center bg-[#FF6B00] text-white font-bold px-5 py-3 rounded-full shadow-[0_4px_0_#0A0A0A]"
                 >
-                  Find a Sathi
+                  {t("nav.findSathi")}
                 </Link>
                 {!user && (
                   <Link
@@ -296,7 +299,7 @@ export default function Header() {
                     data-testid="header-login"
                     className="flex justify-center items-center gap-2 border-2 border-[#0A0A0A] text-[#0A0A0A] font-bold px-5 py-3 rounded-full"
                   >
-                    <User className="w-4 h-4" /> Sathi Login
+                    <User className="w-4 h-4" /> {t("nav.sathiLogin")}
                   </Link>
                 )}
                 {user && (
@@ -304,7 +307,7 @@ export default function Header() {
                     onClick={logout}
                     className="flex justify-center items-center gap-2 border-2 border-red-200 text-red-500 font-bold px-5 py-3 rounded-full"
                   >
-                    <LogOut className="w-4 h-4" /> Sign out
+                    <LogOut className="w-4 h-4" /> {t("nav.signOut")}
                   </button>
                 )}
               </div>

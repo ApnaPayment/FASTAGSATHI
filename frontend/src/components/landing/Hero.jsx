@@ -3,8 +3,10 @@ import { motion } from "framer-motion";
 import { ArrowRight, ShieldCheck, MapPin, Zap, Star } from "lucide-react";
 import { track } from "@/lib/analytics";
 import RadarTeaser from "./RadarTeaser";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function Hero() {
+  const { t } = useLanguage();
   return (
     <section
       id="top"
@@ -29,15 +31,15 @@ export default function Hero() {
             </span>
             <span className="text-xs font-semibold text-[#0A0A0A]">
               <span className="inline-block w-2 h-2 rounded-full bg-[#059669] mr-1.5 animate-pulse" />
-              1,500+ Sathis across 700+ plazas
+              {t("hero.badge")}
             </span>
           </div>
 
           {/* H1 is the LCP element — rendered statically, no opacity:0 start */}
           <h1 className="font-display font-black text-[44px] leading-[0.95] sm:text-6xl lg:text-[78px] lg:leading-[0.92] tracking-tight text-[#0A0A0A]">
-            Stuck at a toll?{" "}
+            {t("hero.h1a")}{" "}
             <span className="relative inline-block">
-              <span className="relative z-10">Your Sathi</span>
+              <span className="relative z-10">{t("hero.h1b")}</span>
               <svg
                 className="absolute -bottom-1 left-0 w-full"
                 viewBox="0 0 300 12"
@@ -52,7 +54,7 @@ export default function Hero() {
                 />
               </svg>
             </span>{" "}
-            arrives in <span className="text-[#FF6B00]">90 seconds.</span>
+            {t("hero.h1c")} <span className="text-[#FF6B00]">{t("hero.h1d")}</span>
           </h1>
 
           <motion.p
@@ -61,9 +63,9 @@ export default function Hero() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="mt-6 text-lg md:text-xl text-[#4B5563] max-w-2xl leading-relaxed"
           >
-            India's first real-time, peer-to-peer rescue network for FASTag chaos —{" "}
-            <span className="font-semibold text-[#0A0A0A]">disputes, KYC, recharge fails, SOS.</span>{" "}
-            <span className="font-hindi text-[#0A0A0A] font-semibold">हर टोल पर एक साथी।</span>
+            {t("hero.sub")}{" "}
+            <span className="font-semibold text-[#0A0A0A]">{t("hero.subBold")}</span>{" "}
+            <span className="font-hindi text-[#0A0A0A] font-semibold">{t("hero.subHindi")}</span>
           </motion.p>
 
           {/* Dual CTAs */}
@@ -80,7 +82,7 @@ export default function Hero() {
               onClick={() => track("cta_find_sathi_click", { src: "hero" })}
               className="group inline-flex items-center justify-center gap-2 bg-[#FF6B00] text-white font-bold text-base px-7 py-4 rounded-full hover:bg-[#E66000] transition-all shadow-[0_5px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[0_7px_0_#0A0A0A]"
             >
-              Find a Sathi Now
+              {t("hero.ctaFind")}
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </a>
             <a
@@ -89,7 +91,7 @@ export default function Hero() {
               onClick={() => track("cta_become_sathi_click", { src: "hero" })}
               className="group inline-flex items-center justify-center gap-2 bg-white border-2 border-[#0A0A0A] text-[#0A0A0A] font-bold text-base px-7 py-4 rounded-full hover:bg-[#0A0A0A] hover:text-white transition-all"
             >
-              Become a Sathi · Earn ₹40k/mo
+              {t("hero.ctaBecome")}
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </a>
           </motion.div>
@@ -103,11 +105,11 @@ export default function Hero() {
           >
             <div className="flex items-center gap-2" data-testid="trust-verified">
               <ShieldCheck className="w-5 h-5 text-[#059669]" />
-              <span className="text-sm font-semibold text-[#0A0A0A]">100% verified Sathis</span>
+              <span className="text-sm font-semibold text-[#0A0A0A]">{t("hero.trust1")}</span>
             </div>
             <div className="flex items-center gap-2">
               <Zap className="w-5 h-5 text-[#FF6B00]" />
-              <span className="text-sm font-semibold text-[#0A0A0A]">~90s response</span>
+              <span className="text-sm font-semibold text-[#0A0A0A]">{t("hero.trust2")}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="flex">
@@ -115,7 +117,7 @@ export default function Hero() {
                   <Star key={i} className="w-4 h-4 fill-[#F59E0B] text-[#F59E0B]" />
                 ))}
               </div>
-              <span className="text-sm font-semibold text-[#0A0A0A]">4.9 · 8,200 reviews</span>
+              <span className="text-sm font-semibold text-[#0A0A0A]">{t("hero.trust3")}</span>
             </div>
           </motion.div>
         </div>

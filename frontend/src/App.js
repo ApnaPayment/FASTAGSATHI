@@ -5,6 +5,7 @@ import { trackPageView } from "@/lib/analytics";
 
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import Layout from "@/components/layout/Layout";
 import ScrollToTop from "@/components/layout/ScrollToTop";
 import RedirectTo from "@/components/layout/RedirectTo";
@@ -60,6 +61,7 @@ function App() {
   }, []);
 
   return (
+    <LanguageProvider>
     <BrandingProvider>
     <AuthProvider>
       <BrowserRouter>
@@ -134,6 +136,7 @@ function App() {
       </BrowserRouter>
     </AuthProvider>
     </BrandingProvider>
+    </LanguageProvider>
   );
 }
 

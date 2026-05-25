@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import PageHero from "@/components/layout/PageHero";
 import SEO from "@/components/seo/SEO";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Phone, ShieldCheck, ArrowRight, AlertCircle, User, Mail } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sathiDashApi } from "@/lib/api";
@@ -49,6 +50,7 @@ function GoogleButton({ onSuccess }) {
 // ── Steps ─────────────────────────────────────────────────────────────────────
 export default function LoginPage() {
   const { user, requestOtp, verifyOtp, googleLogin, verifyPhone, confirmPhone, updateProfile } = useAuth();
+  const { t } = useLanguage();
   const navigate  = useNavigate();
   const [params]  = useSearchParams();
   const returnTo  = params.get("returnTo") || "/find";
@@ -195,8 +197,8 @@ export default function LoginPage() {
                   <div className="w-11 h-11 rounded-2xl bg-[#FF6B00]/10 flex items-center justify-center mb-4">
                     <Phone className="w-5 h-5 text-[#FF6B00]" />
                   </div>
-                  <h2 className="font-display font-black text-2xl">Enter your mobile</h2>
-                  <p className="text-sm text-[#6B7280] mt-1">We'll send a 4-digit OTP to verify.</p>
+                  <h2 className="font-display font-black text-2xl">{t("login.enterMobile")}</h2>
+                  <p className="text-sm text-[#6B7280] mt-1">{t("login.otpSub")}</p>
 
                   {/* Google button */}
                   {GOOGLE_CLIENT_ID && (
@@ -206,13 +208,13 @@ export default function LoginPage() {
                       </div>
                       <div className="flex items-center gap-3 my-4">
                         <div className="flex-1 h-px bg-[#E5E7EB]" />
-                        <span className="text-xs font-bold text-[#9CA3AF] uppercase tracking-widest">or</span>
+                        <span className="text-xs font-bold text-[#9CA3AF] uppercase tracking-widest">{t("common.or")}</span>
                         <div className="flex-1 h-px bg-[#E5E7EB]" />
                       </div>
                     </>
                   )}
 
-                  <label className="block text-xs font-bold uppercase tracking-widest text-[#0A0A0A] mt-2">Mobile number</label>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-[#0A0A0A] mt-2">{t("login.mobileLabel")}</label>
                   <div className="mt-1.5 flex items-center gap-2 bg-[#F8F9FA] border-2 border-[#E5E7EB] focus-within:border-[#FF6B00] rounded-xl px-4 py-3 transition-colors">
                     <span className="font-mono font-bold text-[#0A0A0A] text-sm">+91</span>
                     <input
@@ -234,12 +236,12 @@ export default function LoginPage() {
                     data-testid="login-send-otp"
                     className="mt-5 w-full bg-[#FF6B00] text-white font-bold py-3.5 rounded-full hover:bg-[#E66000] shadow-[0_4px_0_#0A0A0A] disabled:opacity-50 transition-all inline-flex items-center justify-center gap-2"
                   >
-                    {loading ? "Sending…" : <> Send OTP <ArrowRight className="w-4 h-4" /> </>}
+                    {loading ? t("login.sending") : <> {t("login.sendOtp")} <ArrowRight className="w-4 h-4" /> </>}
                   </button>
 
                   <p className="mt-4 flex items-start gap-1.5 text-[11px] text-[#9CA3AF]">
                     <ShieldCheck className="w-3.5 h-3.5 text-[#059669] flex-shrink-0 mt-0.5" />
-                    Number used only for verification & booking dispatch. No spam.
+                    {t("login.noSpam")}
                   </p>
                 </form>
               )}
@@ -250,12 +252,12 @@ export default function LoginPage() {
                   <div className="w-11 h-11 rounded-2xl bg-[#059669]/10 flex items-center justify-center mb-4">
                     <ShieldCheck className="w-5 h-5 text-[#059669]" />
                   </div>
-                  <h2 className="font-display font-black text-2xl">Enter OTP</h2>
+                  <h2 className="font-display font-black text-2xl">{t("login.enterOtp")}</h2>
                   <p className="text-sm text-[#6B7280] mt-1">
                     Sent to <strong className="text-[#0A0A0A]">+91 ·····{phone.slice(-3)}</strong>
                     {" · "}
                     <button type="button" onClick={() => { setStep("phone"); setErr(null); setOtp(""); }} className="text-[#FF6B00] font-bold underline underline-offset-2">
-                      Change
+                      {t("login.change")}
                     </button>
                   </p>
 
@@ -277,7 +279,7 @@ export default function LoginPage() {
                     data-testid="login-verify-otp"
                     className="mt-5 w-full bg-[#FF6B00] text-white font-bold py-3.5 rounded-full hover:bg-[#E66000] shadow-[0_4px_0_#0A0A0A] disabled:opacity-50 transition-all inline-flex items-center justify-center gap-2"
                   >
-                    {loading ? "Verifying…" : <> Verify & continue <ArrowRight className="w-4 h-4" /> </>}
+                    {loading ? t("login.verifying") : <> {t("login.verify")} <ArrowRight className="w-4 h-4" /> </>}
                   </button>
                 </form>
               )}
@@ -288,10 +290,10 @@ export default function LoginPage() {
                   <div className="w-11 h-11 rounded-2xl bg-[#FF6B00]/10 flex items-center justify-center mb-4">
                     <Phone className="w-5 h-5 text-[#FF6B00]" />
                   </div>
-                  <h2 className="font-display font-black text-2xl">Add mobile number</h2>
-                  <p className="text-sm text-[#6B7280] mt-1">We need your Indian mobile number to dispatch a Sathi and send booking updates.</p>
+                  <h2 className="font-display font-black text-2xl">{t("login.addMobile")}</h2>
+                  <p className="text-sm text-[#6B7280] mt-1">{t("login.addMobileSub")}</p>
 
-                  <label className="block text-xs font-bold uppercase tracking-widest text-[#0A0A0A] mt-5">Mobile number</label>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-[#0A0A0A] mt-5">{t("login.mobileLabel")}</label>
                   <div className="mt-1.5 flex items-center gap-2 bg-[#F8F9FA] border-2 border-[#E5E7EB] focus-within:border-[#FF6B00] rounded-xl px-4 py-3 transition-colors">
                     <span className="font-mono font-bold text-[#0A0A0A] text-sm">+91</span>
                     <input
@@ -313,12 +315,12 @@ export default function LoginPage() {
                     data-testid="link-phone-send-otp"
                     className="mt-5 w-full bg-[#FF6B00] text-white font-bold py-3.5 rounded-full hover:bg-[#E66000] shadow-[0_4px_0_#0A0A0A] disabled:opacity-50 transition-all inline-flex items-center justify-center gap-2"
                   >
-                    {loading ? "Sending…" : <> Send OTP <ArrowRight className="w-4 h-4" /> </>}
+                    {loading ? t("login.sending") : <> {t("login.sendOtp")} <ArrowRight className="w-4 h-4" /> </>}
                   </button>
 
                   <p className="mt-4 flex items-start gap-1.5 text-[11px] text-[#9CA3AF]">
                     <ShieldCheck className="w-3.5 h-3.5 text-[#059669] flex-shrink-0 mt-0.5" />
-                    Number used only for booking dispatch. No spam.
+                    {t("login.noSpam")}
                   </p>
                 </form>
               )}
@@ -329,12 +331,12 @@ export default function LoginPage() {
                   <div className="w-11 h-11 rounded-2xl bg-[#059669]/10 flex items-center justify-center mb-4">
                     <ShieldCheck className="w-5 h-5 text-[#059669]" />
                   </div>
-                  <h2 className="font-display font-black text-2xl">Verify mobile</h2>
+                  <h2 className="font-display font-black text-2xl">{t("login.verifyMobile")}</h2>
                   <p className="text-sm text-[#6B7280] mt-1">
-                    OTP sent to <strong className="text-[#0A0A0A]">+91 ·····{linkPhone.slice(-3)}</strong>
+                    Sent to <strong className="text-[#0A0A0A]">+91 ·····{linkPhone.slice(-3)}</strong>
                     {" · "}
                     <button type="button" onClick={() => { setStep("link-phone"); setErr(null); setLinkOtp(""); }} className="text-[#FF6B00] font-bold underline underline-offset-2">
-                      Change
+                      {t("login.change")}
                     </button>
                   </p>
 
@@ -356,7 +358,7 @@ export default function LoginPage() {
                     data-testid="link-otp-verify"
                     className="mt-5 w-full bg-[#FF6B00] text-white font-bold py-3.5 rounded-full hover:bg-[#E66000] shadow-[0_4px_0_#0A0A0A] disabled:opacity-50 transition-all inline-flex items-center justify-center gap-2"
                   >
-                    {loading ? "Verifying…" : <> Verify & continue <ArrowRight className="w-4 h-4" /> </>}
+                    {loading ? t("login.verifying") : <> {t("login.verify")} <ArrowRight className="w-4 h-4" /> </>}
                   </button>
                 </form>
               )}
@@ -367,10 +369,10 @@ export default function LoginPage() {
                   <div className="w-11 h-11 rounded-2xl bg-[#0A0A0A]/10 flex items-center justify-center mb-4">
                     <User className="w-5 h-5 text-[#0A0A0A]" />
                   </div>
-                  <h2 className="font-display font-black text-2xl">One last step</h2>
-                  <p className="text-sm text-[#6B7280] mt-1">Tell us your name so your Sathi knows who to help.</p>
+                  <h2 className="font-display font-black text-2xl">{t("login.oneLastStep")}</h2>
+                  <p className="text-sm text-[#6B7280] mt-1">{t("login.profileSub")}</p>
 
-                  <label className="block mt-5 text-xs font-bold uppercase tracking-widest text-[#0A0A0A]">Your name <span className="text-[#FF6B00]">*</span></label>
+                  <label className="block mt-5 text-xs font-bold uppercase tracking-widest text-[#0A0A0A]">{t("login.yourName")} <span className="text-[#FF6B00]">*</span></label>
                   <div className="mt-1.5 flex items-center gap-2 bg-[#F8F9FA] border-2 border-[#E5E7EB] focus-within:border-[#FF6B00] rounded-xl px-4 py-3 transition-colors">
                     <User className="w-4 h-4 text-[#9CA3AF] flex-shrink-0" />
                     <input
@@ -384,7 +386,7 @@ export default function LoginPage() {
                   </div>
 
                   <label className="block mt-4 text-xs font-bold uppercase tracking-widest text-[#0A0A0A]">
-                    Email <span className="text-[#9CA3AF] font-normal normal-case tracking-normal">(optional)</span>
+                    {t("login.email")} <span className="text-[#9CA3AF] font-normal normal-case tracking-normal">{t("login.optional")}</span>
                   </label>
                   <div className="mt-1.5 flex items-center gap-2 bg-[#F8F9FA] border-2 border-[#E5E7EB] focus-within:border-[#FF6B00] rounded-xl px-4 py-3 transition-colors">
                     <Mail className="w-4 h-4 text-[#9CA3AF] flex-shrink-0" />
@@ -407,7 +409,7 @@ export default function LoginPage() {
                     data-testid="login-save-profile"
                     className="mt-5 w-full bg-[#0A0A0A] text-white font-bold py-3.5 rounded-full hover:bg-[#222] shadow-[0_4px_0_#FF6B00] disabled:opacity-50 transition-all inline-flex items-center justify-center gap-2"
                   >
-                    {loading ? "Saving…" : <> Save & continue <ArrowRight className="w-4 h-4" /> </>}
+                    {loading ? t("login.saving") : <> {t("login.saveProfile")} <ArrowRight className="w-4 h-4" /> </>}
                   </button>
 
                   <button
@@ -415,7 +417,7 @@ export default function LoginPage() {
                     onClick={() => navigate(decodeURIComponent(returnTo), { replace: true })}
                     className="mt-3 w-full text-sm text-[#9CA3AF] hover:text-[#6B7280] py-2 transition-colors"
                   >
-                    Skip for now
+                    {t("login.skipForNow")}
                   </button>
                 </form>
               )}
@@ -424,10 +426,10 @@ export default function LoginPage() {
           </AnimatePresence>
 
           <p className="text-center text-xs text-[#9CA3AF] mt-5">
-            By continuing you agree to our{" "}
-            <Link to="/terms" className="underline hover:text-[#0A0A0A]">Terms</Link>
+            {t("login.terms")}{" "}
+            <Link to="/terms" className="underline hover:text-[#0A0A0A]">{t("login.termsLink")}</Link>
             {" & "}
-            <Link to="/privacy" className="underline hover:text-[#0A0A0A]">Privacy Policy</Link>.
+            <Link to="/privacy" className="underline hover:text-[#0A0A0A]">{t("login.privacy")}</Link>.
           </p>
         </div>
       </section>

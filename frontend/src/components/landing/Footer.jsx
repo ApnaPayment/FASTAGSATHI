@@ -2,6 +2,8 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Instagram, Twitter, Youtube, Mail, Facebook, Linkedin } from "lucide-react";
 import { useBranding } from "@/contexts/BrandingContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { LANGUAGES } from "@/lib/translations";
 
 export default function Footer() {
   const {
@@ -9,6 +11,7 @@ export default function Footer() {
     supportEmail, helpline,
     socialInstagram, socialTwitter, socialYoutube, socialFacebook, socialLinkedin,
   } = useBranding();
+  const { lang, setLang, t } = useLanguage();
 
   const socials = [
     { Ic: Instagram, label: "Instagram", url: socialInstagram },
@@ -82,15 +85,20 @@ export default function Footer() {
           </div>
 
           <div className="md:col-span-3">
-            <div className="text-xs uppercase tracking-widest text-[#FF6B00] font-bold mb-4">Languages</div>
+            <div className="text-xs uppercase tracking-widest text-[#FF6B00] font-bold mb-4">{t("footer.lang")}</div>
             <div className="flex flex-wrap gap-2">
-              {["English", "हिन्दी", "मराठी", "தமிழ்"].map((l) => (
+              {LANGUAGES.map((l) => (
                 <button
-                  key={l}
-                  data-testid={`footer-lang-${l}`}
-                  className="px-3 py-1.5 border border-white/20 rounded-full text-xs font-semibold hover:bg-white hover:text-[#0A0A0A] transition-colors font-hindi"
+                  key={l.code}
+                  data-testid={`footer-lang-${l.label}`}
+                  onClick={() => setLang(l.code)}
+                  className={`px-3 py-1.5 border rounded-full text-xs font-semibold transition-all font-hindi ${
+                    lang === l.code
+                      ? "bg-[#FF6B00] border-[#FF6B00] text-white"
+                      : "border-white/20 text-white/70 hover:bg-white hover:text-[#0A0A0A] hover:border-white"
+                  }`}
                 >
-                  {l}
+                  {l.label}
                 </button>
               ))}
             </div>
