@@ -2056,180 +2056,203 @@ def _gemini_article_prompt(topic: str, category: str, related_bank: str = "", re
     }
     lsi = lsi_hints.get(category, lsi_hints["General"])
 
-    return f"""You are a senior SEO content strategist writing for ApnaFastag.com — India's leading FASTag assistance platform. Verified local agents called "Sathis" help drivers resolve toll plaza problems in real time.
+    # ── Prompt 1: metadata only — tiny JSON, ZERO HTML ────────────────────
+    meta_prompt = f"""You are an SEO specialist for ApnaFastag.com, India's FASTag assistance platform.
+{bank_context} {state_context}
 
-ARTICLE BRIEF
-Topic: "{topic}"
-Category: {category}
-{bank_context}
-{state_context}
-Year: {year}
+Return ONLY a valid JSON object (no markdown fences, no extra text) with SEO metadata for an article about:
+"{topic}" (Category: {category}, Year: {year})
 
-YOUR TASK
-Write a deeply researched, genuinely helpful SEO article (1800-2500 words) on the topic above.
-
-IMPORTANT — OUTPUT FORMAT
-Respond in exactly two sections separated by the delimiter lines shown. Do not add any text outside these sections.
-
-===META===
-(a single valid JSON object — no HTML inside this section)
-===BODY===
-(pure HTML body — no JSON, no markdown fences)
-===END===
-
-META JSON SCHEMA (no body field, no HTML values):
+JSON schema — all values are plain strings or arrays, NO HTML anywhere:
 {{
-  "title": "Keyword-first title 55-65 chars, include year {year}",
-  "slug": "keyword-slug-max-65-chars",
-  "excerpt": "145-160 char meta description: state the problem, promise the solution, include main keyword.",
-  "meta_title": "SEO title tag 50-60 chars, keyword near front",
-  "meta_description": "145-160 chars, different from excerpt, includes primary + secondary keyword",
-  "meta_keywords": "10-12 comma-separated keywords including LSI terms",
+  "title": "Keyword-first H1 title, 55-65 chars, include {year}",
+  "slug": "url-slug-max-65-chars",
+  "excerpt": "145-160 char compelling summary: name the problem, promise solution, include main keyword",
+  "meta_title": "Browser tab title 50-60 chars, keyword near front",
+  "meta_description": "145-160 chars for Google snippet, different wording from excerpt",
+  "meta_keywords": "10 comma-separated LSI keywords: {lsi[:120]}",
   "tags": ["tag1","tag2","tag3","tag4","tag5"],
   "faq_pairs": [
-    {{"q": "Real long-tail question 1?", "a": "Direct 40-60 word answer then 1-2 sentences detail."}},
-    {{"q": "Question 2?", "a": "Answer 2."}},
-    {{"q": "Question 3?", "a": "Answer 3."}},
-    {{"q": "Question 4?", "a": "Answer 4."}},
-    {{"q": "Question 5?", "a": "Answer 5."}},
-    {{"q": "Question 6?", "a": "Answer 6."}},
-    {{"q": "Question 7?", "a": "Answer 7."}},
-    {{"q": "Question 8?", "a": "Answer 8."}}
+    {{"q":"Long-tail question 1 a driver searches?","a":"Direct answer in first sentence (40-60 words), then 1-2 supporting sentences."}},
+    {{"q":"Question 2?","a":"Answer 2."}},
+    {{"q":"Question 3?","a":"Answer 3."}},
+    {{"q":"Question 4?","a":"Answer 4."}},
+    {{"q":"Question 5?","a":"Answer 5."}},
+    {{"q":"Question 6?","a":"Answer 6."}},
+    {{"q":"Question 7?","a":"Answer 7."}},
+    {{"q":"Question 8?","a":"Answer 8."}}
   ],
   "read_min": 8
-}}
+}}"""
 
-BODY HTML REQUIREMENTS (write after ===BODY=== delimiter, raw HTML only):
+    # ── Prompt 2: HTML body only — ZERO JSON ──────────────────────────────
+    body_prompt = f"""You are a senior content writer for ApnaFastag.com — India's FASTag assistance platform where verified local agents called Sathis help drivers at toll plazas.
+{bank_context} {state_context}
 
-1. INTRODUCTION — 1 paragraph, 80-120 words. Hook on the pain point, include primary keyword in first 100 words.
+Write a 1800-2500 word HTML article body about: "{topic}" (Category: {category}, Year: {year})
 
-2. TABLE OF CONTENTS
-   <nav class="toc"><h2>In This Guide</h2><ul><li><a href="#section1">Heading 1</a></li>...</ul></nav>
+OUTPUT RULES — CRITICAL:
+- Return ONLY raw HTML. No JSON. No markdown. No triple-backticks. No preamble.
+- Start immediately with <p> or <nav class="toc">
+- Every bold word must use <strong>text</strong> — never **asterisks**
+- All headings must use <h2 id="sectionN"> or <h3> tags — never # or ## symbols
 
-3. SECTION 1 — Context / Why This Matters
-   <h2 id="section1">...</h2>
-   Include: <div class="quick-answer"><strong>Quick Answer:</strong> 40-60 word direct answer.</div>
-   Weave in LSI keywords: {lsi}
-   200-250 words.
+STRUCTURE (follow exactly):
 
-4. SECTION 2 — Step-by-Step Guide
-   <h2 id="section2">...</h2>
-   Each step as <h3>Step N: Title</h3> + <p>details</p>
-   Include real portal URLs, USSD codes, SMS keywords. 400-500 words.
+<p>[Introduction — 80-120 words. Hook on the exact pain point. Include "{topic}" naturally in first 2 sentences.]</p>
 
-5. SECTION 3 — Comparison Table
-   <h2 id="section3">...</h2>
-   HTML <table> with <thead>/<tbody>. Compare methods/banks/options. 150-200 words + table.
+<nav class="toc"><h2>In This Guide</h2><ul>
+<li><a href="#section1">[Section 1 title]</a></li>
+<li><a href="#section2">[Section 2 title]</a></li>
+<li><a href="#section3">[Section 3 title]</a></li>
+<li><a href="#section4">[Section 4 title]</a></li>
+<li><a href="#section5">[Section 5 title]</a></li>
+<li><a href="#section6">Conclusion</a></li>
+</ul></nav>
 
-6. SECTION 4 — Common Problems & Fixes
-   <h2 id="section4">...</h2>
-   4-5 problems, each as <h3>Problem</h3> + <p>Solution with specific steps</p>. 300-400 words.
+<h2 id="section1">[Context: Why This Matters]</h2>
+<div class="quick-answer"><strong>Quick Answer:</strong> [40-60 word direct answer to "{topic}". Start with a verb.]</div>
+<p>[200-250 words. Weave in these LSI terms naturally: {lsi}]</p>
 
-7. SECTION 5 — When to Contact a Sathi
-   <h2 id="section5">...</h2>
-   What a Sathi is. 3-4 situations needing Sathi vs self-service.
-   Must include: <p>Find a verified Sathi near your toll plaza at <strong>apnafastag.com</strong> — available at 700+ plazas. Response in under 90 seconds.</p>
-   150-200 words.
+<h2 id="section2">[Step-by-Step Guide]</h2>
+<h3>Step 1: [Title]</h3><p>[Detail with real URLs, portal paths, or USSD codes]</p>
+<h3>Step 2: [Title]</h3><p>[Detail]</p>
+<h3>Step 3: [Title]</h3><p>[Detail]</p>
+<h3>Step 4: [Title]</h3><p>[Detail]</p>
+[400-500 words total for this section]
 
-8. CONCLUSION
-   <h2 id="section6">...</h2>
-   3 bullet takeaways. CTA to bookmark apnafastag.com. 100-150 words.
+<h2 id="section3">[Comparison: Methods / Banks / Options]</h2>
+<p>[150-200 words intro]</p>
+<table><thead><tr><th>Feature</th><th>[Option A]</th><th>[Option B]</th><th>[Option C]</th></tr></thead>
+<tbody>
+<tr><td>[Row 1]</td><td>[val]</td><td>[val]</td><td>[val]</td></tr>
+<tr><td>[Row 2]</td><td>[val]</td><td>[val]</td><td>[val]</td></tr>
+<tr><td>[Row 3]</td><td>[val]</td><td>[val]</td><td>[val]</td></tr>
+<tr><td>[Row 4]</td><td>[val]</td><td>[val]</td><td>[val]</td></tr>
+<tr><td>[Row 5]</td><td>[val]</td><td>[val]</td><td>[val]</td></tr>
+</tbody></table>
 
-QUALITY RULES:
-- Minimum 1800 words total in body
-- Indian English (colour, authorised, etc.)
-- Bold first mention of every key term with <strong>
-- NHAI helpline 1033, real bank-specific numbers where relevant
-- FAQ answers: start with a direct statement, not "Yes" or "No" alone"""
+<h2 id="section4">[Common Problems and Solutions]</h2>
+<h3>Problem 1: [Title]</h3><p><strong>Solution:</strong> [Specific actionable fix]</p>
+<h3>Problem 2: [Title]</h3><p><strong>Solution:</strong> [Specific actionable fix]</p>
+<h3>Problem 3: [Title]</h3><p><strong>Solution:</strong> [Specific actionable fix]</p>
+<h3>Problem 4: [Title]</h3><p><strong>Solution:</strong> [Specific actionable fix]</p>
+<h3>Problem 5: [Title]</h3><p><strong>Solution:</strong> [Specific actionable fix]</p>
+[300-400 words total]
+
+<h2 id="section5">When to Contact an ApnaFastag Sathi</h2>
+<p>An <strong>ApnaFastag Sathi</strong> is a verified local agent stationed near toll plazas who resolves FASTag issues in real time — faster than any helpline.</p>
+<p>Contact a Sathi when:</p>
+<ul>
+<li>[Situation 1 specific to this topic]</li>
+<li>[Situation 2 specific to this topic]</li>
+<li>[Situation 3 specific to this topic]</li>
+<li>[Situation 4 specific to this topic]</li>
+</ul>
+<p>Find a verified Sathi near your toll plaza at <strong>apnafastag.com</strong> — available at 700+ plazas across India. Response in under 90 seconds.</p>
+
+<h2 id="section6">Conclusion</h2>
+<p>[80-100 word summary paragraph]</p>
+<ul>
+<li><strong>[Takeaway 1]</strong></li>
+<li><strong>[Takeaway 2]</strong></li>
+<li><strong>[Takeaway 3]</strong></li>
+</ul>
+<p>Bookmark <strong>apnafastag.com</strong> and find a Sathi if you ever get stuck at a toll plaza.</p>
+
+QUALITY:
+- Indian English: colour, authorised, recognise, practise
+- Real helpline: NHAI 1033; bank-specific numbers where relevant
+- Every key term bolded with <strong> on first mention
+- Minimum 1800 words"""
+
+    return meta_prompt, body_prompt
 
 
-async def _call_gemini(prompt: str) -> dict:
-    """Call Gemini API. Response uses ===META=== / ===BODY=== / ===END=== delimiters
-    so HTML never lives inside a JSON string — avoids all escaping issues."""
+async def _get_gemini_model():
+    """Return (genai module, chosen model name). Cached after first discovery."""
+    import google.generativeai as genai
+    genai.configure(api_key=GEMINI_API_KEY)
+    preferred = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash-lite",
+                 "gemini-1.5-flash", "gemini-1.5-flash-8b"]
+    available = {
+        m.name.split("/")[-1]
+        for m in genai.list_models()
+        if "generateContent" in (m.supported_generation_methods or [])
+    }
+    chosen = next((n for n in preferred if n in available), None)
+    if chosen is None:
+        chosen = next(iter(available), None)
+    if chosen is None:
+        raise HTTPException(status_code=503, detail="No Gemini model available for this API key")
+    logger.info(f"[Gemini] Using model: {chosen}")
+    return genai, chosen
+
+
+def _extract_text(response) -> str:
+    """Safely extract text from a Gemini response, skipping thinking parts."""
+    try:
+        # For thinking models, .text may include thought tokens — use last text part
+        parts = response.candidates[0].content.parts
+        text_parts = [p.text for p in parts if hasattr(p, "text") and p.text]
+        return text_parts[-1].strip() if text_parts else response.text.strip()
+    except Exception:
+        return response.text.strip()
+
+
+async def _call_gemini(meta_prompt: str, body_prompt: str) -> dict:
+    """Two separate Gemini calls: (1) metadata JSON, (2) HTML body.
+    HTML is never embedded inside JSON so there are zero escaping issues."""
     if not GEMINI_API_KEY:
         raise HTTPException(status_code=503, detail="GEMINI_API_KEY not set in environment")
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=GEMINI_API_KEY)
-
-        # Discover available generateContent-capable models dynamically
-        preferred = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash-lite",
-                     "gemini-1.5-flash", "gemini-1.5-flash-8b"]
-        available = {
-            m.name.split("/")[-1]
-            for m in genai.list_models()
-            if "generateContent" in (m.supported_generation_methods or [])
-        }
-        chosen = next((n for n in preferred if n in available), None)
-        if chosen is None:
-            chosen = next(iter(available), None)
-        if chosen is None:
-            raise HTTPException(status_code=503, detail="No Gemini model available for this API key")
-        logger.info(f"[Gemini] Using model: {chosen}")
-
+        import asyncio
+        genai, chosen = await _get_gemini_model()
         model = genai.GenerativeModel(chosen)
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.65,
-                max_output_tokens=8192,
-            ),
-        )
+        cfg   = genai.types.GenerationConfig(temperature=0.65, max_output_tokens=8192)
 
-        try:
-            raw = response.text.strip()
-        except Exception:
-            raw = response.candidates[0].content.parts[-1].text.strip()
+        # ── Call 1: metadata JSON (small, fast) ───────────────────────────
+        meta_resp = model.generate_content(meta_prompt, generation_config=cfg)
+        meta_raw  = _extract_text(meta_resp)
+        logger.info(f"[Gemini] META raw (200): {meta_raw[:200]}")
 
-        # ── Parse delimiter format  ===META=== ... ===BODY=== ... ===END=== ──
-        META_D = "===META==="
-        BODY_D = "===BODY==="
-        END_D  = "===END==="
+        # Strip fences, find outermost { }
+        if "```" in meta_raw:
+            meta_raw = meta_raw.split("```")[1]
+            if meta_raw.startswith("json"):
+                meta_raw = meta_raw[4:]
+            meta_raw = meta_raw.strip()
+        bs = meta_raw.find("{"); be = meta_raw.rfind("}")
+        if bs != -1 and be > bs:
+            meta_raw = meta_raw[bs:be+1]
+        data = json.loads(meta_raw)
 
-        if META_D in raw and BODY_D in raw:
-            meta_start = raw.index(META_D) + len(META_D)
-            body_start = raw.index(BODY_D) + len(BODY_D)
-            meta_text  = raw[meta_start : raw.index(BODY_D)].strip()
-            body_text  = raw[body_start : raw.index(END_D) if END_D in raw else len(raw)].strip()
-        else:
-            # Fallback: old behaviour — full response is JSON with embedded body
-            logger.warning("[Gemini] Delimiter not found, attempting full-JSON parse")
-            meta_text = raw
-            body_text = None
+        # ── Call 2: HTML body (larger, main content) ──────────────────────
+        body_resp = model.generate_content(body_prompt, generation_config=cfg)
+        body_html = _extract_text(body_resp)
+        logger.info(f"[Gemini] BODY length: {len(body_html)} chars")
 
-        # Clean and parse the metadata JSON
-        if meta_text.startswith("```"):
-            meta_text = meta_text.split("```", 2)[1]
-            if meta_text.startswith("json"):
-                meta_text = meta_text[4:]
-            meta_text = meta_text.strip()
-        brace_s = meta_text.find("{")
-        brace_e = meta_text.rfind("}")
-        if brace_s != -1 and brace_e > brace_s:
-            meta_text = meta_text[brace_s : brace_e + 1]
+        # Strip any accidental markdown fences wrapping the HTML
+        if body_html.startswith("```"):
+            body_html = body_html.split("```")[1]
+            if body_html.lower().startswith("html"):
+                body_html = body_html[4:]
+            body_html = body_html.strip()
+        if body_html.endswith("```"):
+            body_html = body_html[:-3].strip()
 
-        try:
-            data = json.loads(meta_text)
-        except json.JSONDecodeError:
-            import re as _re
-            data = json.loads(_re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", meta_text))
-
-        # Attach body from its own section (no JSON escaping needed)
-        if body_text is not None:
-            data["body"] = body_text
-
+        data["body"] = body_html
         return data
 
     except json.JSONDecodeError as e:
-        snippet = meta_text[:600] if "meta_text" in dir() else raw[:600] if "raw" in dir() else "N/A"  # type: ignore
-        logger.error(f"Gemini META JSON parse error: {e}\nRaw META (600): {snippet}")
+        logger.error(f"[Gemini] META JSON error: {e} | raw: {meta_raw[:400] if 'meta_raw' in dir() else 'N/A'}")  # type: ignore
         raise HTTPException(status_code=500, detail="AI returned malformed JSON — please try again")
     except ImportError:
         raise HTTPException(status_code=503, detail="google-generativeai package not installed")
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Gemini API error: {type(e).__name__}: {e}")
+        logger.error(f"[Gemini] Error: {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
 
 
@@ -2304,8 +2327,8 @@ async def ai_generate_article(data: dict = Body(...)):
     if not topic:
         raise HTTPException(status_code=400, detail="topic is required")
 
-    prompt  = _gemini_article_prompt(topic, category, related_bank, related_state)
-    ai_data = await _call_gemini(prompt)
+    meta_prompt, body_prompt = _gemini_article_prompt(topic, category, related_bank, related_state)
+    ai_data = await _call_gemini(meta_prompt, body_prompt)
     article = _build_article_from_ai(ai_data, topic, category, related_bank, related_state)
     return {"ok": True, "article": article}
 
@@ -2329,8 +2352,8 @@ async def ai_bulk_generate(data: dict = Body(...)):
 
     for topic in topics:
         try:
-            prompt  = _gemini_article_prompt(topic, category, related_bank, related_state)
-            ai_data = await _call_gemini(prompt)
+            meta_prompt, body_prompt = _gemini_article_prompt(topic, category, related_bank, related_state)
+            ai_data = await _call_gemini(meta_prompt, body_prompt)
             article = _build_article_from_ai(ai_data, topic, category, related_bank, related_state)
 
             # Upsert by slug
