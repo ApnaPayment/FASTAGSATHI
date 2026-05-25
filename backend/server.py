@@ -243,6 +243,44 @@ async def get_me(current: dict = Depends(_require_user)):
         raise HTTPException(status_code=404, detail="User not found")
     return UserOut(id=doc["id"], phone=doc["phone"], name=doc.get("name"), email=doc.get("email"), created_at=doc["created_at"])
 
+@users_router.post("/me/verify-phone")
+async def verify_phone(body: dict, current: dict = Depends(_require_user)):
+    """Send OTP to a new phone number for a Google-authenticated user."""
+    phone = (body.get("phone") or "").strip()
+    if not phone.isdigit() or len(phone) != 10:
+        raise HTTPException(status_code=400, detail="Enter a 10-digit Indian mobile number")
+    # Check not already used by another account
+    existing = await db.users.find_one({"phone": phone, "id": {"$ne": current["user_id"]}})
+    if existing:
+        raise HTTPException(status_code=409, detail="This number is linked to another account")
+    otp = str(random.randint(1000, 9999))
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+    await db.otps.update_one({"phone": phone}, {"$set": {"otp": otp, "expires_at": expires_at}}, upsert=True)
+    logger.info(f"[OTP phone-link] +91-XXXXXX{phone[-4:]}: {otp}")
+    return {"ok": True}
+
+@users_router.post("/me/confirm-phone")
+async def confirm_phone(body: dict, current: dict = Depends(_require_user)):
+    """Verify OTP and save phone to the logged-in Google user's account."""
+    phone = (body.get("phone") or "").strip()
+    otp   = (body.get("otp")   or "").strip()
+    if not phone.isdigit() or len(phone) != 10:
+        raise HTTPException(status_code=400, detail="Invalid phone number")
+    if not OTP_BYPASS:
+        record = await db.otps.find_one({"phone": phone})
+        if not record or record["otp"] != otp:
+            raise HTTPException(status_code=401, detail="Invalid OTP")
+        exp = datetime.fromisoformat(record["expires_at"])
+        if exp.tzinfo is None: exp = exp.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) > exp:
+            raise HTTPException(status_code=401, detail="OTP expired — request a new one")
+    await db.users.update_one(
+        {"id": current["user_id"]},
+        {"$set": {"phone": phone, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    doc = await db.users.find_one({"id": current["user_id"]}, {"_id": 0})
+    return UserOut(id=doc["id"], phone=doc["phone"], name=doc.get("name"), email=doc.get("email"), created_at=doc["created_at"])
+
 @users_router.patch("/me")
 async def update_me(body: dict, current: dict = Depends(_require_user)):
     """Update name and/or email for the logged-in user."""
@@ -1927,6 +1965,73 @@ async def admin_delete_logo():
 @admin_router.delete("/branding/favicon", dependencies=[Depends(_check_admin)])
 async def admin_delete_favicon():
     await db.site_settings.update_one({"key": "branding"}, {"$unset": {"favicon_url": ""}})
+    return {"ok": True}
+
+# ─── Admin: Customer management ───────────────────────────────────────────────
+
+@admin_router.get("/customers", dependencies=[Depends(_check_admin)])
+async def admin_list_customers(
+    search: str = Query(""),
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, le=200),
+):
+    """List all registered customers with optional search by name/phone/email."""
+    query: dict = {}
+    if search.strip():
+        s = search.strip()
+        query["$or"] = [
+            {"phone": {"$regex": s, "$options": "i"}},
+            {"name":  {"$regex": s, "$options": "i"}},
+            {"email": {"$regex": s, "$options": "i"}},
+        ]
+    skip = (page - 1) * limit
+    total = await db.users.count_documents(query)
+    docs  = await db.users.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+
+    # Enrich each user with their job count
+    user_ids = [d["id"] for d in docs]
+    pipeline = [
+        {"$match": {"user_id": {"$in": user_ids}}},
+        {"$group": {"_id": "$user_id", "count": {"$sum": 1}}},
+    ]
+    job_counts = {r["_id"]: r["count"] for r in await db.jobs.aggregate(pipeline).to_list(None)}
+
+    result = []
+    for d in docs:
+        result.append({
+            "id":         d.get("id"),
+            "phone":      d.get("phone", "—"),
+            "name":       d.get("name") or "",
+            "email":      d.get("email") or "",
+            "created_at": d.get("created_at", ""),
+            "job_count":  job_counts.get(d.get("id", ""), 0),
+        })
+
+    return {"customers": result, "total": total, "page": page, "pages": max(1, -(-total // limit))}
+
+@admin_router.patch("/customers/{user_id}", dependencies=[Depends(_check_admin)])
+async def admin_update_customer(user_id: str, data: dict = Body(...)):
+    """Update customer name or email (admin)."""
+    allowed = {}
+    if "name" in data and isinstance(data["name"], str):
+        allowed["name"] = data["name"].strip() or None
+    if "email" in data:
+        e = (data["email"] or "").strip().lower()
+        allowed["email"] = e or None
+    if not allowed:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    allowed["updated_at"] = datetime.now(timezone.utc).isoformat()
+    res = await db.users.update_one({"id": user_id}, {"$set": allowed})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return {"ok": True}
+
+@admin_router.delete("/customers/{user_id}", dependencies=[Depends(_check_admin)])
+async def admin_delete_customer(user_id: str):
+    """Delete a customer account (admin)."""
+    res = await db.users.delete_one({"id": user_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Customer not found")
     return {"ok": True}
 
 # ─── Article seed data ────────────────────────────────────────────────────────

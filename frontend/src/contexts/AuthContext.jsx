@@ -66,6 +66,32 @@ export function AuthProvider({ children }) {
     }
   }, [_saveUser]);
 
+  const verifyPhone = useCallback(async (phone) => {
+    try {
+      await authApi.verifyPhone(phone);
+      return { ok: true };
+    } catch (err) {
+      const msg = err?.response?.data?.detail || "Could not send OTP. Try again.";
+      return { ok: false, error: msg };
+    }
+  }, []);
+
+  const confirmPhone = useCallback(async (phone, otp) => {
+    try {
+      const res = await authApi.confirmPhone(phone, otp);
+      const u = res.data;
+      // Update stored user with confirmed phone
+      const stored = JSON.parse(localStorage.getItem(USER_KEY) || "{}");
+      const updated = { ...stored, phone: u.phone };
+      localStorage.setItem(USER_KEY, JSON.stringify(updated));
+      setUser(updated);
+      return { ok: true };
+    } catch (err) {
+      const msg = err?.response?.data?.detail || "Verification failed. Try again.";
+      return { ok: false, error: msg };
+    }
+  }, []);
+
   const updateProfile = useCallback(async ({ name, email }) => {
     try {
       const res = await authApi.updateMe({ name, email });
@@ -87,7 +113,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, hydrated, requestOtp, verifyOtp, googleLogin, updateProfile, logout }}>
+    <AuthContext.Provider value={{ user, hydrated, requestOtp, verifyOtp, googleLogin, verifyPhone, confirmPhone, updateProfile, logout }}>
       {children}
     </AuthContext.Provider>
   );

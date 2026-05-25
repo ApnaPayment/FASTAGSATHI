@@ -22,6 +22,8 @@ export const authApi = {
   googleAuth:  (credential)      => api.post("/api/auth/google", { credential }),
   me:          ()                => api.get("/api/users/me"),
   updateMe:    (data)            => api.patch("/api/users/me", data),
+  verifyPhone: (phone)           => api.post("/api/users/me/verify-phone", { phone }),
+  confirmPhone:(phone, otp)      => api.post("/api/users/me/confirm-phone", { phone, otp }),
 };
 
 export const sathiApi = {
@@ -178,6 +180,10 @@ export const adminApi = {
   },
   deleteLogo:    () => api.delete("/api/admin/branding/logo",    { headers: adminHeaders() }),
   deleteFavicon: () => api.delete("/api/admin/branding/favicon", { headers: adminHeaders() }),
+  // Customer management
+  customers:        (params)      => api.get("/api/admin/customers", { params, headers: adminHeaders() }),
+  updateCustomer:   (id, data)    => api.patch(`/api/admin/customers/${id}`, data, { headers: adminHeaders() }),
+  deleteCustomer:   (id)          => api.delete(`/api/admin/customers/${id}`, { headers: adminHeaders() }),
   // FASTag orders
   fastagOrders:       (params) => api.get("/api/admin/fastag-orders", { params, headers: adminHeaders() }),
   fastagOrderStats:   ()       => api.get("/api/admin/fastag-orders/stats", { headers: adminHeaders() }),

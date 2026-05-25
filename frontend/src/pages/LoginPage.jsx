@@ -48,20 +48,28 @@ function GoogleButton({ onSuccess }) {
 
 // ── Steps ─────────────────────────────────────────────────────────────────────
 export default function LoginPage() {
-  const { user, requestOtp, verifyOtp, googleLogin, updateProfile } = useAuth();
+  const { user, requestOtp, verifyOtp, googleLogin, verifyPhone, confirmPhone, updateProfile } = useAuth();
   const navigate  = useNavigate();
   const [params]  = useSearchParams();
   const returnTo  = params.get("returnTo") || "/find";
 
-  const [step,    setStep]    = useState("phone"); // phone | otp | profile
+  // steps: phone | otp | profile | link-phone | link-otp
+  const [step,    setStep]    = useState("phone");
   const [phone,   setPhone]   = useState("");
   const [otp,     setOtp]     = useState("");
   const [name,    setName]    = useState("");
   const [email,   setEmail]   = useState("");
+  const [linkPhone, setLinkPhone] = useState(""); // for Google users linking phone
+  const [linkOtp,   setLinkOtp]   = useState("");
   const [err,     setErr]     = useState(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => { if (user) navigate(decodeURIComponent(returnTo), { replace: true }); }, [user, navigate, returnTo]);
+  // Don't auto-redirect if we're in link-phone / link-otp steps — user is logged in but needs phone
+  useEffect(() => {
+    if (user && !["link-phone", "link-otp"].includes(step)) {
+      navigate(decodeURIComponent(returnTo), { replace: true });
+    }
+  }, [user, step, navigate, returnTo]);
 
   // Load Google GSI script
   useEffect(() => {
@@ -98,7 +106,7 @@ export default function LoginPage() {
     setStep("otp");
   };
 
-  // Step 2 — OTP
+  // Step 2 — OTP (phone login)
   const submitOtp = async (e) => {
     e.preventDefault();
     setErr(null);
@@ -109,19 +117,44 @@ export default function LoginPage() {
     await goNext(r.is_new_user);
   };
 
-  // Google login — name always comes from Google, so skip profile step
+  // Google login — must then verify phone
   const handleGoogle = useCallback(async (credential) => {
     setErr(null);
     setLoading(true);
     const r = await googleLogin(credential);
     setLoading(false);
     if (!r.ok) { setErr(r.error); return; }
-    // Google provides name+email → never need profile step
-    await goNext(false);
+    // Always require phone verification after Google login
+    setStep("link-phone");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [googleLogin]);
 
-  // Step 3 — profile
+  // Step: link-phone — send OTP to new phone for Google user
+  const submitLinkPhone = async (e) => {
+    e.preventDefault();
+    setErr(null);
+    if (!/^\d{10}$/.test(linkPhone)) { setErr("Enter a valid 10-digit mobile number."); return; }
+    setLoading(true);
+    const r = await verifyPhone(linkPhone);
+    setLoading(false);
+    if (!r.ok) { setErr(r.error); return; }
+    setLinkOtp("");
+    setStep("link-otp");
+  };
+
+  // Step: link-otp — confirm OTP and link phone
+  const submitLinkOtp = async (e) => {
+    e.preventDefault();
+    setErr(null);
+    setLoading(true);
+    const r = await confirmPhone(linkPhone, linkOtp);
+    setLoading(false);
+    if (!r.ok) { setErr(r.error); return; }
+    // Phone linked — proceed
+    navigate(decodeURIComponent(returnTo), { replace: true });
+  };
+
+  // Step 3 — profile (new phone users only)
   const submitProfile = async (e) => {
     e.preventDefault();
     setErr(null);
@@ -242,6 +275,85 @@ export default function LoginPage() {
                     type="submit"
                     disabled={loading || otp.length !== 4}
                     data-testid="login-verify-otp"
+                    className="mt-5 w-full bg-[#FF6B00] text-white font-bold py-3.5 rounded-full hover:bg-[#E66000] shadow-[0_4px_0_#0A0A0A] disabled:opacity-50 transition-all inline-flex items-center justify-center gap-2"
+                  >
+                    {loading ? "Verifying…" : <> Verify & continue <ArrowRight className="w-4 h-4" /> </>}
+                  </button>
+                </form>
+              )}
+
+              {/* ── Step: Link phone (Google users must verify a mobile number) ── */}
+              {step === "link-phone" && (
+                <form onSubmit={submitLinkPhone}>
+                  <div className="w-11 h-11 rounded-2xl bg-[#FF6B00]/10 flex items-center justify-center mb-4">
+                    <Phone className="w-5 h-5 text-[#FF6B00]" />
+                  </div>
+                  <h2 className="font-display font-black text-2xl">Add mobile number</h2>
+                  <p className="text-sm text-[#6B7280] mt-1">We need your Indian mobile number to dispatch a Sathi and send booking updates.</p>
+
+                  <label className="block text-xs font-bold uppercase tracking-widest text-[#0A0A0A] mt-5">Mobile number</label>
+                  <div className="mt-1.5 flex items-center gap-2 bg-[#F8F9FA] border-2 border-[#E5E7EB] focus-within:border-[#FF6B00] rounded-xl px-4 py-3 transition-colors">
+                    <span className="font-mono font-bold text-[#0A0A0A] text-sm">+91</span>
+                    <input
+                      value={linkPhone}
+                      onChange={(e) => setLinkPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                      placeholder="98XXX XXXXX"
+                      inputMode="numeric"
+                      data-testid="link-phone-input"
+                      className="bg-transparent flex-1 outline-none font-mono text-lg"
+                      autoFocus
+                    />
+                  </div>
+
+                  {err && <ErrorPill msg={err} />}
+
+                  <button
+                    type="submit"
+                    disabled={loading || linkPhone.length !== 10}
+                    data-testid="link-phone-send-otp"
+                    className="mt-5 w-full bg-[#FF6B00] text-white font-bold py-3.5 rounded-full hover:bg-[#E66000] shadow-[0_4px_0_#0A0A0A] disabled:opacity-50 transition-all inline-flex items-center justify-center gap-2"
+                  >
+                    {loading ? "Sending…" : <> Send OTP <ArrowRight className="w-4 h-4" /> </>}
+                  </button>
+
+                  <p className="mt-4 flex items-start gap-1.5 text-[11px] text-[#9CA3AF]">
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#059669] flex-shrink-0 mt-0.5" />
+                    Number used only for booking dispatch. No spam.
+                  </p>
+                </form>
+              )}
+
+              {/* ── Step: Link OTP — confirm phone for Google users ── */}
+              {step === "link-otp" && (
+                <form onSubmit={submitLinkOtp}>
+                  <div className="w-11 h-11 rounded-2xl bg-[#059669]/10 flex items-center justify-center mb-4">
+                    <ShieldCheck className="w-5 h-5 text-[#059669]" />
+                  </div>
+                  <h2 className="font-display font-black text-2xl">Verify mobile</h2>
+                  <p className="text-sm text-[#6B7280] mt-1">
+                    OTP sent to <strong className="text-[#0A0A0A]">+91 ·····{linkPhone.slice(-3)}</strong>
+                    {" · "}
+                    <button type="button" onClick={() => { setStep("link-phone"); setErr(null); setLinkOtp(""); }} className="text-[#FF6B00] font-bold underline underline-offset-2">
+                      Change
+                    </button>
+                  </p>
+
+                  <input
+                    value={linkOtp}
+                    onChange={(e) => setLinkOtp(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                    inputMode="numeric"
+                    placeholder="••••"
+                    data-testid="link-otp-input"
+                    className="mt-5 w-full bg-[#F8F9FA] border-2 border-[#E5E7EB] focus:border-[#FF6B00] rounded-2xl px-4 py-5 outline-none text-center font-display font-black text-4xl tracking-[0.6em] transition-colors"
+                    autoFocus
+                  />
+
+                  {err && <ErrorPill msg={err} />}
+
+                  <button
+                    type="submit"
+                    disabled={loading || linkOtp.length !== 4}
+                    data-testid="link-otp-verify"
                     className="mt-5 w-full bg-[#FF6B00] text-white font-bold py-3.5 rounded-full hover:bg-[#E66000] shadow-[0_4px_0_#0A0A0A] disabled:opacity-50 transition-all inline-flex items-center justify-center gap-2"
                   >
                     {loading ? "Verifying…" : <> Verify & continue <ArrowRight className="w-4 h-4" /> </>}

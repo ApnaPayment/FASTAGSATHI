@@ -12,7 +12,7 @@ import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import { BANKS as SEED_BANKS, STATES as SEED_STATES } from "@/data/seed";
 
-const TABS = ["Dashboard", "Applications", "Jobs", "Sathis", "Promo Codes", "Settlements", "FASTag Orders", "Plazas", "Sitemap", "Content", "Branding"];
+const TABS = ["Dashboard", "Applications", "Jobs", "Sathis", "Customers", "Promo Codes", "Settlements", "FASTag Orders", "Plazas", "Sitemap", "Content", "Branding"];
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 const fullUrl = (url) => { if (!url) return ""; if (url.startsWith("http") || url.startsWith("data:")) return url; if (BACKEND.includes("localhost") && !window.location.hostname.includes("localhost")) return ""; return `${BACKEND}${url}`; };
@@ -184,6 +184,7 @@ function Dashboard({ onLogout }) {
         {tab === "Applications" && <ApplicationsTab />}
         {tab === "Jobs"         && <JobsTab />}
         {tab === "Sathis"       && <SathisTab />}
+        {tab === "Customers"    && <CustomersTab />}
         {tab === "Promo Codes"  && <PromoCodesTab />}
         {tab === "Settlements"  && <SettlementsTab />}
         {tab === "FASTag Orders" && <FasTagOrdersTab />}
@@ -756,6 +757,195 @@ const BLANK_FORM = {
   max_uses: 0,
   valid_until: "",
 };
+
+/* ─── Customers ───────────────────────────────────────────────────────────── */
+
+function CustomersTab() {
+  const [customers, setCustomers] = useState([]);
+  const [total, setTotal]     = useState(0);
+  const [pages, setPages]     = useState(1);
+  const [page, setPage]       = useState(1);
+  const [search, setSearch]   = useState("");
+  const [loading, setLoading] = useState(true);
+  const [err, setErr]         = useState(null);
+  const [editing, setEditing] = useState(null);   // { id, name, email }
+  const [saving, setSaving]   = useState(false);
+  const [deleting, setDeleting] = useState(null); // id being deleted
+
+  const load = useCallback(async (p = 1, q = "") => {
+    setLoading(true); setErr(null);
+    try {
+      const res = await adminApi.customers({ page: p, limit: 50, search: q });
+      setCustomers(res.data.customers || []);
+      setTotal(res.data.total || 0);
+      setPages(res.data.pages || 1);
+      setPage(p);
+    } catch { setErr("Failed to load customers."); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(1, ""); }, [load]);
+
+  // Debounced search
+  const searchRef = useRef(null);
+  const onSearch = (val) => {
+    setSearch(val);
+    clearTimeout(searchRef.current);
+    searchRef.current = setTimeout(() => load(1, val), 400);
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    setSaving(true);
+    try {
+      await adminApi.updateCustomer(editing.id, { name: editing.name, email: editing.email });
+      setCustomers(prev => prev.map(c => c.id === editing.id ? { ...c, name: editing.name, email: editing.email } : c));
+      setEditing(null);
+    } catch (e) { setErr(e?.response?.data?.detail || "Update failed."); }
+    finally { setSaving(false); }
+  };
+
+  const deleteCustomer = async (id) => {
+    if (!window.confirm("Delete this customer account? This cannot be undone.")) return;
+    setDeleting(id);
+    try {
+      await adminApi.deleteCustomer(id);
+      setCustomers(prev => prev.filter(c => c.id !== id));
+      setTotal(t => t - 1);
+    } catch (e) { setErr(e?.response?.data?.detail || "Delete failed."); }
+    finally { setDeleting(null); }
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-xl font-black">Customers</h2>
+          <p className="text-sm text-gray-500 mt-0.5">{total} registered users</p>
+        </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            value={search}
+            onChange={e => onSearch(e.target.value)}
+            placeholder="Search name, phone, email…"
+            className="pl-9 pr-4 py-2 border-2 border-gray-200 rounded-xl text-sm w-64 focus:border-[#FF6B00] outline-none"
+          />
+        </div>
+      </div>
+
+      {err && <div className="bg-red-50 text-red-600 text-sm rounded-xl p-3">{err}</div>}
+
+      {/* Edit modal */}
+      {editing && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border-2 border-[#0A0A0A] shadow-[6px_6px_0_#FF6B00] p-6 w-full max-w-sm">
+            <h3 className="font-black text-lg mb-4">Edit Customer</h3>
+            <label className="block text-xs font-bold uppercase tracking-widest mb-1">Name</label>
+            <input
+              value={editing.name}
+              onChange={e => setEditing(p => ({ ...p, name: e.target.value }))}
+              className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm mb-3 focus:border-[#FF6B00] outline-none"
+            />
+            <label className="block text-xs font-bold uppercase tracking-widest mb-1">Email</label>
+            <input
+              value={editing.email}
+              onChange={e => setEditing(p => ({ ...p, email: e.target.value }))}
+              type="email"
+              className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm mb-4 focus:border-[#FF6B00] outline-none"
+            />
+            <div className="flex gap-2">
+              <button onClick={saveEdit} disabled={saving}
+                className="flex-1 bg-[#FF6B00] text-white font-bold py-2 rounded-full text-sm disabled:opacity-50">
+                {saving ? "Saving…" : "Save"}
+              </button>
+              <button onClick={() => setEditing(null)}
+                className="flex-1 border-2 border-gray-200 font-bold py-2 rounded-full text-sm">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-[#FF6B00]" /></div>
+      ) : (
+        <>
+          <div className="overflow-x-auto rounded-2xl border-2 border-gray-100">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  {["Name", "Phone", "Email", "Jobs", "Joined", "Actions"].map(h => (
+                    <th key={h} className="text-left px-4 py-3 font-bold text-gray-600 text-xs uppercase tracking-wider">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {customers.length === 0 && (
+                  <tr><td colSpan={6} className="text-center py-10 text-gray-400">No customers found</td></tr>
+                )}
+                {customers.map(c => (
+                  <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 font-semibold">
+                      {c.name || <span className="text-gray-400 italic">—</span>}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs">{c.phone || "—"}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{c.email || "—"}</td>
+                    <td className="px-4 py-3">
+                      <span className="bg-[#FF6B00]/10 text-[#FF6B00] font-bold text-xs px-2 py-0.5 rounded-full">
+                        {c.job_count}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-400 text-xs">
+                      {c.created_at ? new Date(c.created_at).toLocaleDateString("en-IN") : "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setEditing({ id: c.id, name: c.name || "", email: c.email || "" })}
+                          className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500 transition-colors"
+                          title="Edit"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => deleteCustomer(c.id)}
+                          disabled={deleting === c.id}
+                          className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 transition-colors disabled:opacity-40"
+                          title="Delete"
+                        >
+                          {deleting === c.id
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <Trash2 className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {pages > 1 && (
+            <div className="flex items-center justify-center gap-2">
+              <button disabled={page <= 1} onClick={() => load(page - 1, search)}
+                className="px-3 py-1.5 text-sm border-2 border-gray-200 rounded-full disabled:opacity-40 hover:border-[#FF6B00] transition-colors">
+                ← Prev
+              </button>
+              <span className="text-sm text-gray-500">Page {page} of {pages}</span>
+              <button disabled={page >= pages} onClick={() => load(page + 1, search)}
+                className="px-3 py-1.5 text-sm border-2 border-gray-200 rounded-full disabled:opacity-40 hover:border-[#FF6B00] transition-colors">
+                Next →
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
 function PromoCodesTab() {
   const [codes, setCodes] = useState([]);
