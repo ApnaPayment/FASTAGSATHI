@@ -292,6 +292,9 @@ function JobCard({ job, onRefresh }) {
               <p className="text-xs text-[#9CA3AF] mt-1">
                 {new Date(job.created_at).toLocaleDateString("en-IN", {
                   day: "numeric", month: "short", year: "numeric",
+                })}{", "}
+                {new Date(job.created_at).toLocaleTimeString("en-IN", {
+                  hour: "2-digit", minute: "2-digit", hour12: true,
                 })}
               </p>
             </div>
