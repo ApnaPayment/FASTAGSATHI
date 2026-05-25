@@ -58,10 +58,10 @@ const centerIcon = L.divIcon({
   iconSize: [44, 52], iconAnchor: [22, 52], popupAnchor: [0, -48],
 });
 
-export default function MapView({ center, sathis = [], plazas = [], userPos, radiusKm = 25, height = 480, onSathiClick, onPlazaClick }) {
+export default function MapView({ center, sathis = [], plazas = [], userPos, radiusKm = 25, height = 480, onSathiClick, onPlazaClick, static: isStatic = false }) {
   return (
-    <div data-testid="map-view" style={{ height, width: "100%", borderRadius: 24, overflow: "hidden", border: "2px solid #0A0A0A" }}>
-      <MapContainer center={[center.lat, center.lng]} zoom={12} style={{ height: "100%", width: "100%" }} scrollWheelZoom>
+    <div data-testid="map-view" style={{ height, width: "100%", borderRadius: 24, overflow: "hidden", border: "2px solid #0A0A0A", pointerEvents: isStatic ? "none" : "auto" }}>
+      <MapContainer center={[center.lat, center.lng]} zoom={12} style={{ height: "100%", width: "100%" }} scrollWheelZoom={!isStatic} dragging={!isStatic} zoomControl={!isStatic} doubleClickZoom={!isStatic} touchZoom={!isStatic} keyboard={!isStatic}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

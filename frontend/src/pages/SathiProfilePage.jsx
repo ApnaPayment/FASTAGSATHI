@@ -295,6 +295,7 @@ export default function SathiProfilePage() {
               sathis={[{ ...s }]}
               plazas={plaza ? [plaza] : []}
               height={460}
+              static
             />
           </div>
 
