@@ -161,74 +161,101 @@ export default function HelpArticlePage() {
         <div className="max-w-3xl mx-auto px-6">
           {/* Scoped styles for AI-generated HTML blocks */}
           <style>{`
+            /* ── Base prose resets ── */
+            .article-body { overflow-wrap: break-word; word-break: break-word; overflow-x: hidden; }
+            .article-body p  { margin: 0 0 1rem 0; line-height: 1.75; color: #374151; font-size: 1rem; }
+            .article-body h2 { font-size: 1.5rem; font-weight: 900; color: #0A0A0A; margin: 2.5rem 0 1rem; line-height: 1.3; }
+            .article-body h3 { font-size: 1.125rem; font-weight: 700; color: #111827; margin: 1.75rem 0 0.5rem; }
+            .article-body ul, .article-body ol { padding-left: 1.5rem; margin: 0.75rem 0 1rem; }
+            .article-body li { margin-bottom: 0.4rem; color: #4B5563; line-height: 1.7; }
+            .article-body ul li { list-style-type: disc; }
+            .article-body ol li { list-style-type: decimal; }
+            .article-body strong { color: #0A0A0A; font-weight: 700; }
+            .article-body a  { color: #FF6B00; text-decoration: none; }
+            .article-body a:hover { text-decoration: underline; }
+
+            /* ── Quick Answer box (Featured Snippet) ── */
             .article-body .quick-answer {
               background: #FFF7ED;
               border-left: 4px solid #FF6B00;
               border-radius: 0 12px 12px 0;
-              padding: 16px 20px;
-              margin: 24px 0;
+              padding: 14px 18px;
+              margin: 1.5rem 0;
               font-size: 0.95rem;
               color: #1F2937;
+              line-height: 1.65;
             }
-            .article-body .quick-answer p { margin: 0; }
             .article-body .quick-answer strong { color: #FF6B00; }
 
+            /* ── Table of Contents ── */
             .article-body nav.toc {
               background: #F8F9FA;
               border: 2px solid #E5E7EB;
-              border-radius: 16px;
-              padding: 18px 22px;
-              margin: 0 0 32px 0;
+              border-radius: 14px;
+              padding: 16px 20px;
+              margin: 0 0 2rem 0;
             }
             .article-body nav.toc h2 {
-              font-size: 0.75rem;
+              font-size: 0.7rem !important;
               text-transform: uppercase;
-              letter-spacing: 0.08em;
-              color: #9CA3AF;
+              letter-spacing: 0.1em;
+              color: #9CA3AF !important;
               font-weight: 700;
-              margin: 0 0 10px 0;
+              margin: 0 0 10px 0 !important;
             }
             .article-body nav.toc ul {
-              list-style: none;
-              padding: 0;
-              margin: 0;
+              list-style: none !important;
+              padding: 0 !important;
+              margin: 0 !important;
               display: flex;
               flex-direction: column;
-              gap: 6px;
+              gap: 5px;
             }
-            .article-body nav.toc li { margin: 0; }
+            .article-body nav.toc li { list-style: none !important; margin: 0 !important; padding: 0; }
             .article-body nav.toc a {
-              color: #FF6B00;
+              color: #FF6B00 !important;
               text-decoration: none;
               font-size: 0.875rem;
               font-weight: 500;
+              line-height: 1.5;
             }
             .article-body nav.toc a:hover { text-decoration: underline; }
 
+            /* ── Comparison table ── */
             .article-body table {
               width: 100%;
               border-collapse: collapse;
-              margin: 24px 0;
+              margin: 1.5rem 0;
               font-size: 0.875rem;
+              display: table;
+              overflow-x: auto;
             }
-            .article-body th {
+            .article-body thead th {
               background: #0A0A0A;
               color: #fff;
               padding: 10px 14px;
               text-align: left;
               font-weight: 700;
+              font-size: 0.8rem;
+              white-space: nowrap;
             }
-            .article-body td {
+            .article-body tbody td {
               padding: 10px 14px;
               border-bottom: 1px solid #E5E7EB;
               color: #374151;
+              vertical-align: top;
             }
-            .article-body tr:nth-child(even) td { background: #F9FAFB; }
+            .article-body tbody tr:nth-child(even) td { background: #F9FAFB; }
+            .article-body tbody tr:hover td { background: #FFF7ED; }
+
+            /* ── Responsive table wrapper ── */
+            .article-body .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 1.5rem 0; border-radius: 8px; border: 1px solid #E5E7EB; }
+            .article-body .table-wrap table { margin: 0; border-radius: 0; }
           `}</style>
 
           {/* Body HTML */}
           <div
-            className="article-body prose prose-lg prose-headings:font-display prose-headings:font-black prose-h2:text-2xl prose-h3:text-xl prose-a:text-[#FF6B00] prose-a:no-underline hover:prose-a:underline prose-strong:text-[#0A0A0A] prose-code:bg-[#F3F4F6] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-pre:bg-[#0A0A0A] prose-pre:text-white prose-blockquote:border-l-4 prose-blockquote:border-[#FF6B00] prose-blockquote:pl-4 prose-li:text-[#4B5563] max-w-none"
+            className="article-body"
             dangerouslySetInnerHTML={{ __html: article.body }}
           />
 

@@ -2242,6 +2242,15 @@ def _build_article_from_ai(data: dict, topic: str, category: str,
 
     # Prepend Table of Contents block to body if AI returned toc separately
     body = data.get("body", "")
+
+    # ── Convert any residual markdown to HTML ──────────────────────────────
+    # Models sometimes emit **bold** or *italic* inside the HTML body
+    body = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', body)
+    body = re.sub(r'\*(.+?)\*',     r'<em>\1</em>',         body)
+    # Remove bare "### Heading" lines that slipped through as text
+    body = re.sub(r'^#{1,6}\s+(.+)$', lambda m: f'<h3>{m.group(1)}</h3>', body, flags=re.MULTILINE)
+    # ──────────────────────────────────────────────────────────────────────
+
     toc_list = data.get("toc", [])
     if toc_list and "<nav" not in body:
         toc_items = "".join(f'<li><a href="#section{i+1}">{h}</a></li>' for i, h in enumerate(toc_list))
