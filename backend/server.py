@@ -12,6 +12,12 @@ from pathlib import Path
 import asyncio, os, uuid, logging, random, shutil, httpx, re, json, hmac, hashlib, base64
 from bs4 import BeautifulSoup
 from sse_starlette.sse import EventSourceResponse
+try:
+    from google.oauth2 import id_token as _google_id_token
+    from google.auth.transport import requests as _google_requests
+    _GOOGLE_AUTH_AVAILABLE = True
+except ImportError:
+    _GOOGLE_AUTH_AVAILABLE = False
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -266,10 +272,10 @@ async def google_auth(body: dict):
         raise HTTPException(status_code=400, detail="Missing Google credential")
     if not GOOGLE_CLIENT_ID:
         raise HTTPException(status_code=503, detail="Google login not configured")
+    if not _GOOGLE_AUTH_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Google auth library not installed")
     try:
-        from google.oauth2 import id_token as google_id_token
-        from google.auth.transport import requests as google_requests
-        idinfo = google_id_token.verify_oauth2_token(credential, google_requests.Request(), GOOGLE_CLIENT_ID)
+        idinfo = _google_id_token.verify_oauth2_token(credential, _google_requests.Request(), GOOGLE_CLIENT_ID)
         email = idinfo.get("email", "")
         name  = idinfo.get("name", "")
         if not email:
