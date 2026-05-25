@@ -2163,16 +2163,23 @@ async def _call_gemini(prompt: str) -> dict:
     try:
         import google.generativeai as genai
         genai.configure(api_key=GEMINI_API_KEY)
-        # Try models in order of preference; newer Flash models are widely available
-        model = None
-        for model_name in ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-latest"]:
-            try:
-                model = genai.GenerativeModel(model_name)
-                break
-            except Exception:
-                continue
-        if model is None:
+
+        # Discover available generateContent-capable models dynamically
+        preferred = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash-lite",
+                     "gemini-1.5-flash", "gemini-1.5-flash-8b"]
+        available = {
+            m.name.split("/")[-1]
+            for m in genai.list_models()
+            if "generateContent" in (m.supported_generation_methods or [])
+        }
+        chosen = next((n for n in preferred if n in available), None)
+        if chosen is None:
+            # Last resort: pick any available generateContent model
+            chosen = next(iter(available), None)
+        if chosen is None:
             raise HTTPException(status_code=503, detail="No Gemini model available for this API key")
+        logger.info(f"[Gemini] Using model: {chosen}")
+        model = genai.GenerativeModel(chosen)
         response = model.generate_content(
             prompt,
             generation_config=genai.types.GenerationConfig(
