@@ -421,6 +421,12 @@ SITE_DEFAULTS: dict = {
     "favicon_url":      None,
 }
 
+@app.get("/api/banks", tags=["banks"])
+async def get_public_banks():
+    """Return all active banks with their logos — public, no auth required."""
+    docs = await db.banks.find({}, {"_id": 0}).sort("name", 1).to_list(200)
+    return {"banks": docs}
+
 @app.get("/api/branding", tags=["branding"])
 async def get_branding():
     """Return all public site settings — logo, contact, social, company info."""

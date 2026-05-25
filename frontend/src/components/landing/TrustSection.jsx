@@ -1,29 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ShieldCheck, ArrowRight } from "lucide-react";
-import { BANKS as SEED_BANKS } from "@/data/seed";
-import { adminApi } from "@/lib/api";
-
-// Merge seed bank data with DB logos. Falls back gracefully if API fails.
-function useBanksWithLogos() {
-  const [banks, setBanks] = useState(SEED_BANKS);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await adminApi.banks({ limit: 100 });
-        const dbBanks = res.data?.banks || [];
-        if (!cancelled && dbBanks.length) {
-          const dbMap = Object.fromEntries(dbBanks.map((b) => [b.slug, b]));
-          setBanks(SEED_BANKS.map((s) => ({ ...s, ...(dbMap[s.slug] || {}) })));
-        }
-      } catch { /* silently use seed data */ }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-  return banks;
-}
+import { useBanksWithLogos } from "@/hooks/useBanksWithLogos";
 
 // Count-up hook — fires once when `active` flips true
 function useCountUp(target, duration = 1600) {

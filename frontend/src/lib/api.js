@@ -33,6 +33,11 @@ export const helpApi = {
   get:  (slug)   => api.get(`/api/help/${slug}`),
 };
 
+// Public banks — no auth required, includes uploaded logos from DB
+export const banksApi = {
+  list: () => api.get("/api/banks"),
+};
+
 export const plazaApi = {
   list: () => api.get("/api/plazas"),
   byState: (slug) => api.get("/api/plazas", { params: { state: slug } }),

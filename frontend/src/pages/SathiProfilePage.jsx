@@ -11,9 +11,10 @@ import {
   Shield, Calendar, Send, CheckCircle2, ArrowRight, Loader2, Images, Building2, Tag,
 } from "lucide-react";
 import { getSathiBySlug } from "@/data/sathis";
-import { PLAZAS, STATES, BANKS } from "@/data/seed";
+import { PLAZAS, STATES } from "@/data/seed";
 import { track } from "@/lib/analytics";
 import { sathiApi, paymentsApi } from "@/lib/api";
+import { useBanksWithLogos } from "@/hooks/useBanksWithLogos";
 import { useAuth } from "@/contexts/AuthContext";
 
 const CF_MODE = process.env.REACT_APP_CASHFREE_MODE || "sandbox";
@@ -39,7 +40,6 @@ function fullUrl(url) {
 }
 
 // Use centralized BANKS from seed.js
-const ALL_BANKS = BANKS;
 
 const SERVICE_LABELS = {
   dispute: "Mischarge / Dispute filing",
@@ -55,6 +55,7 @@ export default function SathiProfilePage() {
   const { user } = useAuth();
   const [s, setS] = useState(null);
   const [loading, setLoading] = useState(true);
+  const ALL_BANKS = useBanksWithLogos();
 
   useEffect(() => {
     setLoading(true);
