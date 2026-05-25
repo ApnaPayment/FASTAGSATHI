@@ -104,26 +104,15 @@ export default function Footer() {
         </div>
 
         {/* Legal / trust block — CIN, GST, RoC for Indian compliance */}
-        <div className="mb-8 bg-white/[0.04] border border-white/10 rounded-2xl px-6 py-5 grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-          <div>
-            <div className="text-[10px] uppercase tracking-widest text-[#FF6B00] font-bold mb-1">Company</div>
-            <p className="text-white/80 font-semibold leading-snug">Apna Payment Services Pvt. Ltd.</p>
-            <p className="text-white/45 mt-0.5">Incorporated Aug 2021</p>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-widest text-[#FF6B00] font-bold mb-1">CIN</div>
-            <p className="text-white/80 font-mono tracking-wide">U67100RJ2021PTC074460</p>
-            <p className="text-white/45 mt-0.5">RoC Jaipur · MCA Active</p>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-widest text-[#FF6B00] font-bold mb-1">GSTIN</div>
-            <p className="text-white/80 font-mono tracking-wide">08AAVCA0650L1ZA</p>
-            <p className="text-white/45 mt-0.5">Rajasthan · GST Verified</p>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-widest text-[#FF6B00] font-bold mb-1">Registered Office</div>
-            <p className="text-white/80 leading-snug">Plot 796, Gokul Nagar,<br />Jhotwara, Jaipur — 302012<br />Rajasthan, India</p>
-          </div>
+        <div className="mb-8 bg-white/[0.04] border border-white/10 rounded-2xl px-6 py-5 flex flex-wrap gap-x-10 gap-y-3 items-center text-xs text-white/55">
+          <a href="https://apnapayment.com" target="_blank" rel="noopener noreferrer"
+            className="font-semibold text-white/80 hover:text-[#FF6B00] transition-colors">
+            apnapayment.com
+          </a>
+          <span>Apna Payment Services Pvt. Ltd.</span>
+          <span>CIN: <span className="font-mono text-white/75">U67100RJ2021PTC074460</span></span>
+          <span>GSTIN: <span className="font-mono text-white/75">08AAVCA0650L1ZA</span></span>
+          <span>Plot 796, Gokul Nagar, Jhotwara, Jaipur — 302012, Rajasthan</span>
         </div>
 
         <div className="pt-6 border-t border-white/10 flex flex-col md:flex-row md:justify-between gap-4 text-xs text-white/50">
