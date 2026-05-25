@@ -73,12 +73,17 @@ export default function LoginPage() {
     document.head.appendChild(s);
   }, []);
 
-  const goNext = async (is_new_user) => {
+  const goNext = async (is_new_user, prefillName = "", prefillEmail = "") => {
     try {
       const check = await sathiDashApi.check();
       if (check.data?.is_sathi) { navigate("/dashboard", { replace: true }); return; }
     } catch {}
-    if (is_new_user) { setStep("profile"); return; }
+    if (is_new_user) {
+      if (prefillName) setName(prefillName);
+      if (prefillEmail) setEmail(prefillEmail);
+      setStep("profile");
+      return;
+    }
     navigate(decodeURIComponent(returnTo), { replace: true });
   };
 
@@ -104,14 +109,15 @@ export default function LoginPage() {
     await goNext(r.is_new_user);
   };
 
-  // Google login
+  // Google login — name always comes from Google, so skip profile step
   const handleGoogle = useCallback(async (credential) => {
     setErr(null);
     setLoading(true);
     const r = await googleLogin(credential);
     setLoading(false);
     if (!r.ok) { setErr(r.error); return; }
-    await goNext(r.is_new_user);
+    // Google provides name+email → never need profile step
+    await goNext(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [googleLogin]);
 

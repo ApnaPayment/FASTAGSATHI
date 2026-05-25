@@ -146,7 +146,7 @@ export default function Header() {
               }`}
             >
               <User className="w-4 h-4" />
-              {user ? `··${user.phone.slice(-4)}` : "Account"}
+              {user ? (user.name ? user.name.split(" ")[0] : `··${user.phone.slice(-4)}`) : "Account"}
               <ChevronDown className={`w-3.5 h-3.5 transition-transform ${userOpen ? "rotate-180" : ""}`} />
             </button>
 
