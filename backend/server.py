@@ -2180,32 +2180,54 @@ async def _call_gemini(prompt: str) -> dict:
             raise HTTPException(status_code=503, detail="No Gemini model available for this API key")
         logger.info(f"[Gemini] Using model: {chosen}")
         model = genai.GenerativeModel(chosen)
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.65,
-                max_output_tokens=8192,
-            ),
-        )
-        text = response.text.strip()
-        # Strip markdown code fences if present
-        if "```" in text:
-            start = text.find("{")
-            end   = text.rfind("}") + 1
-            text  = text[start:end]
-        # Sometimes Gemini wraps the JSON in extra whitespace or a leading comment line
-        if not text.startswith("{"):
-            start = text.find("{")
-            if start != -1:
-                text = text[start:]
-        return json.loads(text)
+
+        # response_mime_type forces valid JSON output (supported on 1.5+ models)
+        gen_cfg_kwargs = dict(temperature=0.65, max_output_tokens=8192)
+        try:
+            gen_cfg = genai.types.GenerationConfig(response_mime_type="application/json", **gen_cfg_kwargs)
+        except Exception:
+            gen_cfg = genai.types.GenerationConfig(**gen_cfg_kwargs)
+
+        response = model.generate_content(prompt, generation_config=gen_cfg)
+
+        # Extract text — on 2.5 thinking models, .text skips the thinking block
+        try:
+            text = response.text.strip()
+        except Exception:
+            # Fallback: grab first text part from candidates
+            text = response.candidates[0].content.parts[-1].text.strip()
+
+        # Strip markdown fences that some models still emit despite mime_type
+        if text.startswith("```"):
+            text = text.split("```", 2)[1]
+            if text.startswith("json"):
+                text = text[4:]
+            text = text.strip()
+
+        # Find outermost { ... } in case of leading/trailing prose
+        brace_start = text.find("{")
+        brace_end   = text.rfind("}")
+        if brace_start != -1 and brace_end > brace_start:
+            text = text[brace_start:brace_end + 1]
+
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            # Try once more after stripping control characters that break JSON
+            import re as _re
+            text_clean = _re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", text)
+            return json.loads(text_clean)
+
     except json.JSONDecodeError as e:
-        logger.error(f"Gemini JSON parse error: {e}\nRaw text (first 600): {text[:600] if 'text' in dir() else 'N/A'}")
+        raw = text[:800] if "text" in dir() else "N/A"  # type: ignore[name-defined]
+        logger.error(f"Gemini JSON parse error: {e}\nRaw (800 chars): {raw}")
         raise HTTPException(status_code=500, detail="AI returned malformed JSON — please try again")
     except ImportError:
         raise HTTPException(status_code=503, detail="google-generativeai package not installed")
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Gemini API error: {e}")
+        logger.error(f"Gemini API error: {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
 
 
