@@ -167,6 +167,9 @@ export const adminApi = {
   updateArticle: (slug, d)=> api.patch(`/api/admin/articles/${slug}`, d, { headers: adminHeaders() }),
   deleteArticle: (slug)   => api.delete(`/api/admin/articles/${slug}`, { headers: adminHeaders() }),
   seedArticles:  ()       => api.post("/api/admin/seed-articles", {}, { headers: adminHeaders() }),
+  // AI generation
+  aiGenerate:    (data)   => api.post("/api/admin/ai/generate-article", data, { headers: adminHeaders() }),
+  aiBulkGenerate:(data)   => api.post("/api/admin/ai/bulk-generate",    data, { headers: adminHeaders() }),
   // Branding
   getBranding:    ()     => api.get("/api/admin/branding", { headers: adminHeaders() }),
   updateBranding: (data) => api.patch("/api/admin/branding", data, { headers: adminHeaders() }),

@@ -301,6 +301,7 @@ async def update_me(body: dict, current: dict = Depends(_require_user)):
 
 # Google OAuth
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GEMINI_API_KEY   = os.environ.get("GEMINI_API_KEY", "")
 
 @auth_router.post("/google")
 async def google_auth(body: dict):
@@ -2033,6 +2034,170 @@ async def admin_delete_customer(user_id: str):
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Customer not found")
     return {"ok": True}
+
+# ─── AI content generation (Gemini) ──────────────────────────────────────────
+
+def _gemini_article_prompt(topic: str, category: str, related_bank: str = "", related_state: str = "") -> str:
+    context_parts = []
+    if related_bank:
+        context_parts.append(f"specifically about {related_bank.replace('-', ' ').title()}")
+    if related_state:
+        context_parts.append(f"relevant to {related_state.replace('-', ' ').title()} state roads")
+    context = " ".join(context_parts)
+
+    return f"""You are an expert SEO content writer for ApnaFastag.com — India's leading FASTag assistance platform where verified local agents called "Sathis" help drivers resolve toll plaza issues.
+
+Write a comprehensive, SEO-optimized blog article about: "{topic}" {context}
+
+Category: {category}
+
+Return ONLY a valid JSON object (no markdown fences, no explanation). Schema:
+
+{{
+  "title": "Full article title 60-70 chars including the main keyword",
+  "slug": "url-friendly-slug-max-60-chars",
+  "excerpt": "Engaging meta description 140-155 characters summarizing value for the reader",
+  "body": "Full HTML body — use <h2>, <h3>, <p>, <ul>, <li>, <strong> tags. Must include sections: (1) Overview/Introduction, (2) Step-by-step guide or key information, (3) Common problems & solutions, (4) How a Sathi from ApnaFastag can help, (5) Conclusion with CTA. Minimum 800 words.",
+  "meta_description": "SEO meta description 140-155 chars",
+  "meta_keywords": "6-8 comma-separated keywords",
+  "tags": ["tag1", "tag2", "tag3", "tag4"],
+  "faq_pairs": [
+    {{"q": "Specific question drivers actually ask?", "a": "Detailed helpful answer in 2-3 sentences."}},
+    {{"q": "Question 2?", "a": "Answer 2."}},
+    {{"q": "Question 3?", "a": "Answer 3."}},
+    {{"q": "Question 4?", "a": "Answer 4."}},
+    {{"q": "Question 5?", "a": "Answer 5."}}
+  ],
+  "read_min": 5
+}}
+
+Writing guidelines:
+- Target audience: Indian drivers with FASTag issues at toll plazas
+- Tone: helpful, friendly, professional. Write in Indian English.
+- Always include NHAI helpline 1033 where relevant
+- The "How a Sathi can help" section must mention finding a Sathi at apnafastag.com
+- Body should have proper HTML, be well-structured, and minimum 800 words
+- faq_pairs must have exactly 5 items
+- slug must use only lowercase letters, numbers, and hyphens"""
+
+
+async def _call_gemini(prompt: str) -> dict:
+    """Call Gemini API and parse JSON response. Raises HTTPException on failure."""
+    if not GEMINI_API_KEY:
+        raise HTTPException(status_code=503, detail="GEMINI_API_KEY not set in environment")
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=GEMINI_API_KEY)
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.7,
+                max_output_tokens=4096,
+            ),
+        )
+        text = response.text.strip()
+        # Strip markdown code fences if present
+        if "```" in text:
+            start = text.find("{")
+            end   = text.rfind("}") + 1
+            text  = text[start:end]
+        return json.loads(text)
+    except json.JSONDecodeError as e:
+        logger.error(f"Gemini JSON parse error: {e}")
+        raise HTTPException(status_code=500, detail="AI returned malformed JSON — please try again")
+    except ImportError:
+        raise HTTPException(status_code=503, detail="google-generativeai package not installed")
+    except Exception as e:
+        logger.error(f"Gemini API error: {e}")
+        raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
+
+
+def _build_article_from_ai(data: dict, topic: str, category: str,
+                            related_bank: str, related_state: str,
+                            is_published: bool = False) -> dict:
+    now = datetime.now(timezone.utc).isoformat()
+    raw_slug = (data.get("slug") or topic.lower().replace(" ", "-"))[:80]
+    slug = re.sub(r"[^a-z0-9-]", "", raw_slug).strip("-")
+    return {
+        "slug":             slug,
+        "title":            data.get("title", topic)[:200],
+        "excerpt":          (data.get("excerpt") or "")[:300],
+        "body":             data.get("body", ""),
+        "category":         category,
+        "tags":             data.get("tags", [])[:10],
+        "related_bank":     related_bank or None,
+        "related_state":    related_state or None,
+        "meta_description": (data.get("meta_description") or data.get("excerpt", ""))[:160],
+        "meta_keywords":    data.get("meta_keywords", ""),
+        "faq_pairs":        data.get("faq_pairs", [])[:10],
+        "cover":            None,
+        "is_published":     is_published,
+        "read_min":         int(data.get("read_min", 5)),
+        "created_at":       now,
+        "updated_at":       now,
+    }
+
+
+@admin_router.post("/ai/generate-article", dependencies=[Depends(_check_admin)])
+async def ai_generate_article(data: dict = Body(...)):
+    """Generate a single blog article using Gemini. Returns draft — does NOT save to DB."""
+    topic        = (data.get("topic") or "").strip()
+    category     = data.get("category", "General")
+    related_bank = (data.get("related_bank") or "").strip()
+    related_state= (data.get("related_state") or "").strip()
+
+    if not topic:
+        raise HTTPException(status_code=400, detail="topic is required")
+
+    prompt  = _gemini_article_prompt(topic, category, related_bank, related_state)
+    ai_data = await _call_gemini(prompt)
+    article = _build_article_from_ai(ai_data, topic, category, related_bank, related_state)
+    return {"ok": True, "article": article}
+
+
+@admin_router.post("/ai/bulk-generate", dependencies=[Depends(_check_admin)])
+async def ai_bulk_generate(data: dict = Body(...)):
+    """Generate and upsert multiple articles from a topic list. Saves as drafts."""
+    topics       = data.get("topics", [])
+    category     = data.get("category", "General")
+    related_bank = (data.get("related_bank") or "").strip()
+    related_state= (data.get("related_state") or "").strip()
+
+    if not isinstance(topics, list) or not topics:
+        raise HTTPException(status_code=400, detail="topics must be a non-empty list")
+    # Filter empty strings
+    topics = [t.strip() for t in topics if (t or "").strip()]
+    if len(topics) > 20:
+        raise HTTPException(status_code=400, detail="Maximum 20 topics per bulk run to avoid timeouts")
+
+    saved, skipped_dup, errors = 0, 0, []
+
+    for topic in topics:
+        try:
+            prompt  = _gemini_article_prompt(topic, category, related_bank, related_state)
+            ai_data = await _call_gemini(prompt)
+            article = _build_article_from_ai(ai_data, topic, category, related_bank, related_state)
+
+            # Upsert by slug
+            existing = await db.articles.find_one({"slug": article["slug"]})
+            if existing:
+                skipped_dup += 1
+                continue
+            await db.articles.insert_one({**article})
+            saved += 1
+        except HTTPException as e:
+            errors.append({"topic": topic, "error": e.detail})
+        except Exception as e:
+            errors.append({"topic": topic, "error": str(e)})
+
+    return {
+        "ok":      True,
+        "saved":   saved,
+        "skipped": skipped_dup,
+        "errors":  errors,
+        "total":   len(topics),
+    }
 
 # ─── Article seed data ────────────────────────────────────────────────────────
 

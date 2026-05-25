@@ -23,6 +23,9 @@ Pillow>=10.0.0
 pydantic>=2.6.4
 email-validator>=2.2.0
 
+# AI content generation
+google-generativeai>=0.7.0
+
 # HTTP & utils
 httpx>=0.27.0
 requests>=2.31.0

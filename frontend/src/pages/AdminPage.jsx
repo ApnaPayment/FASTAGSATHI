@@ -1759,6 +1759,15 @@ function ContentTab() {
   const [seedMsg, setSeedMsg]     = useState("");
   const [deleteSlug, setDeleteSlug] = useState(null);
 
+  // ── AI generate state ──
+  const [aiModal, setAiModal]     = useState(null); // null | "single" | "bulk"
+  const [aiForm, setAiForm]       = useState({ topic: "", category: "General", related_bank: "", related_state: "" });
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiErr, setAiErr]         = useState("");
+  const [bulkTopics, setBulkTopics]   = useState("");
+  const [bulkResult, setBulkResult]   = useState(null);
+  const [bulkProgress, setBulkProgress] = useState(null);
+
   const LIMIT = 20;
   const debounceRef = useRef(null);
 
@@ -1866,6 +1875,65 @@ function ContentTab() {
     }
   };
 
+  const aiGenerate = async () => {
+    setAiLoading(true); setAiErr("");
+    try {
+      const res = await adminApi.aiGenerate({
+        topic: aiForm.topic,
+        category: aiForm.category,
+        related_bank: aiForm.related_bank || null,
+        related_state: aiForm.related_state || null,
+      });
+      const a = res.data.article;
+      setForm({
+        slug:             a.slug || "",
+        title:            a.title || "",
+        category:         a.category || "General",
+        excerpt:          a.excerpt || "",
+        body:             a.body || "",
+        meta_description: a.meta_description || "",
+        meta_keywords:    a.meta_keywords || "",
+        related_bank:     a.related_bank || "",
+        related_state:    a.related_state || "",
+        faq_pairs:        a.faq_pairs || [],
+        cover:            "",
+        is_published:     false,
+        read_min:         a.read_min || 5,
+      });
+      setEditSlug(null);
+      setAiModal(null);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (e) {
+      setAiErr(e?.response?.data?.detail || "Generation failed. Check your Gemini API key.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const aiBulkGenerate = async () => {
+    const topics = bulkTopics.split("\n").map(t => t.trim()).filter(Boolean);
+    if (!topics.length) { setAiErr("Enter at least one topic."); return; }
+    if (topics.length > 20) { setAiErr("Maximum 20 topics per run."); return; }
+    setAiLoading(true); setAiErr(""); setBulkResult(null);
+    setBulkProgress(`Generating ${topics.length} articles… this may take 1-2 minutes.`);
+    try {
+      const res = await adminApi.aiBulkGenerate({
+        topics,
+        category: aiForm.category,
+        related_bank: aiForm.related_bank || null,
+        related_state: aiForm.related_state || null,
+      });
+      setBulkResult(res.data);
+      setBulkProgress(null);
+      load(1, "", "");
+    } catch (e) {
+      setAiErr(e?.response?.data?.detail || "Bulk generation failed.");
+      setBulkProgress(null);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const downloadSitemap = async () => {
     try {
       const res = await fetch(`${BACKEND}/sitemap.xml`);
@@ -1890,10 +1958,22 @@ function ContentTab() {
         <h2 className="font-display font-black text-2xl">Content · {Number(total ?? 0).toLocaleString()} articles</h2>
         <div className="flex gap-2 flex-wrap">
           <button
+            onClick={() => { setAiModal("single"); setAiErr(""); setAiForm(f => ({ ...f, topic: "" })); }}
+            className="flex items-center gap-2 bg-purple-600 text-white font-bold px-4 py-2 rounded-xl hover:bg-purple-700 transition-colors text-sm shadow-[0_3px_0_#4c1d95]"
+          >
+            ✨ AI Generate
+          </button>
+          <button
+            onClick={() => { setAiModal("bulk"); setAiErr(""); setBulkTopics(""); setBulkResult(null); setBulkProgress(null); }}
+            className="flex items-center gap-2 border-2 border-purple-300 text-purple-700 font-bold px-4 py-2 rounded-xl hover:bg-purple-50 transition-colors text-sm"
+          >
+            ✨ Bulk Generate
+          </button>
+          <button
             onClick={seedArticles} disabled={seeding}
             className="flex items-center gap-2 bg-[#0A0A0A] text-white font-bold px-4 py-2 rounded-xl hover:bg-[#FF6B00] disabled:opacity-50 transition-colors text-sm"
           >
-            {seeding ? <Loader2 className="w-4 h-4 animate-spin" /> : "🌱"} Seed 1000+ Articles
+            {seeding ? <Loader2 className="w-4 h-4 animate-spin" /> : "🌱"} Seed 1000+
           </button>
           <button
             onClick={downloadSitemap}
@@ -1903,6 +1983,167 @@ function ContentTab() {
           </button>
         </div>
       </div>
+
+      {/* ── AI Generate Modal (single) ── */}
+      {aiModal === "single" && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => !aiLoading && setAiModal(null)}>
+          <div className="bg-white rounded-3xl border-2 border-purple-300 shadow-[6px_6px_0_#7c3aed] p-7 w-full max-w-lg" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-xl">✨</div>
+              <div>
+                <h3 className="font-display font-black text-xl">AI Article Generator</h3>
+                <p className="text-xs text-gray-400">Powered by Google Gemini · Saves as draft</p>
+              </div>
+            </div>
+
+            <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">Topic / Keyword *</label>
+            <input
+              value={aiForm.topic}
+              onChange={e => setAiForm(f => ({ ...f, topic: e.target.value }))}
+              placeholder="e.g. How to check SBI FASTag balance"
+              className="w-full border-2 border-gray-200 focus:border-purple-400 rounded-xl px-3 py-2.5 text-sm outline-none mb-4 transition-colors"
+              autoFocus
+            />
+
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">Category</label>
+                <select value={aiForm.category} onChange={e => setAiForm(f => ({ ...f, category: e.target.value }))}
+                  className="w-full border-2 border-gray-200 focus:border-purple-400 rounded-xl px-3 py-2 text-sm outline-none transition-colors">
+                  {ARTICLE_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">Related Bank</label>
+                <select value={aiForm.related_bank} onChange={e => setAiForm(f => ({ ...f, related_bank: e.target.value }))}
+                  className="w-full border-2 border-gray-200 focus:border-purple-400 rounded-xl px-3 py-2 text-sm outline-none transition-colors">
+                  <option value="">— None —</option>
+                  {SEED_BANKS.map(b => <option key={b.slug} value={b.slug}>{b.shortName}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">Related State (optional)</label>
+            <input
+              value={aiForm.related_state}
+              onChange={e => setAiForm(f => ({ ...f, related_state: e.target.value }))}
+              placeholder="e.g. maharashtra"
+              className="w-full border-2 border-gray-200 focus:border-purple-400 rounded-xl px-3 py-2.5 text-sm outline-none mb-5 transition-colors"
+            />
+
+            {aiErr && <div className="mb-4 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl p-3">{aiErr}</div>}
+
+            <div className="flex gap-3">
+              <button
+                onClick={aiGenerate}
+                disabled={aiLoading || !aiForm.topic.trim()}
+                className="flex-1 flex items-center justify-center gap-2 bg-purple-600 text-white font-bold py-3 rounded-full hover:bg-purple-700 disabled:opacity-50 transition-colors"
+              >
+                {aiLoading
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</>
+                  : <><span>✨</span> Generate Article</>}
+              </button>
+              <button onClick={() => setAiModal(null)} disabled={aiLoading}
+                className="px-5 border-2 border-gray-200 font-bold rounded-full hover:border-gray-400 disabled:opacity-40 transition-colors text-sm">
+                Cancel
+              </button>
+            </div>
+            {aiLoading && (
+              <p className="mt-3 text-xs text-center text-gray-400 animate-pulse">
+                Gemini is writing your article… usually 15-30 seconds
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── AI Bulk Generate Modal ── */}
+      {aiModal === "bulk" && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => !aiLoading && setAiModal(null)}>
+          <div className="bg-white rounded-3xl border-2 border-purple-300 shadow-[6px_6px_0_#7c3aed] p-7 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-xl">✨</div>
+              <div>
+                <h3 className="font-display font-black text-xl">AI Bulk Generator</h3>
+                <p className="text-xs text-gray-400">One topic per line · Max 20 · Saved as drafts</p>
+              </div>
+            </div>
+
+            <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">Topics (one per line) *</label>
+            <textarea
+              value={bulkTopics}
+              onChange={e => setBulkTopics(e.target.value)}
+              placeholder={"How to check SBI FASTag balance\nFASTag double deduction complaint process\nHDFC FASTag recharge failed solutions\nFASTag KYC update online steps\nWhat to do if FASTag is blacklisted"}
+              rows={8}
+              className="w-full border-2 border-gray-200 focus:border-purple-400 rounded-xl px-3 py-2.5 text-sm outline-none mb-4 transition-colors font-mono"
+              autoFocus
+            />
+
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">Default Category</label>
+                <select value={aiForm.category} onChange={e => setAiForm(f => ({ ...f, category: e.target.value }))}
+                  className="w-full border-2 border-gray-200 focus:border-purple-400 rounded-xl px-3 py-2 text-sm outline-none transition-colors">
+                  {ARTICLE_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">Default Bank</label>
+                <select value={aiForm.related_bank} onChange={e => setAiForm(f => ({ ...f, related_bank: e.target.value }))}
+                  className="w-full border-2 border-gray-200 focus:border-purple-400 rounded-xl px-3 py-2 text-sm outline-none transition-colors">
+                  <option value="">— None —</option>
+                  {SEED_BANKS.map(b => <option key={b.slug} value={b.slug}>{b.shortName}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5 text-xs text-amber-700">
+              <strong>⏱ Time estimate:</strong> Each article takes ~15-30s. 20 topics ≈ 5-10 minutes. Don't close this window.
+            </div>
+
+            {aiErr && <div className="mb-4 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl p-3">{aiErr}</div>}
+
+            {bulkProgress && (
+              <div className="mb-4 bg-purple-50 border border-purple-200 text-purple-700 text-sm rounded-xl p-3 flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" /> {bulkProgress}
+              </div>
+            )}
+
+            {bulkResult && (
+              <div className="mb-4 bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl p-4 space-y-1">
+                <p className="font-bold">✅ Generation complete!</p>
+                <p>Saved: <strong>{bulkResult.saved}</strong> · Skipped (duplicate slug): <strong>{bulkResult.skipped}</strong></p>
+                {bulkResult.errors?.length > 0 && (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-red-600 font-semibold">{bulkResult.errors.length} error(s)</summary>
+                    <ul className="mt-1 space-y-1">
+                      {bulkResult.errors.map((e, i) => (
+                        <li key={i} className="text-red-600 text-xs">• {e.topic}: {e.error}</li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={aiBulkGenerate}
+                disabled={aiLoading || !bulkTopics.trim()}
+                className="flex-1 flex items-center justify-center gap-2 bg-purple-600 text-white font-bold py-3 rounded-full hover:bg-purple-700 disabled:opacity-50 transition-colors"
+              >
+                {aiLoading
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</>
+                  : <><span>✨</span> Generate & Save All</>}
+              </button>
+              <button onClick={() => setAiModal(null)} disabled={aiLoading}
+                className="px-5 border-2 border-gray-200 font-bold rounded-full hover:border-gray-400 disabled:opacity-40 transition-colors text-sm">
+                {bulkResult ? "Close" : "Cancel"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {seedMsg && (
         <div className={`mb-4 px-4 py-3 rounded-xl text-sm font-semibold ${seedMsg.startsWith("✅") ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-600 border border-red-200"}`}>
