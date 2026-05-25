@@ -54,7 +54,7 @@ export default function HelpArticlePage() {
       .then((r) => {
         if (!r.data || !r.data.is_published) { setNotFound(true); return; }
         setArticle(r.data);
-        document.title = `${r.data.title} · ApnaFastag`;
+        document.title = `${r.data.meta_title || r.data.title} · ApnaFastag`;
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
@@ -104,7 +104,7 @@ export default function HelpArticlePage() {
   return (
     <>
       <SEO
-        title={`${article.title} · ApnaFastag Help`}
+        title={`${article.meta_title || article.title} · ApnaFastag Help`}
         description={metaDesc}
         path={`/help/${article.slug}`}
         keywords={article.meta_keywords || `${article.category} FASTag, ${article.title}`}
@@ -159,9 +159,76 @@ export default function HelpArticlePage() {
       {/* Article body */}
       <section className="py-12 bg-white">
         <div className="max-w-3xl mx-auto px-6">
+          {/* Scoped styles for AI-generated HTML blocks */}
+          <style>{`
+            .article-body .quick-answer {
+              background: #FFF7ED;
+              border-left: 4px solid #FF6B00;
+              border-radius: 0 12px 12px 0;
+              padding: 16px 20px;
+              margin: 24px 0;
+              font-size: 0.95rem;
+              color: #1F2937;
+            }
+            .article-body .quick-answer p { margin: 0; }
+            .article-body .quick-answer strong { color: #FF6B00; }
+
+            .article-body nav.toc {
+              background: #F8F9FA;
+              border: 2px solid #E5E7EB;
+              border-radius: 16px;
+              padding: 18px 22px;
+              margin: 0 0 32px 0;
+            }
+            .article-body nav.toc h2 {
+              font-size: 0.75rem;
+              text-transform: uppercase;
+              letter-spacing: 0.08em;
+              color: #9CA3AF;
+              font-weight: 700;
+              margin: 0 0 10px 0;
+            }
+            .article-body nav.toc ul {
+              list-style: none;
+              padding: 0;
+              margin: 0;
+              display: flex;
+              flex-direction: column;
+              gap: 6px;
+            }
+            .article-body nav.toc li { margin: 0; }
+            .article-body nav.toc a {
+              color: #FF6B00;
+              text-decoration: none;
+              font-size: 0.875rem;
+              font-weight: 500;
+            }
+            .article-body nav.toc a:hover { text-decoration: underline; }
+
+            .article-body table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 24px 0;
+              font-size: 0.875rem;
+            }
+            .article-body th {
+              background: #0A0A0A;
+              color: #fff;
+              padding: 10px 14px;
+              text-align: left;
+              font-weight: 700;
+            }
+            .article-body td {
+              padding: 10px 14px;
+              border-bottom: 1px solid #E5E7EB;
+              color: #374151;
+            }
+            .article-body tr:nth-child(even) td { background: #F9FAFB; }
+          `}</style>
+
           {/* Body HTML */}
           <div
-            className="prose prose-lg prose-headings:font-display prose-headings:font-black prose-h2:text-2xl prose-h3:text-xl prose-a:text-[#FF6B00] prose-a:no-underline hover:prose-a:underline prose-strong:text-[#0A0A0A] prose-code:bg-[#F3F4F6] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-pre:bg-[#0A0A0A] prose-pre:text-white prose-blockquote:border-l-4 prose-blockquote:border-[#FF6B00] prose-blockquote:pl-4 prose-li:text-[#4B5563] max-w-none"
+            className="article-body prose prose-lg prose-headings:font-display prose-headings:font-black prose-h2:text-2xl prose-h3:text-xl prose-a:text-[#FF6B00] prose-a:no-underline hover:prose-a:underline prose-strong:text-[#0A0A0A] prose-code:bg-[#F3F4F6] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-pre:bg-[#0A0A0A] prose-pre:text-white prose-blockquote:border-l-4 prose-blockquote:border-[#FF6B00] prose-blockquote:pl-4 prose-li:text-[#4B5563] max-w-none"
             dangerouslySetInnerHTML={{ __html: article.body }}
           />
 

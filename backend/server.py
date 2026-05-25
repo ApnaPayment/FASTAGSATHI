@@ -145,6 +145,7 @@ class ArticleIn(BaseModel):
     tags: List[str] = []
     related_bank: Optional[str] = None
     related_state: Optional[str] = None
+    meta_title: Optional[str] = None    # custom <title> tag (falls back to title)
     meta_description: Optional[str] = None
     meta_keywords: Optional[str] = None
     faq_pairs: List[dict] = []          # [{q: str, a: str}, …]
@@ -2038,47 +2039,121 @@ async def admin_delete_customer(user_id: str):
 # ─── AI content generation (Gemini) ──────────────────────────────────────────
 
 def _gemini_article_prompt(topic: str, category: str, related_bank: str = "", related_state: str = "") -> str:
-    context_parts = []
-    if related_bank:
-        context_parts.append(f"specifically about {related_bank.replace('-', ' ').title()}")
-    if related_state:
-        context_parts.append(f"relevant to {related_state.replace('-', ' ').title()} state roads")
-    context = " ".join(context_parts)
+    from datetime import date
+    year = date.today().year
 
-    return f"""You are an expert SEO content writer for ApnaFastag.com — India's leading FASTag assistance platform where verified local agents called "Sathis" help drivers resolve toll plaza issues.
+    bank_context  = f"This article is specifically about {related_bank.replace('-', ' ').replace('fastag','FASTag').title()}." if related_bank else ""
+    state_context = f"Focus on relevance for drivers in {related_state.replace('-', ' ').title()} state where applicable." if related_state else ""
 
-Write a comprehensive, SEO-optimized blog article about: "{topic}" {context}
+    # Build a rich LSI keyword hint based on topic + category
+    lsi_hints = {
+        "Disputes":     "toll dispute, NHAI complaint, overcharge, double deduction, wrong deduction, FASTag grievance, NHAI helpline 1033, dispute resolution time, refund process",
+        "Balance":      "FASTag wallet balance, low balance alert, minimum balance, recharge FASTag, auto-recharge, wallet topup, NETC wallet, balance not updated",
+        "KYC":          "FASTag KYC update, KYC pending, Aadhaar linking, vehicle RC, KYC documents, KYC rejection reason, KYC status check, blacklisted due to KYC",
+        "Blacklist":    "FASTag blacklisted, tag inactive, remove from blacklist, NHAI blacklist reason, toll lane cash penalty, blacklist appeal, tag deactivated",
+        "Installation": "FASTag windshield position, FASTag not reading, antenna detection, replacement tag, damaged FASTag, tag placement guide, windshield sticker",
+        "General":      "FASTag benefits, toll savings, cashless toll, FASTag mandatory, vehicle class, NETC, NHAI FASTag, digital toll payment India",
+    }
+    lsi = lsi_hints.get(category, lsi_hints["General"])
 
+    return f"""You are a senior SEO content strategist and subject-matter expert writing for ApnaFastag.com — India's leading FASTag assistance platform. Verified local agents called "Sathis" help drivers resolve toll plaza problems in real time.
+
+ARTICLE BRIEF
+Topic: "{topic}"
 Category: {category}
+{bank_context}
+{state_context}
+Year: {year}
 
-Return ONLY a valid JSON object (no markdown fences, no explanation). Schema:
+YOUR TASK
+Write a deeply researched, genuinely helpful, long-form SEO article (1800–2500 words) that ranks on Page 1 of Google for the target topic. This is NOT filler content — every sentence must deliver real value to an Indian driver.
+
+RETURN ONLY a raw JSON object. No markdown fences, no text before or after. Schema:
 
 {{
-  "title": "Full article title 60-70 chars including the main keyword",
-  "slug": "url-friendly-slug-max-60-chars",
-  "excerpt": "Engaging meta description 140-155 characters summarizing value for the reader",
-  "body": "Full HTML body — use <h2>, <h3>, <p>, <ul>, <li>, <strong> tags. Must include sections: (1) Overview/Introduction, (2) Step-by-step guide or key information, (3) Common problems & solutions, (4) How a Sathi from ApnaFastag can help, (5) Conclusion with CTA. Minimum 800 words.",
-  "meta_description": "SEO meta description 140-155 chars",
-  "meta_keywords": "6-8 comma-separated keywords",
-  "tags": ["tag1", "tag2", "tag3", "tag4"],
+  "title": "Keyword-first title, 55-65 chars. Include the year {year} if it helps freshness.",
+  "slug": "keyword-first-slug-using-hyphens-max-65-chars",
+  "excerpt": "Compelling meta description 145-160 chars. State the problem, promise the solution, include main keyword.",
+  "toc": ["Section heading 1", "Section heading 2", "Section heading 3", "Section heading 4", "Section heading 5", "Section heading 6"],
+  "body": "SEE BODY REQUIREMENTS BELOW",
+  "meta_description": "Unique meta description 145-160 chars — different from excerpt, includes primary + secondary keyword.",
+  "meta_title": "SEO title tag 50-60 chars — keyword near the front",
+  "meta_keywords": "10-12 comma-separated keywords including LSI terms",
+  "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"],
   "faq_pairs": [
-    {{"q": "Specific question drivers actually ask?", "a": "Detailed helpful answer in 2-3 sentences."}},
+    {{"q": "Exact question a driver types into Google?", "a": "Direct answer in the first sentence (40-60 words), then 1-2 sentences of supporting detail. Real information only."}},
     {{"q": "Question 2?", "a": "Answer 2."}},
     {{"q": "Question 3?", "a": "Answer 3."}},
     {{"q": "Question 4?", "a": "Answer 4."}},
-    {{"q": "Question 5?", "a": "Answer 5."}}
+    {{"q": "Question 5?", "a": "Answer 5."}},
+    {{"q": "Question 6?", "a": "Answer 6."}},
+    {{"q": "Question 7?", "a": "Answer 7."}},
+    {{"q": "Question 8?", "a": "Answer 8."}}
   ],
-  "read_min": 5
+  "read_min": 8
 }}
 
-Writing guidelines:
-- Target audience: Indian drivers with FASTag issues at toll plazas
-- Tone: helpful, friendly, professional. Write in Indian English.
-- Always include NHAI helpline 1033 where relevant
-- The "How a Sathi can help" section must mention finding a Sathi at apnafastag.com
-- Body should have proper HTML, be well-structured, and minimum 800 words
-- faq_pairs must have exactly 5 items
-- slug must use only lowercase letters, numbers, and hyphens"""
+BODY REQUIREMENTS (write this as the value of "body" key — pure HTML string):
+
+Structure the body EXACTLY as follows using proper HTML tags:
+
+1. INTRODUCTION (1 paragraph, 80-120 words)
+   - Hook: name the exact pain point in the first sentence
+   - Brief answer / preview of what the article covers
+   - Include primary keyword naturally in first 100 words
+
+2. TABLE OF CONTENTS (HTML <nav> with anchor links)
+   <nav class="toc"><h2>In This Guide</h2><ul><li><a href="#section1">...</a></li>...</ul></nav>
+
+3. SECTION 1 — Context / Why This Matters (H2 + H3 subsections)
+   - Use <h2 id="section1"> with anchor id
+   - 200-250 words
+   - Include a quick-answer box: <div class="quick-answer"><strong>Quick Answer:</strong> [40-60 word direct answer to the topic]</div>
+   - Weave in LSI keywords: {lsi}
+
+4. SECTION 2 — Step-by-Step Guide (H2 + numbered H3 steps)
+   - Use <h2 id="section2">
+   - Each major step as <h3>Step N: [Title]</h3> followed by <p> explanation
+   - Use <ol> for ordered steps, <ul> for tips/notes
+   - Include real details: official portal URLs, exact menu paths, actual USSD codes, real SMS keywords
+   - 400-500 words
+
+5. SECTION 3 — Comparison Table or Key Facts (H2)
+   - Use <h2 id="section3">
+   - Include a proper HTML <table> with <thead> and <tbody>
+   - For bank articles: compare features, charges, helpline numbers
+   - For process articles: compare methods (app vs SMS vs portal vs missed call)
+   - 150-200 words + table
+
+6. SECTION 4 — Common Problems & Solutions (H2 + H3 per problem)
+   - Use <h2 id="section4">
+   - List 4-5 real problems drivers face
+   - Each as <h3>[Problem heading]</h3> + <p>[Solution with specific steps]</p>
+   - 300-400 words
+
+7. SECTION 5 — When to Contact a Sathi (H2)
+   - Use <h2 id="section5">
+   - Explain what a Sathi is (verified local FASTag expert near toll plazas)
+   - List 3-4 situations where a Sathi is needed vs self-service
+   - Include: <p>Find a verified Sathi near your toll plaza at <strong>apnafastag.com</strong> — available at 700+ plazas across India. Response in under 90 seconds.</p>
+   - 150-200 words
+
+8. CONCLUSION (H2 + 1-2 paragraphs)
+   - Use <h2 id="section6">
+   - Summarise key takeaways in 3 bullet points
+   - CTA: remind user to bookmark apnafastag.com and find a Sathi if stuck
+   - 100-150 words
+
+CONTENT QUALITY RULES:
+- Minimum 1800 words in the body
+- Every factual claim must be accurate — use real NHAI helpline 1033, real bank-specific numbers where applicable
+- No vague filler like "FASTag is very important for modern India" — be specific
+- Indian English spelling (colour not color, authorised not authorized)
+- Bold (<strong>) the first mention of every key term
+- The quick-answer box in Section 1 is optimised for Google Featured Snippets — keep it to 40-60 words, start with a verb
+- FAQ answers: first sentence answers directly, never start with "Yes" or "No" alone
+- All 8 FAQ questions must be real long-tail queries a driver would type
+- faq_pairs must contain exactly 8 items"""
 
 
 async def _call_gemini(prompt: str) -> dict:
@@ -2088,12 +2163,16 @@ async def _call_gemini(prompt: str) -> dict:
     try:
         import google.generativeai as genai
         genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        # Use Pro for long-form content quality; fallback to Flash if Pro quota hit
+        try:
+            model = genai.GenerativeModel("gemini-1.5-pro")
+        except Exception:
+            model = genai.GenerativeModel("gemini-1.5-flash")
         response = model.generate_content(
             prompt,
             generation_config=genai.types.GenerationConfig(
-                temperature=0.7,
-                max_output_tokens=4096,
+                temperature=0.65,
+                max_output_tokens=8192,   # long articles need more tokens
             ),
         )
         text = response.text.strip()
@@ -2102,9 +2181,14 @@ async def _call_gemini(prompt: str) -> dict:
             start = text.find("{")
             end   = text.rfind("}") + 1
             text  = text[start:end]
+        # Sometimes Gemini wraps the JSON in extra whitespace or a leading comment line
+        if not text.startswith("{"):
+            start = text.find("{")
+            if start != -1:
+                text = text[start:]
         return json.loads(text)
     except json.JSONDecodeError as e:
-        logger.error(f"Gemini JSON parse error: {e}")
+        logger.error(f"Gemini JSON parse error: {e}\nRaw text (first 600): {text[:600] if 'text' in dir() else 'N/A'}")
         raise HTTPException(status_code=500, detail="AI returned malformed JSON — please try again")
     except ImportError:
         raise HTTPException(status_code=503, detail="google-generativeai package not installed")
@@ -2118,22 +2202,32 @@ def _build_article_from_ai(data: dict, topic: str, category: str,
                             is_published: bool = False) -> dict:
     now = datetime.now(timezone.utc).isoformat()
     raw_slug = (data.get("slug") or topic.lower().replace(" ", "-"))[:80]
-    slug = re.sub(r"[^a-z0-9-]", "", raw_slug).strip("-")
+    slug = re.sub(r"[^a-z0-9-]", "", raw_slug).strip("-") or re.sub(r"[^a-z0-9-]", "", topic.lower().replace(" ", "-"))[:60]
+
+    # Prepend Table of Contents block to body if AI returned toc separately
+    body = data.get("body", "")
+    toc_list = data.get("toc", [])
+    if toc_list and "<nav" not in body:
+        toc_items = "".join(f'<li><a href="#section{i+1}">{h}</a></li>' for i, h in enumerate(toc_list))
+        toc_html = f'<nav class="toc"><h2>In This Guide</h2><ul>{toc_items}</ul></nav>'
+        body = toc_html + body
+
     return {
         "slug":             slug,
         "title":            data.get("title", topic)[:200],
         "excerpt":          (data.get("excerpt") or "")[:300],
-        "body":             data.get("body", ""),
+        "body":             body,
         "category":         category,
         "tags":             data.get("tags", [])[:10],
         "related_bank":     related_bank or None,
         "related_state":    related_state or None,
         "meta_description": (data.get("meta_description") or data.get("excerpt", ""))[:160],
+        "meta_title":       (data.get("meta_title") or data.get("title", topic))[:70],
         "meta_keywords":    data.get("meta_keywords", ""),
-        "faq_pairs":        data.get("faq_pairs", [])[:10],
+        "faq_pairs":        data.get("faq_pairs", [])[:12],
         "cover":            None,
         "is_published":     is_published,
-        "read_min":         int(data.get("read_min", 5)),
+        "read_min":         int(data.get("read_min", 8)),
         "created_at":       now,
         "updated_at":       now,
     }
