@@ -157,35 +157,72 @@ export default function HelpArticlePage() {
       </section>
 
       {/* Article body */}
-      <section className="py-12 bg-white">
-        <div className="max-w-3xl mx-auto px-6">
+      <section className="py-12 bg-white overflow-x-hidden">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 overflow-x-hidden">
           {/* Scoped styles for AI-generated HTML blocks */}
           <style>{`
-            /* ── Base prose resets ── */
-            .article-body { overflow-wrap: break-word; word-break: break-word; overflow-x: hidden; }
-            .article-body p  { margin: 0 0 1rem 0; line-height: 1.75; color: #374151; font-size: 1rem; }
-            .article-body h2 { font-size: 1.5rem; font-weight: 900; color: #0A0A0A; margin: 2.5rem 0 1rem; line-height: 1.3; }
-            .article-body h3 { font-size: 1.125rem; font-weight: 700; color: #111827; margin: 1.75rem 0 0.5rem; }
-            .article-body ul, .article-body ol { padding-left: 1.5rem; margin: 0.75rem 0 1rem; }
-            .article-body li { margin-bottom: 0.4rem; color: #4B5563; line-height: 1.7; }
-            .article-body ul li { list-style-type: disc; }
-            .article-body ol li { list-style-type: decimal; }
-            .article-body strong { color: #0A0A0A; font-weight: 700; }
-            .article-body a  { color: #FF6B00; text-decoration: none; }
-            .article-body a:hover { text-decoration: underline; }
+            /* ── Base layout ── */
+            .article-body {
+              overflow-wrap: break-word;
+              word-break: break-word;
+              max-width: 100%;
+            }
 
-            /* ── Quick Answer box (Featured Snippet) ── */
+            /* ── Typography ── */
+            .article-body p {
+              margin: 0 0 1.1rem 0;
+              line-height: 1.8;
+              color: #374151;
+              font-size: 1rem;
+            }
+            .article-body h2 {
+              font-size: 1.45rem;
+              font-weight: 900;
+              color: #0A0A0A;
+              margin: 2.5rem 0 0.9rem;
+              line-height: 1.3;
+              padding-top: 0.5rem;
+              border-top: 3px solid #F3F4F6;
+            }
+            .article-body h2:first-of-type { border-top: none; margin-top: 0; }
+            .article-body h3 {
+              font-size: 1.1rem;
+              font-weight: 700;
+              color: #111827;
+              margin: 1.6rem 0 0.5rem;
+            }
+            .article-body ul, .article-body ol {
+              padding-left: 1.4rem;
+              margin: 0.5rem 0 1.1rem;
+            }
+            .article-body li {
+              margin-bottom: 0.45rem;
+              color: #4B5563;
+              line-height: 1.75;
+            }
+            .article-body ul > li { list-style-type: disc; }
+            .article-body ol > li { list-style-type: decimal; }
+            .article-body strong { color: #0A0A0A; font-weight: 700; }
+            .article-body em { color: #374151; font-style: italic; }
+            .article-body a { color: #FF6B00; text-decoration: none; }
+            .article-body a:hover { text-decoration: underline; }
+            .article-body code {
+              background: #F3F4F6; padding: 2px 6px;
+              border-radius: 4px; font-size: 0.875rem; font-family: monospace;
+            }
+
+            /* ── Quick Answer (Featured Snippet target) ── */
             .article-body .quick-answer {
               background: #FFF7ED;
               border-left: 4px solid #FF6B00;
               border-radius: 0 12px 12px 0;
               padding: 14px 18px;
-              margin: 1.5rem 0;
+              margin: 1.25rem 0 1.5rem;
               font-size: 0.95rem;
               color: #1F2937;
-              line-height: 1.65;
+              line-height: 1.7;
             }
-            .article-body .quick-answer strong { color: #FF6B00; }
+            .article-body .quick-answer strong { color: #C2410C; }
 
             /* ── Table of Contents ── */
             .article-body nav.toc {
@@ -196,12 +233,14 @@ export default function HelpArticlePage() {
               margin: 0 0 2rem 0;
             }
             .article-body nav.toc h2 {
-              font-size: 0.7rem !important;
-              text-transform: uppercase;
-              letter-spacing: 0.1em;
+              font-size: 0.65rem !important;
+              text-transform: uppercase !important;
+              letter-spacing: 0.12em !important;
               color: #9CA3AF !important;
-              font-weight: 700;
+              font-weight: 700 !important;
               margin: 0 0 10px 0 !important;
+              padding: 0 !important;
+              border: none !important;
             }
             .article-body nav.toc ul {
               list-style: none !important;
@@ -209,48 +248,77 @@ export default function HelpArticlePage() {
               margin: 0 !important;
               display: flex;
               flex-direction: column;
-              gap: 5px;
+              gap: 6px;
             }
-            .article-body nav.toc li { list-style: none !important; margin: 0 !important; padding: 0; }
+            .article-body nav.toc li {
+              list-style: none !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+            }
+            .article-body nav.toc li::before {
+              content: "→";
+              color: #FF6B00;
+              font-size: 0.75rem;
+              flex-shrink: 0;
+            }
             .article-body nav.toc a {
-              color: #FF6B00 !important;
-              text-decoration: none;
+              color: #374151 !important;
+              text-decoration: none !important;
               font-size: 0.875rem;
               font-weight: 500;
               line-height: 1.5;
             }
-            .article-body nav.toc a:hover { text-decoration: underline; }
+            .article-body nav.toc a:hover { color: #FF6B00 !important; }
 
-            /* ── Comparison table ── */
+            /* ── Comparison / data table ── */
+            .article-body .table-wrap {
+              overflow-x: auto;
+              -webkit-overflow-scrolling: touch;
+              margin: 1.5rem 0;
+              border-radius: 10px;
+              border: 1px solid #E5E7EB;
+              box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+            }
             .article-body table {
               width: 100%;
+              min-width: 540px;
               border-collapse: collapse;
-              margin: 1.5rem 0;
               font-size: 0.875rem;
-              display: table;
-              overflow-x: auto;
+              margin: 0;
             }
+            .article-body thead tr { background: #0A0A0A; }
             .article-body thead th {
-              background: #0A0A0A;
               color: #fff;
-              padding: 10px 14px;
+              padding: 11px 14px;
               text-align: left;
               font-weight: 700;
-              font-size: 0.8rem;
+              font-size: 0.78rem;
+              letter-spacing: 0.03em;
               white-space: nowrap;
             }
             .article-body tbody td {
               padding: 10px 14px;
-              border-bottom: 1px solid #E5E7EB;
+              border-bottom: 1px solid #F3F4F6;
               color: #374151;
               vertical-align: top;
+              line-height: 1.6;
             }
+            .article-body tbody tr:last-child td { border-bottom: none; }
             .article-body tbody tr:nth-child(even) td { background: #F9FAFB; }
-            .article-body tbody tr:hover td { background: #FFF7ED; }
+            .article-body tbody tr:hover td { background: #FFF7ED; transition: background 0.15s; }
 
-            /* ── Responsive table wrapper ── */
-            .article-body .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 1.5rem 0; border-radius: 8px; border: 1px solid #E5E7EB; }
-            .article-body .table-wrap table { margin: 0; border-radius: 0; }
+            /* Bare table without wrapper (fallback) */
+            .article-body > table {
+              display: block;
+              overflow-x: auto;
+              -webkit-overflow-scrolling: touch;
+              margin: 1.5rem 0;
+              border-radius: 10px;
+              border: 1px solid #E5E7EB;
+            }
           `}</style>
 
           {/* Body HTML */}

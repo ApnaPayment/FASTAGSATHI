@@ -2243,12 +2243,27 @@ def _build_article_from_ai(data: dict, topic: str, category: str,
     # Prepend Table of Contents block to body if AI returned toc separately
     body = data.get("body", "")
 
-    # ── Convert any residual markdown to HTML ──────────────────────────────
-    # Models sometimes emit **bold** or *italic* inside the HTML body
+    # ── Clean up model output artifacts ───────────────────────────────────
+    # 1. Convert **markdown bold** / *italic* → HTML (model leaks these)
     body = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', body)
-    body = re.sub(r'\*(.+?)\*',     r'<em>\1</em>',         body)
-    # Remove bare "### Heading" lines that slipped through as text
-    body = re.sub(r'^#{1,6}\s+(.+)$', lambda m: f'<h3>{m.group(1)}</h3>', body, flags=re.MULTILINE)
+    body = re.sub(r'\*(?!\*)(.+?)(?<!\*)\*', r'<em>\1</em>', body)
+
+    # 2. Convert bare "### Heading" lines → <h3>
+    body = re.sub(r'^#{3}\s+(.+)$', r'<h3>\1</h3>', body, flags=re.MULTILINE)
+    body = re.sub(r'^#{2}\s+(.+)$', r'<h2>\1</h2>', body, flags=re.MULTILINE)
+
+    # 3. Collapse "word –\n continuation" broken-line em-dashes into one line
+    #    Model sometimes ends a line with " –" and continues on next line
+    body = re.sub(r'\s*–\s*\n\s*', ' — ', body)
+    body = re.sub(r'\s*-\s*\n\s*', ' ', body)
+
+    # 4. Wrap bare <table> tags in a scrollable div (prevents horizontal overflow)
+    body = re.sub(
+        r'(?<!table-wrap">)(<table[\s\S]*?</table>)',
+        r'<div class="table-wrap">\1</div>',
+        body,
+        flags=re.DOTALL
+    )
     # ──────────────────────────────────────────────────────────────────────
 
     toc_list = data.get("toc", [])
