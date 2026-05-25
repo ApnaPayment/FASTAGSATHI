@@ -118,7 +118,7 @@ export default function Footer() {
           <div>
             <div className="text-[10px] uppercase tracking-widest text-[#FF6B00] font-bold mb-1">GSTIN</div>
             <p className="text-white/80 font-mono tracking-wide">08AAVCA0650L1ZA</p>
-            <p className="text-white/45 mt-0.5">Rajasthan · Regular Taxpayer</p>
+            <p className="text-white/45 mt-0.5">Rajasthan · GST Verified</p>
           </div>
           <div>
             <div className="text-[10px] uppercase tracking-widest text-[#FF6B00] font-bold mb-1">Registered Office</div>
