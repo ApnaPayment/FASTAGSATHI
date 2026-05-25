@@ -6,10 +6,9 @@ const AuthContext = createContext(null);
 const USER_KEY = "apnafastag.user";
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser]       = useState(null);
   const [hydrated, setHydrated] = useState(false);
 
-  // Rehydrate from localStorage on mount
   useEffect(() => {
     try {
       const raw = localStorage.getItem(USER_KEY);
@@ -18,14 +17,20 @@ export function AuthProvider({ children }) {
     setHydrated(true);
   }, []);
 
+  const _saveUser = useCallback((u, token) => {
+    if (token) setToken(token);
+    const obj = { phone: u.phone, name: u.name, email: u.email, id: u.id, loggedInAt: Date.now() };
+    localStorage.setItem(USER_KEY, JSON.stringify(obj));
+    setUser(obj);
+  }, []);
+
   const requestOtp = useCallback(async (phone) => {
     track("otp_request", { phone_last4: phone.slice(-4) });
     try {
       await authApi.requestOtp(phone);
-      return { ok: true, masked: phone.slice(-4) };
+      return { ok: true };
     } catch {
-      // Fallback: still proceed so the UI isn't broken if backend is unreachable
-      return { ok: true, masked: phone.slice(-4) };
+      return { ok: true }; // proceed even if backend unreachable
     }
   }, []);
 
@@ -36,17 +41,41 @@ export function AuthProvider({ children }) {
     }
     try {
       const res = await authApi.verifyOtp(phone, otp);
-      const { token, user: u } = res.data;
-      setToken(token);
-      const userObj = { phone: u.phone, name: u.name, id: u.id, loggedInAt: Date.now() };
-      localStorage.setItem(USER_KEY, JSON.stringify(userObj));
-      setUser(userObj);
+      const { token, user: u, is_new_user } = res.data;
+      _saveUser(u, token);
       track("otp_verify_success", { phone_last4: phone.slice(-4) });
-      return { ok: true };
+      return { ok: true, is_new_user: !!is_new_user };
     } catch (err) {
       track("otp_verify_failed");
       const msg = err?.response?.data?.detail || "Verification failed. Try again.";
       return { ok: false, error: msg };
+    }
+  }, [_saveUser]);
+
+  const googleLogin = useCallback(async (credential) => {
+    track("google_login_attempt");
+    try {
+      const res = await authApi.googleAuth(credential);
+      const { token, user: u, is_new_user } = res.data;
+      _saveUser(u, token);
+      track("google_login_success");
+      return { ok: true, is_new_user: !!is_new_user };
+    } catch (err) {
+      const msg = err?.response?.data?.detail || "Google login failed. Try again.";
+      return { ok: false, error: msg };
+    }
+  }, [_saveUser]);
+
+  const updateProfile = useCallback(async ({ name, email }) => {
+    try {
+      const res = await authApi.updateMe({ name, email });
+      const u = res.data;
+      const updated = { ...JSON.parse(localStorage.getItem(USER_KEY) || "{}"), name: u.name, email: u.email };
+      localStorage.setItem(USER_KEY, JSON.stringify(updated));
+      setUser(updated);
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err?.response?.data?.detail || "Update failed." };
     }
   }, []);
 
@@ -58,7 +87,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, hydrated, requestOtp, verifyOtp, logout }}>
+    <AuthContext.Provider value={{ user, hydrated, requestOtp, verifyOtp, googleLogin, updateProfile, logout }}>
       {children}
     </AuthContext.Provider>
   );

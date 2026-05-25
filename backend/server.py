@@ -102,11 +102,13 @@ class UserOut(BaseModel):
     id: str
     phone: str
     name: Optional[str] = None
+    email: Optional[str] = None
     created_at: str
 
 class TokenOut(BaseModel):
     token: str
     user: UserOut
+    is_new_user: bool = False
 
 class JobCreateIn(BaseModel):
     sathi_slug: str
@@ -204,12 +206,15 @@ async def verify_otp(body: OTPVerifyIn):
         if datetime.now(timezone.utc) > exp:
             raise HTTPException(status_code=401, detail="OTP expired — request a new one")
 
+    is_new_user = False
     user_doc = await db.users.find_one({"phone": phone}, {"_id": 0})
     if not user_doc:
+        is_new_user = True
         user_doc = {
             "id": str(uuid.uuid4()),
             "phone": phone,
             "name": None,
+            "email": None,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
         await db.users.insert_one({**user_doc})
@@ -217,7 +222,8 @@ async def verify_otp(body: OTPVerifyIn):
     token = _make_token(user_doc["id"], phone)
     return TokenOut(
         token=token,
-        user=UserOut(id=user_doc["id"], phone=phone, name=user_doc.get("name"), created_at=user_doc["created_at"]),
+        user=UserOut(id=user_doc["id"], phone=phone, name=user_doc.get("name"), email=user_doc.get("email"), created_at=user_doc["created_at"]),
+        is_new_user=is_new_user or not user_doc.get("name"),
     )
 
 # ─── User routes ──────────────────────────────────────────────────────────────
@@ -229,7 +235,75 @@ async def get_me(current: dict = Depends(_require_user)):
     doc = await db.users.find_one({"phone": current["sub"]}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="User not found")
-    return UserOut(id=doc["id"], phone=doc["phone"], name=doc.get("name"), created_at=doc["created_at"])
+    return UserOut(id=doc["id"], phone=doc["phone"], name=doc.get("name"), email=doc.get("email"), created_at=doc["created_at"])
+
+@users_router.patch("/me")
+async def update_me(body: dict, current: dict = Depends(_require_user)):
+    """Update name and/or email for the logged-in user."""
+    allowed = {}
+    if "name" in body and isinstance(body["name"], str):
+        name = body["name"].strip()
+        if name:
+            allowed["name"] = name
+    if "email" in body:
+        email = (body["email"] or "").strip().lower()
+        allowed["email"] = email if email else None
+    if not allowed:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    allowed["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.users.update_one({"id": current["user_id"]}, {"$set": allowed})
+    doc = await db.users.find_one({"id": current["user_id"]}, {"_id": 0})
+    return UserOut(id=doc["id"], phone=doc["phone"], name=doc.get("name"), email=doc.get("email"), created_at=doc["created_at"])
+
+# Google OAuth
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+
+@auth_router.post("/google")
+async def google_auth(body: dict):
+    """Verify Google ID token and return JWT. Creates user if first time."""
+    credential = body.get("credential", "")
+    if not credential:
+        raise HTTPException(status_code=400, detail="Missing Google credential")
+    if not GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=503, detail="Google login not configured")
+    try:
+        from google.oauth2 import id_token as google_id_token
+        from google.auth.transport import requests as google_requests
+        idinfo = google_id_token.verify_oauth2_token(credential, google_requests.Request(), GOOGLE_CLIENT_ID)
+        email = idinfo.get("email", "")
+        name  = idinfo.get("name", "")
+        if not email:
+            raise HTTPException(status_code=400, detail="Google account has no email")
+    except Exception as e:
+        logger.warning(f"Google token verify failed: {e}")
+        raise HTTPException(status_code=401, detail="Invalid Google token")
+
+    is_new_user = False
+    user_doc = await db.users.find_one({"email": email}, {"_id": 0})
+    if not user_doc:
+        is_new_user = True
+        user_doc = {
+            "id": str(uuid.uuid4()),
+            "phone": "",          # no phone for Google users initially
+            "name": name,
+            "email": email,
+            "google_sub": idinfo.get("sub"),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.users.insert_one({**user_doc})
+    else:
+        # Update name/google_sub if missing
+        upd = {}
+        if not user_doc.get("name") and name: upd["name"] = name
+        if not user_doc.get("google_sub"):    upd["google_sub"] = idinfo.get("sub")
+        if upd: await db.users.update_one({"email": email}, {"$set": upd})
+
+    token = _make_token(user_doc["id"], user_doc.get("phone") or email)
+    return TokenOut(
+        token=token,
+        user=UserOut(id=user_doc["id"], phone=user_doc.get("phone",""), name=user_doc.get("name"), email=email, created_at=user_doc["created_at"]),
+        is_new_user=is_new_user,
+    )
 
 # ─── Sathi routes ─────────────────────────────────────────────────────────────
 

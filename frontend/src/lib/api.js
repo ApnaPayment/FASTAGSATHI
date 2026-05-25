@@ -17,9 +17,11 @@ export const setToken = (t) => localStorage.setItem(TOKEN_KEY, t);
 export const clearToken = () => localStorage.removeItem(TOKEN_KEY);
 
 export const authApi = {
-  requestOtp: (phone) => api.post("/api/auth/request-otp", { phone }),
-  verifyOtp: (phone, otp) => api.post("/api/auth/verify-otp", { phone, otp }),
-  me: () => api.get("/api/users/me"),
+  requestOtp:  (phone)           => api.post("/api/auth/request-otp", { phone }),
+  verifyOtp:   (phone, otp)      => api.post("/api/auth/verify-otp", { phone, otp }),
+  googleAuth:  (credential)      => api.post("/api/auth/google", { credential }),
+  me:          ()                => api.get("/api/users/me"),
+  updateMe:    (data)            => api.patch("/api/users/me", data),
 };
 
 export const sathiApi = {
