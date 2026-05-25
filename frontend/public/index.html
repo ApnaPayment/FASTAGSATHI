@@ -29,8 +29,8 @@
         Learn how to configure a non-root public URL by running `npm run build`.
         -->
         <title>ApnaFastag — FASTag Help at Every Toll Plaza</title>
-        <!-- Hide only the auth-sensitive header until React hydrates; main content paints immediately (LCP fix) -->
-        <style id="ssg-hide">#root[data-ssg] [data-testid="site-header"]{visibility:hidden!important}</style>
+        <!-- Hide the entire root until React hydrates — eliminates prerender flash -->
+        <style id="ssg-hide">#root[data-ssg]{visibility:hidden!important}</style>
         <!-- Synchronously seed window.__BRANDING__ from localStorage so BrandingContext
              initialises with real data on frame-1 even if the prerendered HTML is stale.
              Must run before any React code; do NOT move this script. -->
