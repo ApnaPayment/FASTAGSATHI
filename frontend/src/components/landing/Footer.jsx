@@ -103,7 +103,30 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row md:justify-between gap-4 text-xs text-white/50">
+        {/* Legal / trust block — CIN, GST, RoC for Indian compliance */}
+        <div className="mb-8 bg-white/[0.04] border border-white/10 rounded-2xl px-6 py-5 grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-[#FF6B00] font-bold mb-1">Company</div>
+            <p className="text-white/80 font-semibold leading-snug">Apna Payment Services Pvt. Ltd.</p>
+            <p className="text-white/45 mt-0.5">Incorporated Aug 2021</p>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-[#FF6B00] font-bold mb-1">CIN</div>
+            <p className="text-white/80 font-mono tracking-wide">U67100RJ2021PTC074460</p>
+            <p className="text-white/45 mt-0.5">RoC Jaipur · MCA Active</p>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-[#FF6B00] font-bold mb-1">GSTIN</div>
+            <p className="text-white/80 font-mono tracking-wide">08AAVCA0650L1ZA</p>
+            <p className="text-white/45 mt-0.5">Rajasthan · Regular Taxpayer</p>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-[#FF6B00] font-bold mb-1">Registered Office</div>
+            <p className="text-white/80 leading-snug">Plot 796, Gokul Nagar,<br />Jhotwara, Jaipur — 302012<br />Rajasthan, India</p>
+          </div>
+        </div>
+
+        <div className="pt-6 border-t border-white/10 flex flex-col md:flex-row md:justify-between gap-4 text-xs text-white/50">
           <span>© {year} {legalName}. {footerTagline}</span>
           <div className="flex gap-5">
             <Link to="/privacy" className="hover:text-white">Privacy</Link>
