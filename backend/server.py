@@ -43,7 +43,24 @@ BACKEND_ORIGIN = (
 )
 JWT_ALGORITHM = "HS256"
 # When True any 4-digit OTP is accepted (dev / demo mode)
-OTP_BYPASS = os.environ.get("OTP_BYPASS", "true").lower() == "true"
+OTP_BYPASS = os.environ.get("OTP_BYPASS", "false").lower() == "true"
+
+# ─── SMS / OTP config (ApnaPayment gateway) ──────────────────────────────────
+SMS_URL          = "https://www.apnapayment.com/api/agent/otp/send-variable-otp"
+SMS_SECRET_KEY   = os.environ.get("SMS_SECRET_KEY",  "GV@Secure9044")
+SMS_LOGIN_ID     = os.environ.get("SMS_LOGIN_ID",    "apnapayment_hsi")
+SMS_PASSWORD     = os.environ.get("SMS_PASSWORD",    "apnapayment@123")
+SMS_SENDER_ID    = os.environ.get("SMS_SENDER_ID",   "APNPMT")
+SMS_DLT_TM_ID    = os.environ.get("SMS_DLT_TM_ID",  "1001096933494158")
+SMS_DLT_CT_ID    = os.environ.get("SMS_DLT_CT_ID",  "1007305433309304446")
+SMS_DLT_PE_ID    = os.environ.get("SMS_DLT_PE_ID",  "1001751741037518059")
+SMS_CAMP_NAME    = os.environ.get("SMS_CAMP_NAME",   "apnapayment_u")
+
+# Rate-limit constants
+OTP_RESEND_COOLDOWN_SECS = 60      # minimum seconds between two OTP requests for same number
+OTP_MAX_PER_HOUR         = 5       # max OTPs a single number can request per hour
+OTP_MAX_VERIFY_ATTEMPTS  = 5       # wrong-OTP attempts before the record is locked
+OTP_EXPIRY_MINUTES       = 3       # OTP valid for 3 minutes (matches SMS text)
 
 # ─── Cashfree config ──────────────────────────────────────────────────────────
 CF_APP_ID = os.environ.get("CASHFREE_APP_ID", "")
@@ -185,6 +202,100 @@ class StatusCheck(BaseModel):
     client_name: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+# ─── SMS helper ───────────────────────────────────────────────────────────────
+
+async def send_sms_otp(phone: str, otp: str) -> bool:
+    """Send OTP via ApnaPayment SMS gateway. Returns True on success."""
+    text = (
+        f"Your 4-digit OTP for ApnaFastag login is {otp} . "
+        f"It is valid for {OTP_EXPIRY_MINUTES} minutes."
+    )
+    payload = {
+        "mobile":      phone,
+        "text":        text,
+        "login_id":    SMS_LOGIN_ID,
+        "password":    SMS_PASSWORD,
+        "senderid":    SMS_SENDER_ID,
+        "dlt_tm_id":   SMS_DLT_TM_ID,
+        "dlt_ct_id":   SMS_DLT_CT_ID,
+        "dlt_pe_id":   SMS_DLT_PE_ID,
+        "route_id":    "DLT_SERVICE_IMPLICT",
+        "unicode":     "0",
+        "camp_name":   SMS_CAMP_NAME,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.post(
+                SMS_URL,
+                json=payload,
+                headers={"Content-Type": "application/json", "X-Secret-Key": SMS_SECRET_KEY},
+            )
+        logger.info(f"[SMS] OTP sent to +91-XXXXXX{phone[-4:]} — status {r.status_code}")
+        return r.status_code == 200
+    except Exception as e:
+        logger.error(f"[SMS] Failed to send OTP to {phone[-4:]}: {e}")
+        return False
+
+
+async def _check_otp_rate_limit(phone: str) -> None:
+    """
+    Raises HTTP 429 if the phone number has hit send-rate limits:
+      - Must wait OTP_RESEND_COOLDOWN_SECS between requests
+      - Max OTP_MAX_PER_HOUR requests in any rolling 60-minute window
+    """
+    now = datetime.now(timezone.utc)
+    record = await db.otps.find_one({"phone": phone})
+    if record:
+        # Cooldown check
+        last_sent = record.get("last_sent_at")
+        if last_sent:
+            last_dt = datetime.fromisoformat(last_sent)
+            if last_dt.tzinfo is None:
+                last_dt = last_dt.replace(tzinfo=timezone.utc)
+            elapsed = (now - last_dt).total_seconds()
+            if elapsed < OTP_RESEND_COOLDOWN_SECS:
+                wait = int(OTP_RESEND_COOLDOWN_SECS - elapsed)
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Please wait {wait} seconds before requesting another OTP"
+                )
+        # Hourly cap check
+        sent_times = record.get("sent_times", [])
+        cutoff = (now - timedelta(hours=1)).isoformat()
+        recent = [t for t in sent_times if t >= cutoff]
+        if len(recent) >= OTP_MAX_PER_HOUR:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Too many OTP requests. Try again after 1 hour."
+            )
+
+
+async def _store_otp(phone: str, otp: str) -> None:
+    """Persist OTP to DB with expiry, rate-limit counters, and reset verify attempts."""
+    now = datetime.now(timezone.utc)
+    expires_at = (now + timedelta(minutes=OTP_EXPIRY_MINUTES)).isoformat()
+    now_iso = now.isoformat()
+
+    # Keep a rolling list of sent timestamps for the hourly cap
+    existing = await db.otps.find_one({"phone": phone}) or {}
+    sent_times = existing.get("sent_times", [])
+    cutoff = (now - timedelta(hours=1)).isoformat()
+    sent_times = [t for t in sent_times if t >= cutoff]  # prune old entries
+    sent_times.append(now_iso)
+
+    await db.otps.update_one(
+        {"phone": phone},
+        {"$set": {
+            "otp":             otp,
+            "expires_at":      expires_at,
+            "last_sent_at":    now_iso,
+            "sent_times":      sent_times,
+            "verify_attempts": 0,  # reset on new OTP
+        }},
+        upsert=True,
+    )
+
+
 # ─── Auth routes ──────────────────────────────────────────────────────────────
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
@@ -194,14 +305,19 @@ async def request_otp(body: OTPRequestIn):
     phone = body.phone.strip()
     if not phone.isdigit() or len(phone) != 10:
         raise HTTPException(status_code=400, detail="Enter a 10-digit Indian mobile number")
+
+    await _check_otp_rate_limit(phone)
+
     otp = str(random.randint(1000, 9999))
-    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
-    await db.otps.update_one(
-        {"phone": phone},
-        {"$set": {"otp": otp, "expires_at": expires_at}},
-        upsert=True,
-    )
-    logger.info(f"[OTP] +91-XXXXXX{phone[-4:]}: {otp}")
+    await _store_otp(phone, otp)
+
+    if OTP_BYPASS:
+        logger.info(f"[OTP BYPASS] +91-XXXXXX{phone[-4:]}: {otp}")
+    else:
+        sent = await send_sms_otp(phone, otp)
+        if not sent:
+            raise HTTPException(status_code=502, detail="Could not send OTP SMS. Please try again.")
+
     return {"ok": True, "masked": phone[-4:]}
 
 @auth_router.post("/verify-otp", response_model=TokenOut)
@@ -213,13 +329,37 @@ async def verify_otp(body: OTPVerifyIn):
 
     if not OTP_BYPASS:
         record = await db.otps.find_one({"phone": phone})
-        if not record or record["otp"] != otp:
-            raise HTTPException(status_code=401, detail="Invalid OTP")
+        if not record:
+            raise HTTPException(status_code=401, detail="No OTP found — request a new one")
+
+        # Verify-attempt lock
+        attempts = record.get("verify_attempts", 0)
+        if attempts >= OTP_MAX_VERIFY_ATTEMPTS:
+            raise HTTPException(
+                status_code=429,
+                detail="Too many wrong attempts — request a new OTP"
+            )
+
+        if record["otp"] != otp:
+            # Increment attempt counter
+            await db.otps.update_one(
+                {"phone": phone},
+                {"$inc": {"verify_attempts": 1}}
+            )
+            remaining = OTP_MAX_VERIFY_ATTEMPTS - attempts - 1
+            raise HTTPException(
+                status_code=401,
+                detail=f"Invalid OTP — {remaining} attempt{'s' if remaining != 1 else ''} remaining"
+            )
+
         exp = datetime.fromisoformat(record["expires_at"])
         if exp.tzinfo is None:
             exp = exp.replace(tzinfo=timezone.utc)
         if datetime.now(timezone.utc) > exp:
             raise HTTPException(status_code=401, detail="OTP expired — request a new one")
+
+        # Consume OTP so it can't be reused
+        await db.otps.update_one({"phone": phone}, {"$unset": {"otp": "", "expires_at": ""}})
 
     is_new_user = False
     user_doc = await db.users.find_one({"phone": phone}, {"_id": 0})
@@ -262,10 +402,15 @@ async def verify_phone(body: dict, current: dict = Depends(_require_user)):
     existing = await db.users.find_one({"phone": phone, "id": {"$ne": current["user_id"]}})
     if existing:
         raise HTTPException(status_code=409, detail="This number is linked to another account")
+    await _check_otp_rate_limit(phone)
     otp = str(random.randint(1000, 9999))
-    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
-    await db.otps.update_one({"phone": phone}, {"$set": {"otp": otp, "expires_at": expires_at}}, upsert=True)
-    logger.info(f"[OTP phone-link] +91-XXXXXX{phone[-4:]}: {otp}")
+    await _store_otp(phone, otp)
+    if OTP_BYPASS:
+        logger.info(f"[OTP BYPASS phone-link] +91-XXXXXX{phone[-4:]}: {otp}")
+    else:
+        sent = await send_sms_otp(phone, otp)
+        if not sent:
+            raise HTTPException(status_code=502, detail="Could not send OTP SMS. Please try again.")
     return {"ok": True}
 
 @users_router.post("/me/confirm-phone")
@@ -277,12 +422,20 @@ async def confirm_phone(body: dict, current: dict = Depends(_require_user)):
         raise HTTPException(status_code=400, detail="Invalid phone number")
     if not OTP_BYPASS:
         record = await db.otps.find_one({"phone": phone})
-        if not record or record["otp"] != otp:
-            raise HTTPException(status_code=401, detail="Invalid OTP")
+        if not record:
+            raise HTTPException(status_code=401, detail="No OTP found — request a new one")
+        attempts = record.get("verify_attempts", 0)
+        if attempts >= OTP_MAX_VERIFY_ATTEMPTS:
+            raise HTTPException(status_code=429, detail="Too many wrong attempts — request a new OTP")
+        if record["otp"] != otp:
+            await db.otps.update_one({"phone": phone}, {"$inc": {"verify_attempts": 1}})
+            remaining = OTP_MAX_VERIFY_ATTEMPTS - attempts - 1
+            raise HTTPException(status_code=401, detail=f"Invalid OTP — {remaining} attempt{'s' if remaining != 1 else ''} remaining")
         exp = datetime.fromisoformat(record["expires_at"])
         if exp.tzinfo is None: exp = exp.replace(tzinfo=timezone.utc)
         if datetime.now(timezone.utc) > exp:
             raise HTTPException(status_code=401, detail="OTP expired — request a new one")
+        await db.otps.update_one({"phone": phone}, {"$unset": {"otp": "", "expires_at": ""}})
     await db.users.update_one(
         {"id": current["user_id"]},
         {"$set": {"phone": phone, "updated_at": datetime.now(timezone.utc).isoformat()}}
