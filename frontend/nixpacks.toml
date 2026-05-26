@@ -2,10 +2,7 @@
 cmds = ["npm install --legacy-peer-deps"]
 
 [phases.build]
-cmds = [
-  "npm run build",
-  "curl -fsSL 'https://github.com/caddyserver/caddy/releases/download/v2.9.1/caddy_2.9.1_linux_amd64.tar.gz' | tar -xz caddy && chmod +x caddy"
-]
+cmds = ["npm run build"]
 
 [start]
-cmd = "/app/caddy run --config /app/Caddyfile --adapter caddyfile"
+cmd = "node server.js"

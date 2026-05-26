@@ -3,5 +3,5 @@ builder = "nixpacks"
 buildCommand = "npm run build"
 
 [deploy]
-startCommand = "/app/caddy run --config /app/Caddyfile --adapter caddyfile"
+startCommand = "node server.js"
 restartPolicyType = "on_failure"
