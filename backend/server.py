@@ -3400,19 +3400,32 @@ NETC_BANKS = [
     {"name": "Yes Bank",                 "upi": "yesbank",    "slug": "yes-fastag",      "keywords": ["yes bank", "yes"]},
 ]
 
-@tools_router.get("/recharge/banks")
-async def recharge_banks():
-    """Returns all NETC member banks with their UPI handles for FASTag recharge."""
-    return [{"name": b["name"], "upi": b["upi"], "slug": b["slug"]} for b in NETC_BANKS]
+async def _get_netc_banks_from_db() -> List[dict]:
+    """Load NETC banks from DB; fall back to hardcoded list if DB is empty."""
+    rows = await db.netc_banks.find({}, {"_id": 0}).to_list(200)
+    if rows:
+        return rows
+    return NETC_BANKS  # fallback to compile-time defaults
 
 
-def _match_netc_bank(bank_name: str) -> Optional[dict]:
+async def _match_netc_bank(bank_name: str) -> Optional[dict]:
     """Try to match a bank name string (from FASTag status API) to a NETC bank entry."""
     name_lower = bank_name.lower()
-    for bank in NETC_BANKS:
-        if any(kw in name_lower for kw in bank["keywords"]):
+    banks = await _get_netc_banks_from_db()
+    for bank in banks:
+        if any(kw in name_lower for kw in bank.get("keywords", [])):
             return bank
     return None
+
+
+@tools_router.get("/recharge/banks")
+async def recharge_banks():
+    """Returns all active NETC member banks with their UPI handles for FASTag recharge."""
+    banks = await _get_netc_banks_from_db()
+    return [
+        {"name": b["name"], "upi": b["upi"], "slug": b["slug"]}
+        for b in banks if b.get("is_active", True)
+    ]
 
 
 @tools_router.get("/recharge/tag-info")
@@ -3460,7 +3473,7 @@ async def recharge_tag_info(vehicle: str):
                     if m: status_bg = m.group(1).strip()
                 is_active = "active" in status_text.lower() or status_bg == "#b7edc5"
 
-                netc_bank = _match_netc_bank(bank_name)
+                netc_bank = await _match_netc_bank(bank_name)
                 tags.append({
                     "bank":         bank_name,
                     "tag_id":       tag_id,
@@ -3476,6 +3489,59 @@ async def recharge_tag_info(vehicle: str):
             return {"vehicle": vehicle, "tags": tags}
     except httpx.RequestError as e:
         raise HTTPException(status_code=502, detail=f"Upstream error: {str(e)}")
+
+
+# ─── Admin: NETC Banks CRUD ────────────────────────────────────────────────────
+
+class NetcBankIn(BaseModel):
+    slug: str
+    name: str
+    upi: str
+    keywords: List[str] = []
+    is_active: bool = True
+
+@admin_router.get("/netc-banks", dependencies=[Depends(_check_admin)])
+async def admin_list_netc_banks():
+    banks = await db.netc_banks.find({}, {"_id": 0}).sort("name", 1).to_list(200)
+    return banks
+
+@admin_router.post("/netc-banks", dependencies=[Depends(_check_admin)])
+async def admin_create_netc_bank(body: NetcBankIn):
+    existing = await db.netc_banks.find_one({"slug": body.slug})
+    if existing:
+        raise HTTPException(status_code=409, detail=f"Bank with slug '{body.slug}' already exists")
+    doc = body.dict()
+    doc["created_at"] = datetime.utcnow().isoformat()
+    await db.netc_banks.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+@admin_router.patch("/netc-banks/{slug}", dependencies=[Depends(_check_admin)])
+async def admin_update_netc_bank(slug: str, body: dict):
+    body.pop("_id", None)
+    body.pop("slug", None)  # slug is the key, don't allow changing it
+    body["updated_at"] = datetime.utcnow().isoformat()
+    result = await db.netc_banks.update_one({"slug": slug}, {"$set": body})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Bank not found")
+    updated = await db.netc_banks.find_one({"slug": slug}, {"_id": 0})
+    return updated
+
+@admin_router.delete("/netc-banks/{slug}", dependencies=[Depends(_check_admin)])
+async def admin_delete_netc_bank(slug: str):
+    result = await db.netc_banks.delete_one({"slug": slug})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Bank not found")
+    return {"ok": True}
+
+@admin_router.post("/netc-banks/reset", dependencies=[Depends(_check_admin)])
+async def admin_reset_netc_banks():
+    """Wipe db.netc_banks and re-seed from the hardcoded NETC_BANKS list."""
+    await db.netc_banks.delete_many({})
+    now = datetime.utcnow().isoformat()
+    docs = [{**b, "is_active": True, "created_at": now} for b in NETC_BANKS]
+    await db.netc_banks.insert_many(docs)
+    return {"seeded": len(docs)}
 
 
 # ─── Payments ─────────────────────────────────────────────────────────────────
@@ -3942,6 +4008,8 @@ async def create_indexes():
     await db.articles.create_index([("is_published", 1), ("category", 1)])
     # fastag orders
     await db.fastag_orders.create_index([("order_id", 1)], unique=True)
+    # netc banks
+    await db.netc_banks.create_index([("slug", 1)], unique=True)
     await db.fastag_orders.create_index([("customer_phone", 1), ("created_at", -1)])
     await db.fastag_orders.create_index([("status", 1), ("created_at", -1)])
     logger.info("MongoDB indexes ensured")
@@ -3950,6 +4018,12 @@ async def create_indexes():
 async def startup_db():
     try:
         await create_indexes()
+        # Seed NETC banks collection on first run (idempotent — skip if already populated)
+        if await db.netc_banks.count_documents({}) == 0:
+            now = datetime.utcnow().isoformat()
+            docs = [{**b, "is_active": True, "created_at": now} for b in NETC_BANKS]
+            await db.netc_banks.insert_many(docs)
+            logger.info(f"Seeded {len(docs)} NETC banks into db.netc_banks")
     except Exception as e:
         logger.warning(f"MongoDB not reachable on startup (indexes skipped): {e}")
         logger.warning("Set MONGO_URL env var to a valid MongoDB connection string.")

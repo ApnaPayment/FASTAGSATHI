@@ -12,7 +12,7 @@ import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import { BANKS as SEED_BANKS, STATES as SEED_STATES } from "@/data/seed";
 
-const TABS = ["Dashboard", "Applications", "Jobs", "Sathis", "Customers", "Promo Codes", "Settlements", "FASTag Orders", "Plazas", "Sitemap", "Content", "Branding"];
+const TABS = ["Dashboard", "Applications", "Jobs", "Sathis", "Customers", "Promo Codes", "Settlements", "FASTag Orders", "Plazas", "Sitemap", "Content", "Recharge Banks", "Branding"];
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 const fullUrl = (url) => { if (!url) return ""; if (url.startsWith("http") || url.startsWith("data:")) return url; if (BACKEND.includes("localhost") && !window.location.hostname.includes("localhost")) return ""; return `${BACKEND}${url}`; };
@@ -190,8 +190,9 @@ function Dashboard({ onLogout }) {
         {tab === "FASTag Orders" && <FasTagOrdersTab />}
         {tab === "Plazas"       && <PlazasTab />}
         {tab === "Sitemap"      && <SitemapTab />}
-        {tab === "Content"      && <ContentTab />}
-        {tab === "Branding"     && <BrandingTab />}
+        {tab === "Content"         && <ContentTab />}
+        {tab === "Recharge Banks"  && <RechargeBanksTab />}
+        {tab === "Branding"        && <BrandingTab />}
       </main>
     </div>
   );
@@ -3367,6 +3368,298 @@ function UploadZone({ label, hint, accept, current, onUpload, onDelete, uploadin
     </div>
   );
 }
+
+// ─── Recharge Banks Tab ────────────────────────────────────────────────────────
+
+const BLANK_BANK = { slug: "", name: "", upi: "", keywords: "", is_active: true };
+
+function RechargeBanksTab() {
+  const [banks, setBanks]     = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving]   = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [err, setErr]         = useState(null);
+  const [msg, setMsg]         = useState(null);
+  const [form, setForm]       = useState(BLANK_BANK);
+  const [editSlug, setEditSlug] = useState(null); // null = create mode
+
+  const load = () => {
+    setLoading(true);
+    adminApi.netcBanks()
+      .then(r => setBanks(r.data))
+      .catch(() => setErr("Failed to load banks."))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const setField = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  // Auto-generate slug from name
+  const handleNameChange = (v) => {
+    setField("name", v);
+    if (!editSlug) {
+      setField("slug", v.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-fastag");
+    }
+  };
+
+  const startEdit = (bank) => {
+    setEditSlug(bank.slug);
+    setForm({
+      slug:     bank.slug,
+      name:     bank.name,
+      upi:      bank.upi,
+      keywords: (bank.keywords || []).join(", "),
+      is_active: bank.is_active !== false,
+    });
+    setErr(null);
+    setMsg(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const cancelEdit = () => {
+    setEditSlug(null);
+    setForm(BLANK_BANK);
+    setErr(null);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.upi.trim()) {
+      setErr("Name and UPI handle are required.");
+      return;
+    }
+    setErr(null);
+    setSaving(true);
+    try {
+      const payload = {
+        ...form,
+        keywords: form.keywords.split(",").map(k => k.trim().toLowerCase()).filter(Boolean),
+      };
+      if (editSlug) {
+        await adminApi.updateNetcBank(editSlug, payload);
+        setMsg(`Updated "${form.name}"`);
+      } else {
+        await adminApi.createNetcBank(payload);
+        setMsg(`Added "${form.name}"`);
+      }
+      setEditSlug(null);
+      setForm(BLANK_BANK);
+      load();
+    } catch (e) {
+      setErr(e?.response?.data?.detail || "Failed to save bank.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (slug, name) => {
+    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    try {
+      await adminApi.deleteNetcBank(slug);
+      load();
+    } catch {
+      setErr("Failed to delete bank.");
+    }
+  };
+
+  const handleToggle = async (bank) => {
+    try {
+      await adminApi.updateNetcBank(bank.slug, { is_active: !bank.is_active });
+      load();
+    } catch {
+      setErr("Failed to toggle bank.");
+    }
+  };
+
+  const handleReset = async () => {
+    if (!window.confirm("Reset all NETC banks to defaults? Any custom edits will be lost.")) return;
+    setResetting(true);
+    try {
+      const r = await adminApi.resetNetcBanks();
+      setMsg(`Reset complete — ${r.data.seeded} banks restored.`);
+      load();
+    } catch {
+      setErr("Failed to reset banks.");
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="font-display font-black text-2xl">Recharge Banks (NETC UPI)</h2>
+        <div className="flex gap-2">
+          <button
+            onClick={handleReset}
+            disabled={resetting}
+            className="flex items-center gap-1.5 text-sm font-bold px-4 py-2 border-2 border-[#F59E0B] text-[#F59E0B] rounded-xl hover:bg-[#FFFBEB] disabled:opacity-50 transition-colors"
+          >
+            {resetting ? "Resetting…" : "↺ Reset to Defaults"}
+          </button>
+          <RefreshBtn onClick={load} />
+        </div>
+      </div>
+
+      {err && <div className="mb-4 px-4 py-3 bg-[#FEF2F2] border border-[#DC2626] text-[#DC2626] rounded-xl text-sm">{err}</div>}
+      {msg && <div className="mb-4 px-4 py-3 bg-[#F0FDF4] border border-[#059669] text-[#059669] rounded-xl text-sm">{msg}</div>}
+
+      {/* Form */}
+      <div className="bg-white border-2 border-[#0A0A0A] rounded-2xl p-5 mb-6">
+        <h3 className="font-bold text-lg mb-4">{editSlug ? `Editing: ${editSlug}` : "Add new bank"}</h3>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-bold text-[#4B5563] uppercase tracking-widest mb-1">Bank Name *</label>
+            <input
+              value={form.name}
+              onChange={e => handleNameChange(e.target.value)}
+              placeholder="e.g. HDFC Bank"
+              className="w-full border-2 border-[#E5E7EB] focus:border-[#FF6B00] rounded-xl px-3 py-2 text-sm outline-none"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-[#4B5563] uppercase tracking-widest mb-1">UPI Handle *</label>
+            <input
+              value={form.upi}
+              onChange={e => setField("upi", e.target.value.trim())}
+              placeholder="e.g. hdfcbank"
+              className="w-full border-2 border-[#E5E7EB] focus:border-[#FF6B00] rounded-xl px-3 py-2 text-sm outline-none font-mono"
+              required
+            />
+            {form.upi && (
+              <p className="mt-1 text-xs text-[#4B5563]">UPI VPA will be: <span className="font-mono font-bold">netc.TAGID@{form.upi}</span></p>
+            )}
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-[#4B5563] uppercase tracking-widest mb-1">Slug</label>
+            <input
+              value={form.slug}
+              onChange={e => setField("slug", e.target.value)}
+              placeholder="e.g. hdfc-fastag"
+              className="w-full border-2 border-[#E5E7EB] focus:border-[#FF6B00] rounded-xl px-3 py-2 text-sm outline-none font-mono"
+              disabled={!!editSlug}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-[#4B5563] uppercase tracking-widest mb-1">
+              Keywords (comma-separated)
+            </label>
+            <input
+              value={form.keywords}
+              onChange={e => setField("keywords", e.target.value)}
+              placeholder="e.g. hdfc, hdfc bank"
+              className="w-full border-2 border-[#E5E7EB] focus:border-[#FF6B00] rounded-xl px-3 py-2 text-sm outline-none"
+            />
+            <p className="mt-1 text-xs text-[#9CA3AF]">Used to auto-match bank name from FASTag status API</p>
+          </div>
+          <div className="flex items-center gap-3 sm:col-span-2">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={form.is_active}
+                onChange={e => setField("is_active", e.target.checked)}
+                className="w-4 h-4 accent-[#FF6B00]"
+              />
+              <span className="text-sm font-semibold">Active (visible on recharge page)</span>
+            </label>
+          </div>
+          <div className="flex gap-2 sm:col-span-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="bg-[#FF6B00] text-white font-bold px-6 py-2 rounded-xl hover:bg-[#E66000] disabled:opacity-50 shadow-[0_3px_0_#0A0A0A] transition-all active:translate-y-0.5 active:shadow-none"
+            >
+              {saving ? "Saving…" : editSlug ? "Update Bank" : "Add Bank"}
+            </button>
+            {editSlug && (
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="border-2 border-[#E5E7EB] text-[#4B5563] font-bold px-6 py-2 rounded-xl hover:border-[#0A0A0A] transition-colors"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        </form>
+      </div>
+
+      {/* Table */}
+      {loading ? (
+        <div className="text-center py-16 text-[#9CA3AF]">Loading…</div>
+      ) : (
+        <div className="bg-white border-2 border-[#0A0A0A] rounded-2xl overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-[#F8F9FA] border-b-2 border-[#0A0A0A]">
+              <tr>
+                <th className="text-left px-4 py-3 font-black text-xs uppercase tracking-widest">Bank Name</th>
+                <th className="text-left px-4 py-3 font-black text-xs uppercase tracking-widest">UPI Handle</th>
+                <th className="text-left px-4 py-3 font-black text-xs uppercase tracking-widest hidden sm:table-cell">Keywords</th>
+                <th className="text-left px-4 py-3 font-black text-xs uppercase tracking-widest">Status</th>
+                <th className="text-left px-4 py-3 font-black text-xs uppercase tracking-widest">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {banks.map((bank, i) => (
+                <tr key={bank.slug} className={`border-b border-[#F3F4F6] ${i % 2 === 0 ? "" : "bg-[#FAFAFA]"}`}>
+                  <td className="px-4 py-3 font-semibold">{bank.name}</td>
+                  <td className="px-4 py-3">
+                    <span className="font-mono bg-[#F3F4F6] px-2 py-0.5 rounded text-xs">{bank.upi}</span>
+                  </td>
+                  <td className="px-4 py-3 text-[#4B5563] text-xs hidden sm:table-cell">
+                    {(bank.keywords || []).join(", ") || "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => handleToggle(bank)}
+                      className={`text-xs font-bold px-2.5 py-1 rounded-full transition-colors ${
+                        bank.is_active !== false
+                          ? "bg-[#F0FDF4] text-[#059669] hover:bg-[#DCFCE7]"
+                          : "bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FEE2E2]"
+                      }`}
+                    >
+                      {bank.is_active !== false ? "Active" : "Inactive"}
+                    </button>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => startEdit(bank)}
+                        className="text-xs font-bold text-[#4B5563] hover:text-[#FF6B00] transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(bank.slug, bank.name)}
+                        className="text-xs font-bold text-[#DC2626] hover:text-[#B91C1C] transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {banks.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-12 text-center text-[#9CA3AF]">
+                    No banks found. Click "Reset to Defaults" to seed the list.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          <div className="px-4 py-3 border-t border-[#F3F4F6] text-xs text-[#9CA3AF]">
+            {banks.length} banks · Active ones appear in the recharge page bank picker
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Branding Tab ─────────────────────────────────────────────────────────────
 
 function BrandingTab() {
   const site = useBranding();

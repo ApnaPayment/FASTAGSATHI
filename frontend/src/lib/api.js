@@ -195,6 +195,12 @@ export const adminApi = {
   updateFastagOrder:  (id, d)  => api.patch(`/api/admin/fastag-orders/${id}`, d, { headers: adminHeaders() }),
   fastagPrices:       ()       => api.get("/api/admin/fastag-prices", { headers: adminHeaders() }),
   updateFastagPrice:  (slug,d) => api.patch(`/api/admin/fastag-prices/${slug}`, d, { headers: adminHeaders() }),
+  // NETC / Recharge banks
+  netcBanks:        ()        => api.get("/api/admin/netc-banks",          { headers: adminHeaders() }),
+  createNetcBank:   (data)    => api.post("/api/admin/netc-banks",         data, { headers: adminHeaders() }),
+  updateNetcBank:   (slug, d) => api.patch(`/api/admin/netc-banks/${slug}`, d,   { headers: adminHeaders() }),
+  deleteNetcBank:   (slug)    => api.delete(`/api/admin/netc-banks/${slug}`,      { headers: adminHeaders() }),
+  resetNetcBanks:   ()        => api.post("/api/admin/netc-banks/reset",   {},   { headers: adminHeaders() }),
 };
 
 export default api;
