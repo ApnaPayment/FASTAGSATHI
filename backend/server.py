@@ -3652,9 +3652,9 @@ app.include_router(api)
 # ─── Dynamic sitemap ──────────────────────────────────────────────────────────
 
 SITE         = "https://apnafastag.com"
-# Backend's own public URL — used so the sitemapindex <loc> entries for sub-sitemaps
-# resolve to actual XML endpoints (not the frontend SPA which returns HTML).
-BACKEND_SITE = "https://fastagsathi-production.up.railway.app"
+# Sub-sitemaps must be on the SAME domain as the site in Search Console,
+# otherwise Google ignores them (cross-domain sitemap restriction).
+BACKEND_SITE = SITE
 
 # ─── Sitemap helpers ──────────────────────────────────────────────────────────
 
@@ -3678,6 +3678,7 @@ def _today() -> str:
 async def sitemap_index():
     from fastapi.responses import Response as FResponse
     today = _today()
+    # Base sub-sitemaps (always present)
     subs = [
         "sitemap-static.xml",
         "sitemap-plazas.xml",
@@ -3685,9 +3686,14 @@ async def sitemap_index():
         "sitemap-banks.xml",
         "sitemap-highways.xml",
         "sitemap-cities.xml",
-        "sitemap-help.xml",
         "sitemap-sathis.xml",
     ]
+    # Paginated help sitemaps — one file per 1000 articles (safe below Google's 50k limit)
+    article_count = await db.articles.count_documents({"is_published": True})
+    pages = max(1, -(-article_count // 1000))  # ceiling division
+    for p in range(1, pages + 1):
+        subs.append(f"sitemap-help-{p}.xml")
+
     rows = [f'  <sitemap><loc>{BACKEND_SITE}/{s}</loc><lastmod>{today}</lastmod></sitemap>' for s in subs]
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
     xml += '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
@@ -3758,12 +3764,23 @@ async def sitemap_cities():
     rows = [_url(f"{SITE}/city/{c['slug']}", "0.75", "monthly", (c.get("updated_at") or "")[:10]) for c in cities]
     return FResponse(content=_urlset(rows), media_type="application/xml")
 
-@app.get("/sitemap-help.xml", include_in_schema=False)
-async def sitemap_help():
+@app.get("/sitemap-help-{page}.xml", include_in_schema=False)
+async def sitemap_help_page(page: int):
     from fastapi.responses import Response as FResponse
-    articles = await db.articles.find({"is_published": True}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
+    PAGE_SIZE = 1000
+    skip = (page - 1) * PAGE_SIZE
+    articles = await db.articles.find(
+        {"is_published": True},
+        {"_id": 0, "slug": 1, "updated_at": 1}
+    ).sort("created_at", 1).skip(skip).limit(PAGE_SIZE).to_list(PAGE_SIZE)
     rows = [_url(f"{SITE}/help/{a['slug']}", "0.70", "monthly", (a.get("updated_at") or "")[:10]) for a in articles]
     return FResponse(content=_urlset(rows), media_type="application/xml")
+
+# Legacy redirect so any old bookmark of /sitemap-help.xml still works
+@app.get("/sitemap-help.xml", include_in_schema=False)
+async def sitemap_help_redirect():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/sitemap-help-1.xml", status_code=301)
 
 @app.get("/sitemap-sathis.xml", include_in_schema=False)
 async def sitemap_sathis():
