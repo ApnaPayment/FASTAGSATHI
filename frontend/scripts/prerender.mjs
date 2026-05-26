@@ -551,7 +551,15 @@ async function emit() {
     const res = await fetch(`${backendUrl}/api/branding`, { signal: AbortSignal.timeout(8000) });
     if (res.ok) {
       const d = await res.json();
-      // logo_url and favicon_url are now proper HTTP URLs (not base64) — safe to include.
+      // Ensure logo/favicon URLs are absolute — backend may return relative paths
+      // (/api/branding/logo-image?t=...) which resolve to apnafastag.com incorrectly.
+      // Prepend backendUrl so the preload and window.__BRANDING__ use the Railway origin.
+      if (d.logo_url && d.logo_url.startsWith("/")) {
+        d.logo_url = `${backendUrl}${d.logo_url}`;
+      }
+      if (d.favicon_url && d.favicon_url.startsWith("/")) {
+        d.favicon_url = `${backendUrl}${d.favicon_url}`;
+      }
       // Escape </script> sequences to prevent HTML injection.
       const json = JSON.stringify(d).replace(/<\//g, "<\\/");
       // Use || so localStorage (seeded by the inline script in index.html) always wins

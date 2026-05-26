@@ -1,0 +1,15 @@
+:{$PORT} {
+    # Proxy all /api/* requests to the Railway backend
+    handle /api/* {
+        reverse_proxy https://fastagsathi-production.up.railway.app {
+            header_up Host fastagsathi-production.up.railway.app
+        }
+    }
+
+    # Serve the React SPA for everything else
+    handle {
+        root * /app/build
+        try_files {path} /index.html
+        file_server
+    }
+}

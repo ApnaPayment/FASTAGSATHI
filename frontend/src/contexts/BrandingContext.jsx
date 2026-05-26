@@ -31,7 +31,7 @@ export const SITE_DEFAULTS = {
 // ── localStorage cache (stale-while-revalidate) ──────────────────────────────
 // Key versioned so a schema change auto-invalidates old entries.
 // Bump version whenever logo URL format changes (forces cache invalidation in browsers)
-const CACHE_KEY = "apnafastag_branding_v3";
+const CACHE_KEY = "apnafastag_branding_v4";
 
 function readCache() {
   try {

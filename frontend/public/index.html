@@ -34,7 +34,7 @@
         <!-- Synchronously seed window.__BRANDING__ from localStorage so BrandingContext
              initialises with real data on frame-1 even if the prerendered HTML is stale.
              Must run before any React code; do NOT move this script. -->
-        <script>!function(){try{var b=localStorage.getItem("apnafastag_branding_v2");if(b)window.__BRANDING__=JSON.parse(b)}catch(e){}}();</script>
+        <script>!function(){try{var b=localStorage.getItem("apnafastag_branding_v4");if(b)window.__BRANDING__=JSON.parse(b)}catch(e){}}();</script>
         <!-- Google Analytics 4 — only loads when REACT_APP_GA4_ID is set -->
         <script>
           (function(){var id="%REACT_APP_GA4_ID%";if(!id||id.indexOf("%")==0)return;var s=document.createElement("script");s.async=true;s.src="https://www.googletagmanager.com/gtag/js?id="+id;document.head.appendChild(s);window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;gtag("js",new Date());gtag("config",id,{send_page_view:false});})();

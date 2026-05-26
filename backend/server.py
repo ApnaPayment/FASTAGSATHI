@@ -33,6 +33,14 @@ MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
 DB_NAME = os.environ.get("DB_NAME", "apnafastag")
 JWT_SECRET = os.environ.get("JWT_SECRET", "sathi-dev-secret-change-in-prod")
 ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "sathi-admin-2026")
+# Absolute origin of THIS backend service (used for logo/favicon image URLs).
+# Reads RAILWAY_PUBLIC_DOMAIN which Railway injects automatically into backend services.
+# Falls back to the known production URL.
+_railway_domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")
+BACKEND_ORIGIN = (
+    f"https://{_railway_domain}" if _railway_domain
+    else "https://fastagsathi-production.up.railway.app"
+)
 JWT_ALGORITHM = "HS256"
 # When True any 4-digit OTP is accepted (dev / demo mode)
 OTP_BYPASS = os.environ.get("OTP_BYPASS", "true").lower() == "true"
@@ -560,10 +568,10 @@ async def get_branding():
     # The ?t= timestamp param busts the cache whenever admin re-uploads.
     logo_ts = doc.get("logo_ts", 0) if doc else 0
     fav_ts  = doc.get("favicon_ts", 0) if doc else 0
-    # Use RELATIVE paths so the URL works regardless of which domain (custom or Railway)
-    # the user accesses the site from — avoids stale cached absolute URLs breaking logos.
-    result["logo_url"]    = f"/api/branding/logo-image?t={logo_ts}"    if result.get("logo_url")    else None
-    result["favicon_url"] = f"/api/branding/favicon-image?t={fav_ts}" if result.get("favicon_url") else None
+    # Use ABSOLUTE URLs so the image loads correctly even before the Caddy proxy is in place.
+    # BACKEND_ORIGIN is the Railway backend's own public URL (never apnafastag.com).
+    result["logo_url"]    = f"{BACKEND_ORIGIN}/api/branding/logo-image?t={logo_ts}"    if result.get("logo_url")    else None
+    result["favicon_url"] = f"{BACKEND_ORIGIN}/api/branding/favicon-image?t={fav_ts}" if result.get("favicon_url") else None
     return result
 
 def _serve_branding_image(data_url: str):
@@ -1912,7 +1920,7 @@ async def admin_upload_logo(file: UploadFile = File(...)):
         upsert=True,
     )
     logger.info(f"Logo uploaded — {ext}, {len(final_bytes):,} bytes")
-    return {"ok": True, "logo_url": f"/api/branding/logo-image?t={logo_ts}"}
+    return {"ok": True, "logo_url": f"{BACKEND_ORIGIN}/api/branding/logo-image?t={logo_ts}"}
 
 
 @admin_router.post("/branding/upload-favicon", dependencies=[Depends(_check_admin)])
@@ -1959,7 +1967,7 @@ async def admin_upload_favicon(file: UploadFile = File(...)):
         upsert=True,
     )
     logger.info(f"Favicon uploaded — {ext}, {len(final_bytes):,} bytes")
-    return {"ok": True, "favicon_url": f"/api/branding/favicon-image?t={fav_ts}"}
+    return {"ok": True, "favicon_url": f"{BACKEND_ORIGIN}/api/branding/favicon-image?t={fav_ts}"}
 
 @admin_router.delete("/branding/logo", dependencies=[Depends(_check_admin)])
 async def admin_delete_logo():
