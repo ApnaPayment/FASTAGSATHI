@@ -89,7 +89,9 @@ export const fastagOrderApi = {
 };
 
 export const toolsApi = {
-  fastagStatus: (vehicle) => api.get("/api/tools/fastag-status", { params: { vehicle } }),
+  fastagStatus:    (vehicle) => api.get("/api/tools/fastag-status",     { params: { vehicle } }),
+  rechargeBanks:   ()        => api.get("/api/tools/recharge/banks"),
+  rechargeTagInfo: (vehicle) => api.get("/api/tools/recharge/tag-info", { params: { vehicle } }),
 };
 
 export const paymentsApi = {

@@ -38,6 +38,7 @@ import BalanceCheckPage from "@/pages/tools/BalanceCheckPage";
 import TollCalculatorPage from "@/pages/tools/TollCalculatorPage";
 import DisputeTrackerPage from "@/pages/tools/DisputeTrackerPage";
 import FasTagStatusPage from "@/pages/tools/FasTagStatusPage";
+import RechargeTagPage from "@/pages/tools/RechargeTagPage";
 import FindSathiPage from "@/pages/FindSathiPage";
 import LoginPage from "@/pages/LoginPage";
 import SathiProfilePage from "@/pages/SathiProfilePage";
@@ -107,6 +108,7 @@ function App() {
             {/* Tools */}
             <Route path="tools/fastag-balance-check" element={<BalanceCheckPage />} />
             <Route path="tools/fastag-status" element={<FasTagStatusPage />} />
+            <Route path="tools/fastag-recharge" element={<RechargeTagPage />} />
             <Route path="tools/toll-calculator" element={<TollCalculatorPage />} />
             <Route path="tools/dispute-tracker" element={<DisputeTrackerPage />} />
 

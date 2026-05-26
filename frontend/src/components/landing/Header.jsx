@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation } from "react-router-dom";
 import {
   Menu, X, User, LogOut, LayoutDashboard,
-  ScanSearch, Briefcase, ChevronDown, Tag,
+  ScanSearch, Briefcase, ChevronDown, Tag, Zap,
 } from "lucide-react";
 import { track } from "@/lib/analytics";
 import { useAuth } from "@/contexts/AuthContext";
@@ -171,6 +171,13 @@ export default function Header() {
                     <ScanSearch className="w-4 h-4 text-[#FF6B00]" /> {t("nav.fastagStatus")}
                   </Link>
                   <Link
+                    to="/tools/fastag-recharge"
+                    onClick={() => setUserOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-[#0A0A0A] hover:bg-[#F8F9FA] transition-colors"
+                  >
+                    <Zap className="w-4 h-4 text-[#FF6B00]" /> Recharge FASTag
+                  </Link>
+                  <Link
                     to="/buy-fastag"
                     onClick={() => setUserOpen(false)}
                     className="flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-[#0A0A0A] hover:bg-[#F8F9FA] transition-colors border-t border-[#F3F4F6]"
@@ -265,6 +272,12 @@ export default function Header() {
                 className="flex items-center gap-2 text-base font-semibold px-3 py-3 rounded-xl text-[#0A0A0A] hover:bg-[#F8F9FA]"
               >
                 <ScanSearch className="w-4 h-4 text-[#FF6B00]" /> {t("nav.fastagStatus")}
+              </Link>
+              <Link
+                to="/tools/fastag-recharge"
+                className="flex items-center gap-2 text-base font-semibold px-3 py-3 rounded-xl text-[#0A0A0A] hover:bg-[#F8F9FA]"
+              >
+                <Zap className="w-4 h-4 text-[#FF6B00]" /> Recharge FASTag
               </Link>
 
               {user && (
