@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import SEO, { articleSchema, faqSchema, breadcrumbSchema } from "@/components/seo/SEO";
 import { helpApi } from "@/lib/api";
-import { ChevronDown, Clock, Tag, Building2, MapPin, ArrowRight } from "lucide-react";
+import { ChevronDown, Clock, Tag, Building2, MapPin, ArrowRight, CalendarDays } from "lucide-react";
 
 const CAT_COLORS = {
   Disputes:     "bg-red-100 text-red-700 border-red-200",
@@ -140,6 +140,12 @@ export default function HelpArticlePage() {
               <Clock className="w-4 h-4" />
               {article.read_min} min read
             </span>
+            {(article.updated_at || article.created_at) && (
+              <span className="inline-flex items-center gap-1.5 text-white/50">
+                <CalendarDays className="w-4 h-4" />
+                {new Date(article.updated_at || article.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+              </span>
+            )}
             {article.related_bank && (
               <span className="inline-flex items-center gap-1.5 bg-white/10 border border-white/20 rounded-full px-3 py-1 text-xs font-bold text-white">
                 <Building2 className="w-3 h-3 text-[#FFD60A]" />

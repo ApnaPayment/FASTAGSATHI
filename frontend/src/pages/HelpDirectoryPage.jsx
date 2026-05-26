@@ -4,7 +4,14 @@ import SEO, { breadcrumbSchema } from "@/components/seo/SEO";
 import PageHero from "@/components/layout/PageHero";
 import { helpApi } from "@/lib/api";
 import { track } from "@/lib/analytics";
-import { Search, Clock, ChevronRight, Loader2, BookOpen } from "lucide-react";
+import { Search, Clock, ChevronRight, Loader2, BookOpen, CalendarDays } from "lucide-react";
+
+function fmtDate(iso) {
+  if (!iso) return null;
+  try {
+    return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  } catch { return null; }
+}
 
 const CATEGORIES = ["All", "Disputes", "Balance", "KYC", "Blacklist", "Installation", "General"];
 
@@ -133,7 +140,7 @@ export default function HelpDirectoryPage() {
                     <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${CAT_COLORS[a.category] || "bg-gray-100 text-gray-700"}`}>
                       {a.category}
                     </span>
-                    <span className="flex items-center gap-1 text-[10px] text-[#9CA3AF] flex-shrink-0">
+                    <span className="flex items-center gap-1.5 text-[10px] text-[#9CA3AF] flex-shrink-0">
                       <Clock className="w-3 h-3" />{a.read_min} min
                     </span>
                   </div>
@@ -141,8 +148,15 @@ export default function HelpDirectoryPage() {
                     {a.title}
                   </h3>
                   <p className="text-xs text-[#4B5563] line-clamp-2 leading-relaxed">{a.excerpt}</p>
-                  <div className="mt-3 flex items-center gap-1 text-xs font-bold text-[#FF6B00]">
-                    Read guide <ChevronRight className="w-3 h-3" />
+                  <div className="mt-3 flex items-center justify-between">
+                    <div className="flex items-center gap-1 text-xs font-bold text-[#FF6B00]">
+                      Read guide <ChevronRight className="w-3 h-3" />
+                    </div>
+                    {fmtDate(a.updated_at || a.created_at) && (
+                      <span className="flex items-center gap-1 text-[10px] text-[#9CA3AF]">
+                        <CalendarDays className="w-3 h-3" />{fmtDate(a.updated_at || a.created_at)}
+                      </span>
+                    )}
                   </div>
                 </Link>
               ))}

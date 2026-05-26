@@ -779,9 +779,16 @@ async def list_help(
         ]
     skip = (max(page, 1) - 1) * limit
     total = await db.articles.count_documents(query)
-    docs  = await db.articles.find(query, {"_id": 0, "body": 0}).sort(
+    # Fetch body too so we can compute accurate read_min; strip it before returning
+    docs  = await db.articles.find(query, {"_id": 0}).sort(
         "created_at", -1
     ).skip(skip).limit(limit).to_list(limit)
+    for d in docs:
+        body = d.pop("body", "") or ""
+        word_count = len(body.split())
+        if word_count > 50:
+            d["read_min"] = max(1, round(word_count / 200))
+        # else keep stored read_min
     return {"total": total, "page": page, "limit": limit, "articles": docs}
 
 @help_router.get("/{slug}")
@@ -789,6 +796,11 @@ async def get_help_article(slug: str):
     doc = await db.articles.find_one({"slug": slug, "is_published": True}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Article not found")
+    # Recalculate read_min from actual body word count
+    body = doc.get("body", "") or ""
+    word_count = len(body.split())
+    if word_count > 50:
+        doc["read_min"] = max(1, round(word_count / 200))
     return doc
 
 # ─── Plaza routes ─────────────────────────────────────────────────────────────
