@@ -141,9 +141,20 @@ async function helpOgTags(slug) {
 
 // ── Inject OG block into index.html ──────────────────────────────────────────
 function injectOg(html, ogBlock) {
-  // Replace the placeholder <title> and any existing generic og: tags
-  // We insert right after <head> so our tags appear first
-  return html.replace(/<head>/, `<head>\n  ${ogBlock}`);
+  let out = html;
+
+  // 1. Replace <title>…</title> with ours
+  out = out.replace(/<title>[^<]*<\/title>/i, "");
+
+  // 2. Strip ALL existing og: and twitter: meta tags and generic description
+  out = out.replace(/<meta\s[^>]*property="og:[^"]*"[^>]*\/?>/gi, "");
+  out = out.replace(/<meta\s[^>]*name="twitter:[^"]*"[^>]*\/?>/gi, "");
+  out = out.replace(/<meta\s[^>]*name="description"[^>]*\/?>/gi, "");
+
+  // 3. Insert our block right after <head> (case-insensitive)
+  out = out.replace(/<head>/i, `<head>\n  ${ogBlock}`);
+
+  return out;
 }
 
 // ── Serve index.html with optional OG injection ───────────────────────────────
