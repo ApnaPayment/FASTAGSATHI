@@ -35,10 +35,21 @@ const MIME = {
   ".webp":  "image/webp",
 };
 
+// Headers that must NOT be forwarded between proxy hops (RFC 2616 §13.5.1)
+const HOP_BY_HOP = new Set([
+  "connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
+  "te", "trailers", "transfer-encoding", "upgrade",
+]);
+
 // ── Proxy handler ──────────────────────────────────────────────────────────────
 function proxyToBackend(req, res) {
-  const headers = { ...req.headers, host: BACKEND };
-  delete headers["accept-encoding"]; // avoid compressed responses we can't pipe cleanly
+  // Build a clean set of request headers — only forward safe ones
+  const headers = { host: BACKEND };
+  for (const [k, v] of Object.entries(req.headers)) {
+    if (!HOP_BY_HOP.has(k.toLowerCase()) && k.toLowerCase() !== "accept-encoding") {
+      headers[k] = v;
+    }
+  }
 
   const options = {
     hostname: BACKEND,
@@ -46,15 +57,26 @@ function proxyToBackend(req, res) {
     path: req.url,
     method: req.method,
     headers,
+    timeout: 30000, // 30 s — large sitemaps can take a moment
   };
 
   const proxyReq = https.request(options, (proxyRes) => {
-    res.writeHead(proxyRes.statusCode, proxyRes.headers);
+    // Strip hop-by-hop headers from backend response before forwarding
+    const fwdHeaders = {};
+    for (const [k, v] of Object.entries(proxyRes.headers)) {
+      if (!HOP_BY_HOP.has(k.toLowerCase())) fwdHeaders[k] = v;
+    }
+    res.writeHead(proxyRes.statusCode, fwdHeaders);
     proxyRes.pipe(res, { end: true });
   });
 
+  proxyReq.on("timeout", () => {
+    proxyReq.destroy();
+    if (!res.headersSent) { res.writeHead(504); res.end("Gateway Timeout"); }
+  });
+
   proxyReq.on("error", (err) => {
-    console.error("[proxy error]", err.message);
+    console.error("[proxy error]", req.url, err.message);
     if (!res.headersSent) {
       res.writeHead(502, { "Content-Type": "text/plain" });
       res.end("Bad Gateway");
