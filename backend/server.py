@@ -560,8 +560,10 @@ async def get_branding():
     # The ?t= timestamp param busts the cache whenever admin re-uploads.
     logo_ts = doc.get("logo_ts", 0) if doc else 0
     fav_ts  = doc.get("favicon_ts", 0) if doc else 0
-    result["logo_url"]    = f"{BACKEND_SITE}/api/branding/logo-image?t={logo_ts}"    if result.get("logo_url")    else None
-    result["favicon_url"] = f"{BACKEND_SITE}/api/branding/favicon-image?t={fav_ts}" if result.get("favicon_url") else None
+    # Use RELATIVE paths so the URL works regardless of which domain (custom or Railway)
+    # the user accesses the site from — avoids stale cached absolute URLs breaking logos.
+    result["logo_url"]    = f"/api/branding/logo-image?t={logo_ts}"    if result.get("logo_url")    else None
+    result["favicon_url"] = f"/api/branding/favicon-image?t={fav_ts}" if result.get("favicon_url") else None
     return result
 
 def _serve_branding_image(data_url: str):
@@ -1910,7 +1912,7 @@ async def admin_upload_logo(file: UploadFile = File(...)):
         upsert=True,
     )
     logger.info(f"Logo uploaded — {ext}, {len(final_bytes):,} bytes")
-    return {"ok": True, "logo_url": f"{BACKEND_SITE}/api/branding/logo-image?t={logo_ts}"}
+    return {"ok": True, "logo_url": f"/api/branding/logo-image?t={logo_ts}"}
 
 
 @admin_router.post("/branding/upload-favicon", dependencies=[Depends(_check_admin)])
@@ -1957,7 +1959,7 @@ async def admin_upload_favicon(file: UploadFile = File(...)):
         upsert=True,
     )
     logger.info(f"Favicon uploaded — {ext}, {len(final_bytes):,} bytes")
-    return {"ok": True, "favicon_url": f"{BACKEND_SITE}/api/branding/favicon-image?t={fav_ts}"}
+    return {"ok": True, "favicon_url": f"/api/branding/favicon-image?t={fav_ts}"}
 
 @admin_router.delete("/branding/logo", dependencies=[Depends(_check_admin)])
 async def admin_delete_logo():
