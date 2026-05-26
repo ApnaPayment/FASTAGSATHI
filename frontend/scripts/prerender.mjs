@@ -517,17 +517,22 @@ const routes = [
   ...HELP_SLUGS.map(slug => ({ path:`/help/${slug}`, body:bodyHelp(slug), head:buildHead({ title:`${slug.replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase())} — FASTag Guide 2026`, description:`Complete guide: ${slug.replace(/-/g," ")} in India. Step-by-step, with on-spot Sathi rescue option at any toll plaza.`, canonical:`${SITE_URL}/help/${slug}`, keywords:`${slug.replace(/-/g," ")}, fastag guide india, fastag help` }) })),
 ];
 
-/* ─── SITEMAP GENERATOR ─── */
+/* ─── STATIC SITEMAP GENERATORS ─── */
+// All sitemaps are generated as static files at build time — no proxy, no /api/ in URLs.
 
-function buildSitemap() {
-  const today = new Date().toISOString().split("T")[0];
-  const priorities = { "/":1.0, "/find":0.95, "/tools/fastag-balance-check":0.95, "/tools/toll-calculator":0.9, "/tools/dispute-tracker":0.9, "/tools/fastag-status":0.9, "/help":0.9, "/coverage":0.85, "/how-it-works":0.8, "/features":0.8, "/pricing":0.8, "/become-a-sathi":0.85, "/blog":0.8 };
-  const urls = routes.map(r => {
-    const p = priorities[r.path] || (r.path.startsWith("/toll/")||r.path.startsWith("/state/")||r.path.startsWith("/highway/")||r.path.startsWith("/city/") ? 0.8 : r.path.startsWith("/bank/") ? 0.75 : r.path.startsWith("/help/") ? 0.7 : r.path.startsWith("/blog/") ? 0.7 : r.path.startsWith("/sathi/") ? 0.65 : 0.5);
-    const cf = r.path==="/" ? "daily" : r.path.startsWith("/help/")||r.path.startsWith("/blog/") ? "weekly" : "monthly";
-    return `  <url><loc>${SITE_URL}${r.path}</loc><lastmod>${today}</lastmod><changefreq>${cf}</changefreq><priority>${p.toFixed(1)}</priority></url>`;
-  });
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>`;
+const TODAY = new Date().toISOString().split("T")[0];
+
+function urlEntry(loc, priority = 0.7, changefreq = "monthly") {
+  return `  <url><loc>${loc}</loc><lastmod>${TODAY}</lastmod><changefreq>${changefreq}</changefreq><priority>${priority.toFixed(1)}</priority></url>`;
+}
+
+function buildUrlset(entries) {
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join("\n")}\n</urlset>`;
+}
+
+function buildSitemapIndex(files) {
+  const items = files.map(f => `  <sitemap><loc>${SITE_URL}/${f}</loc></sitemap>`).join("\n");
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${items}\n</sitemapindex>`;
 }
 
 /* ─── EMIT ─── */
@@ -594,11 +599,93 @@ async function emit() {
     count++;
   }
 
-  // NOTE: Do NOT write sitemap.xml here.
-  // public/sitemap.xml is a sitemapindex pointing to /api/sitemap-*.xml endpoints
-  // on the Railway backend (proxied via server.js). Overwriting it with a static
-  // urlset would hide 1000+ help articles and all dynamic content from Google.
-  console.log(`✅ Prerendered ${count} routes with body content → ${BUILD_DIR}`);
+  // ── Static sub-sitemaps (generated at build time, served as plain files) ──────
+  // Clean URLs: /sitemap-banks.xml  NOT /api/sitemap-banks.xml
+  // No proxy needed — server.js serves them straight from build/.
+
+  const backendUrl = process.env.REACT_APP_BACKEND_URL || "https://fastagsathi-production.up.railway.app";
+
+  // 1. Static core pages + blog
+  const staticEntries = [
+    urlEntry(`${SITE_URL}/`,                           1.0, "daily"),
+    urlEntry(`${SITE_URL}/find`,                       0.95, "weekly"),
+    urlEntry(`${SITE_URL}/help`,                       0.9,  "weekly"),
+    urlEntry(`${SITE_URL}/become-a-sathi`,             0.85, "monthly"),
+    urlEntry(`${SITE_URL}/coverage`,                   0.85, "monthly"),
+    urlEntry(`${SITE_URL}/how-it-works`,               0.8,  "monthly"),
+    urlEntry(`${SITE_URL}/features`,                   0.8,  "monthly"),
+    urlEntry(`${SITE_URL}/pricing`,                    0.8,  "monthly"),
+    urlEntry(`${SITE_URL}/blog`,                       0.8,  "weekly"),
+    urlEntry(`${SITE_URL}/tools/fastag-balance-check`, 0.9,  "monthly"),
+    urlEntry(`${SITE_URL}/tools/toll-calculator`,      0.9,  "monthly"),
+    urlEntry(`${SITE_URL}/tools/dispute-tracker`,      0.9,  "monthly"),
+    urlEntry(`${SITE_URL}/tools/fastag-status`,        0.9,  "monthly"),
+    urlEntry(`${SITE_URL}/about`,                      0.5,  "monthly"),
+    urlEntry(`${SITE_URL}/contact`,                    0.5,  "monthly"),
+    urlEntry(`${SITE_URL}/careers`,                    0.5,  "monthly"),
+    urlEntry(`${SITE_URL}/privacy`,                    0.5,  "monthly"),
+    urlEntry(`${SITE_URL}/terms`,                      0.5,  "monthly"),
+    urlEntry(`${SITE_URL}/refund-policy`,              0.5,  "monthly"),
+    ...BLOG_POSTS.map(p => urlEntry(`${SITE_URL}/blog/${p.slug}`, 0.7, "weekly")),
+  ];
+  fs.writeFileSync(path.join(BUILD_DIR, "sitemap-static.xml"),   buildUrlset(staticEntries));
+
+  // 2. Plazas, States, Banks, Highways, Cities, Sathis
+  fs.writeFileSync(path.join(BUILD_DIR, "sitemap-plazas.xml"),
+    buildUrlset(PLAZAS.map(p   => urlEntry(`${SITE_URL}/toll/${p.slug}`,     0.8))));
+  fs.writeFileSync(path.join(BUILD_DIR, "sitemap-states.xml"),
+    buildUrlset(STATES.map(s   => urlEntry(`${SITE_URL}/state/${s.slug}`,    0.8))));
+  fs.writeFileSync(path.join(BUILD_DIR, "sitemap-banks.xml"),
+    buildUrlset(BANKS.map(b    => urlEntry(`${SITE_URL}/bank/${b.slug}`,     0.8))));
+  fs.writeFileSync(path.join(BUILD_DIR, "sitemap-highways.xml"),
+    buildUrlset(HIGHWAYS.map(h => urlEntry(`${SITE_URL}/highway/${h.slug}`,  0.8))));
+  fs.writeFileSync(path.join(BUILD_DIR, "sitemap-cities.xml"),
+    buildUrlset(CITIES.map(c   => urlEntry(`${SITE_URL}/city/${c.slug}`,     0.8))));
+  fs.writeFileSync(path.join(BUILD_DIR, "sitemap-sathis.xml"),
+    buildUrlset(SATHIS.map(s   => urlEntry(`${SITE_URL}/sathi/${s.slug}`,    0.7))));
+
+  // 3. Help articles — seed from static list, then try fetching dynamic ones from backend
+  let helpSlugs = [...HELP_SLUGS];
+  try {
+    let page = 1;
+    while (page <= 15) {                              // cap at 1 500 articles
+      const r = await fetch(`${backendUrl}/api/help?limit=100&page=${page}`,
+        { signal: AbortSignal.timeout(10000) });
+      if (!r.ok) break;
+      const data = await r.json();
+      const items = Array.isArray(data) ? data : (data.articles || data.items || []);
+      if (!items.length) break;
+      items.forEach(a => { if (a.slug && !helpSlugs.includes(a.slug)) helpSlugs.push(a.slug); });
+      if (items.length < 100) break;
+      page++;
+    }
+    console.log(`✅ Help sitemap: ${helpSlugs.length} articles (${page - 1} pages fetched)`);
+  } catch (e) {
+    console.log(`⚠  Help articles fetch skipped (${e.message}) — using ${helpSlugs.length} static slugs`);
+  }
+
+  // Chunk into files of 1 000 (Google sitemap limit per file)
+  const CHUNK = 1000;
+  const helpFiles = [];
+  for (let i = 0; i < helpSlugs.length; i += CHUNK) {
+    const n = Math.floor(i / CHUNK) + 1;
+    const filename = `sitemap-help-${n}.xml`;
+    fs.writeFileSync(path.join(BUILD_DIR, filename),
+      buildUrlset(helpSlugs.slice(i, i + CHUNK).map(slug =>
+        urlEntry(`${SITE_URL}/help/${slug}`, 0.7, "weekly"))));
+    helpFiles.push(filename);
+  }
+
+  // 4. Sitemapindex — clean URLs, no /api/ prefix
+  const allFiles = [
+    "sitemap-static.xml", "sitemap-plazas.xml", "sitemap-states.xml",
+    "sitemap-banks.xml",  "sitemap-highways.xml", "sitemap-cities.xml",
+    "sitemap-sathis.xml", ...helpFiles,
+  ];
+  fs.writeFileSync(path.join(BUILD_DIR, "sitemap.xml"), buildSitemapIndex(allFiles));
+
+  console.log(`✅ Prerendered ${count} routes → ${BUILD_DIR}`);
+  console.log(`✅ Sitemap: ${allFiles.length} sub-sitemaps, ${helpSlugs.length} help articles`);
 }
 
 emit().catch(e => { console.error(e); process.exit(1); });

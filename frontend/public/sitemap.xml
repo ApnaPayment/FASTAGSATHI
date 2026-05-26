@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <sitemap><loc>https://apnafastag.com/api/sitemap-static.xml</loc></sitemap>
-  <sitemap><loc>https://apnafastag.com/api/sitemap-plazas.xml</loc></sitemap>
-  <sitemap><loc>https://apnafastag.com/api/sitemap-states.xml</loc></sitemap>
-  <sitemap><loc>https://apnafastag.com/api/sitemap-banks.xml</loc></sitemap>
-  <sitemap><loc>https://apnafastag.com/api/sitemap-highways.xml</loc></sitemap>
-  <sitemap><loc>https://apnafastag.com/api/sitemap-cities.xml</loc></sitemap>
-  <sitemap><loc>https://apnafastag.com/api/sitemap-help-1.xml</loc></sitemap>
-  <sitemap><loc>https://apnafastag.com/api/sitemap-help-2.xml</loc></sitemap>
-  <sitemap><loc>https://apnafastag.com/api/sitemap-help-3.xml</loc></sitemap>
-  <sitemap><loc>https://apnafastag.com/api/sitemap-sathis.xml</loc></sitemap>
+  <sitemap><loc>https://apnafastag.com/sitemap-static.xml</loc></sitemap>
+  <sitemap><loc>https://apnafastag.com/sitemap-plazas.xml</loc></sitemap>
+  <sitemap><loc>https://apnafastag.com/sitemap-states.xml</loc></sitemap>
+  <sitemap><loc>https://apnafastag.com/sitemap-banks.xml</loc></sitemap>
+  <sitemap><loc>https://apnafastag.com/sitemap-highways.xml</loc></sitemap>
+  <sitemap><loc>https://apnafastag.com/sitemap-cities.xml</loc></sitemap>
+  <sitemap><loc>https://apnafastag.com/sitemap-sathis.xml</loc></sitemap>
+  <sitemap><loc>https://apnafastag.com/sitemap-help-1.xml</loc></sitemap>
 </sitemapindex>
