@@ -207,7 +207,7 @@ class StatusCheck(BaseModel):
 async def send_sms_otp(phone: str, otp: str) -> bool:
     """Send OTP via ApnaPayment SMS gateway. Returns True on success."""
     text = (
-        f"Your 4-digit OTP for ApnaFastag login is {otp} . "
+        f"Your 4-digit OTP for Apna Payment login is {otp} . "
         f"It is valid for {OTP_EXPIRY_MINUTES} minutes."
     )
     payload = {
