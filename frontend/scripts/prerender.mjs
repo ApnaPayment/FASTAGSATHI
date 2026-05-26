@@ -594,11 +594,11 @@ async function emit() {
     count++;
   }
 
-  // Write sitemap
-  const sitemapPath = path.join(BUILD_DIR, "sitemap.xml");
-  fs.writeFileSync(sitemapPath, buildSitemap());
+  // NOTE: Do NOT write sitemap.xml here.
+  // public/sitemap.xml is a sitemapindex pointing to /api/sitemap-*.xml endpoints
+  // on the Railway backend (proxied via server.js). Overwriting it with a static
+  // urlset would hide 1000+ help articles and all dynamic content from Google.
   console.log(`✅ Prerendered ${count} routes with body content → ${BUILD_DIR}`);
-  console.log(`✅ Sitemap written → ${sitemapPath} (${count} URLs)`);
 }
 
 emit().catch(e => { console.error(e); process.exit(1); });
