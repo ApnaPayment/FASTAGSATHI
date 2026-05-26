@@ -120,7 +120,9 @@ async function sathiOgTags(slug) {
   const description = descParts.join(" · ").slice(0, 200) ||
     "Verified FASTag Sathi — disputes, KYC, recharge & SOS resolved at toll plazas.";
 
-  const image = s.avatar || s.photo || DEFAULT_OG_IMAGE;
+  // data: URLs are invalid for OG images — must be an absolute HTTP URL
+  const rawImg = s.avatar || s.photo || "";
+  const image  = rawImg.startsWith("http") ? rawImg : DEFAULT_OG_IMAGE;
   const url   = `${SITE}/sathi/${slug}`;
 
   return ogTags({ title, description, image, url, type: "profile" });
