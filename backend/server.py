@@ -3376,6 +3376,108 @@ async def fastag_status(vehicle: str):
     except httpx.RequestError as e:
         raise HTTPException(status_code=502, detail=f"Upstream error: {str(e)}")
 
+
+# ─── FASTag Recharge (NETC UPI) ───────────────────────────────────────────────
+
+# Official NETC member bank UPI handles (NPCI FASTag FAQ v1)
+NETC_BANKS = [
+    {"name": "Airtel Payment Bank",      "upi": "mairtel",    "slug": "airtel-fastag",   "keywords": ["airtel"]},
+    {"name": "Axis Bank",                "upi": "axisbank",   "slug": "axis-fastag",     "keywords": ["axis"]},
+    {"name": "Bank of Baroda",           "upi": "barodampay", "slug": "bob-fastag",      "keywords": ["baroda", "bob"]},
+    {"name": "City Union Bank",          "upi": "cub",        "slug": "cub-fastag",      "keywords": ["city union", "cub"]},
+    {"name": "Equitas Small Finance Bank","upi": "equitas",   "slug": "equitas-fastag",  "keywords": ["equitas"]},
+    {"name": "Federal Bank",             "upi": "fbl",        "slug": "federal-fastag",  "keywords": ["federal"]},
+    {"name": "HDFC Bank",                "upi": "hdfcbank",   "slug": "hdfc-fastag",     "keywords": ["hdfc"]},
+    {"name": "ICICI Bank",               "upi": "icici",      "slug": "icici-fastag",    "keywords": ["icici"]},
+    {"name": "IDFC First Bank",          "upi": "idfcnetc",   "slug": "idfc-fastag",     "keywords": ["idfc"]},
+    {"name": "Indusind Bank",            "upi": "Indus",      "slug": "indusind-fastag", "keywords": ["indusind", "indus"]},
+    {"name": "KVB Bank",                 "upi": "Kvb",        "slug": "kvb-fastag",      "keywords": ["kvb", "karur"]},
+    {"name": "Kotak Mahindra Bank",      "upi": "Kotak",      "slug": "kotak-fastag",    "keywords": ["kotak"]},
+    {"name": "Paytm Bank",               "upi": "paytm",      "slug": "paytm-fastag",    "keywords": ["paytm"]},
+    {"name": "Punjab National Bank",     "upi": "pnb",        "slug": "pnb-fastag",      "keywords": ["punjab", "pnb"]},
+    {"name": "South Indian Bank",        "upi": "sib",        "slug": "sib-fastag",      "keywords": ["south indian", "sib"]},
+    {"name": "State Bank of India",      "upi": "sbi",        "slug": "sbi-fastag",      "keywords": ["sbi", "state bank"]},
+    {"name": "Yes Bank",                 "upi": "yesbank",    "slug": "yes-fastag",      "keywords": ["yes bank", "yes"]},
+]
+
+@tools_router.get("/recharge/banks")
+async def recharge_banks():
+    """Returns all NETC member banks with their UPI handles for FASTag recharge."""
+    return [{"name": b["name"], "upi": b["upi"], "slug": b["slug"]} for b in NETC_BANKS]
+
+
+def _match_netc_bank(bank_name: str) -> Optional[dict]:
+    """Try to match a bank name string (from FASTag status API) to a NETC bank entry."""
+    name_lower = bank_name.lower()
+    for bank in NETC_BANKS:
+        if any(kw in name_lower for kw in bank["keywords"]):
+            return bank
+    return None
+
+
+@tools_router.get("/recharge/tag-info")
+async def recharge_tag_info(vehicle: str):
+    """
+    Fetches FASTag tag ID for a vehicle and auto-matches the NETC bank.
+    Returns everything needed to build the UPI payment string on the frontend:
+      netc.{tag_id}@{bank_upi}
+    """
+    vehicle = vehicle.strip().upper().replace(" ", "")
+    if not re.match(r"^[A-Z]{2}\d{1,2}[A-Z]{1,3}\d{1,4}$", vehicle):
+        raise HTTPException(status_code=400, detail="Invalid vehicle number format")
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
+            r1 = await client.get(f"{APNA_BASE}/fastagstatus",
+                                  headers={"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9"})
+            soup1 = BeautifulSoup(r1.text, "html.parser")
+            token_input = soup1.find("input", {"name": "_token"})
+            if not token_input:
+                raise HTTPException(status_code=502, detail="Could not fetch CSRF token from upstream")
+            csrf = token_input["value"]
+            cookies = dict(r1.cookies)
+
+            r2 = await client.post(
+                f"{APNA_BASE}/fetchDataFromAPI",
+                data={"_token": csrf, "vehicle_number": vehicle},
+                cookies=cookies,
+                headers={"User-Agent": UA, "Referer": f"{APNA_BASE}/fastagstatus",
+                         "Accept-Language": "en-US,en;q=0.9"},
+            )
+            soup2 = BeautifulSoup(r2.text, "html.parser")
+            rows = soup2.select("tbody tr")
+            tags = []
+            for row in rows:
+                cells = row.find_all(["th", "td"])
+                if len(cells) < 6:
+                    continue
+                bank_name = cells[1].get_text(strip=True)
+                tag_id    = cells[2].get_text(strip=True)
+                status_text = cells[5].get_text(strip=True)
+                div = cells[5].find("div")
+                status_bg = ""
+                if div and div.get("style"):
+                    m = re.search(r"background:\s*([^;]+)", div["style"])
+                    if m: status_bg = m.group(1).strip()
+                is_active = "active" in status_text.lower() or status_bg == "#b7edc5"
+
+                netc_bank = _match_netc_bank(bank_name)
+                tags.append({
+                    "bank":         bank_name,
+                    "tag_id":       tag_id,
+                    "vehicle_class": cells[3].get_text(strip=True),
+                    "status":       "Active" if is_active else status_text or "Inactive",
+                    "is_active":    is_active,
+                    # Pre-matched NETC bank for UPI intent
+                    "netc_upi":     netc_bank["upi"]  if netc_bank else None,
+                    "netc_name":    netc_bank["name"] if netc_bank else None,
+                    # Ready-to-use UPI VPA (just add amount on frontend)
+                    "upi_vpa":      f"netc.{tag_id}@{netc_bank['upi']}" if netc_bank and tag_id else None,
+                })
+            return {"vehicle": vehicle, "tags": tags}
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=f"Upstream error: {str(e)}")
+
+
 # ─── Payments ─────────────────────────────────────────────────────────────────
 
 payments_router = APIRouter(prefix="/payments", tags=["payments"])
