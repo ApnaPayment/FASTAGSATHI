@@ -88,16 +88,20 @@ export default function SathiProfilePage() {
   const plaza = PLAZAS.find((p) => p.slug === s.homePlaza);
   const supportedBanks = ALL_BANKS.filter((b) => (s.banks || []).includes(b.slug));
 
+  // LocalBusiness supports aggregateRating; Person does not (causes GSC critical issue)
   const personSchema = {
     "@context": "https://schema.org",
-    "@type": "Person",
+    "@type": "LocalBusiness",
     name: s.name,
     description: s.bio,
-    image: s.avatar,
-    knowsLanguage: s.languages,
-    workLocation: { "@type": "Place", name: plaza?.name, address: { "@type": "PostalAddress", addressLocality: s.city, addressRegion: state?.name } },
-    aggregateRating: { "@type": "AggregateRating", ratingValue: s.rating, reviewCount: s.reviewCount, bestRating: 5 },
+    image: s.avatar && s.avatar.startsWith("http") ? s.avatar : undefined,
+    employee: { "@type": "Person", name: s.name, knowsLanguage: s.languages },
+    address: { "@type": "PostalAddress", addressLocality: s.city, addressRegion: state?.name, addressCountry: "IN" },
+    ...(plaza?.name ? { location: { "@type": "Place", name: plaza.name } } : {}),
+    aggregateRating: s.reviewCount > 0 ? { "@type": "AggregateRating", ratingValue: s.rating, reviewCount: s.reviewCount, bestRating: 5, worstRating: 1 } : undefined,
     url: `https://apnafastag.com/sathi/${s.slug}`,
+    priceRange: "₹99–₹499",
+    areaServed: { "@type": "Place", name: s.city || state?.name },
   };
 
   return (
