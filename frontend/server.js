@@ -240,7 +240,9 @@ function serveStatic(req, res) {
     }
     const ext  = path.extname(filePath).toLowerCase();
     const mime = MIME[ext] || "application/octet-stream";
-    const cc   = ext === ".html"
+    // robots.txt and sitemap index must never be long-cached
+    const noCache = ["/robots.txt", "/sitemap.xml"].includes(pathname);
+    const cc = (ext === ".html" || noCache)
       ? "public, max-age=0, must-revalidate"
       : "public, max-age=31536000, immutable";
     res.writeHead(200, { "Content-Type": mime, "Cache-Control": cc });
