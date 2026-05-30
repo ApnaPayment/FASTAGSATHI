@@ -48,6 +48,11 @@ export const plazaApi = {
   get: (slug) => api.get(`/api/plazas/${slug}`),
 };
 
+export const citiesApi = {
+  list: (params) => api.get("/api/cities", { params }),
+  get:  (slug)   => api.get(`/api/cities/${slug}`),
+};
+
 export const stateApi = {
   list: () => api.get("/api/states"),
   get: (slug) => api.get(`/api/states/${slug}`),
@@ -147,11 +152,14 @@ export const adminApi = {
   deleteHighway:   (slug)   => api.delete(`/api/admin/highways/${slug}`, { headers: adminHeaders() }),
   importHighways:  (list)   => api.post("/api/admin/highways/import", list, { headers: adminHeaders() }),
   // City management
-  cities:       (params) => api.get("/api/admin/cities", { params, headers: adminHeaders() }),
-  createCity:   (data)   => api.post("/api/admin/cities", data, { headers: adminHeaders() }),
-  updateCity:   (slug, d)=> api.patch(`/api/admin/cities/${slug}`, d, { headers: adminHeaders() }),
-  deleteCity:   (slug)   => api.delete(`/api/admin/cities/${slug}`, { headers: adminHeaders() }),
-  importCities: (list)   => api.post("/api/admin/cities/import", list, { headers: adminHeaders() }),
+  cities:                (params) => api.get("/api/admin/cities", { params, headers: adminHeaders() }),
+  createCity:            (data)   => api.post("/api/admin/cities", data, { headers: adminHeaders() }),
+  updateCity:            (slug, d)=> api.patch(`/api/admin/cities/${slug}`, d, { headers: adminHeaders() }),
+  deleteCity:            (slug)   => api.delete(`/api/admin/cities/${slug}`, { headers: adminHeaders() }),
+  importCities:          (list)   => api.post("/api/admin/cities/import", list, { headers: adminHeaders() }),
+  seedIndiaCities:       ()       => api.post("/api/admin/cities/batch-seed-india", {}, { headers: adminHeaders() }),
+  generateCityContent:   (slug)   => api.post(`/api/admin/cities/${slug}/generate-content`, {}, { headers: adminHeaders() }),
+  batchGenerateCityContent: (data) => api.post("/api/admin/cities/batch-generate-content", data, { headers: adminHeaders() }),
   // Bank management
   banks:           (params)      => api.get("/api/admin/banks", { params, headers: adminHeaders() }),
   createBank:      (data)        => api.post("/api/admin/banks", data, { headers: adminHeaders() }),

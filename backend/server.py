@@ -1708,6 +1708,481 @@ async def admin_delete_city(slug: str):
         raise HTTPException(404, "City not found")
     return {"ok": True}
 
+@admin_router.post("/cities/batch-seed-india", dependencies=[Depends(_check_admin)])
+async def admin_batch_seed_india_cities():
+    """Seed ~800 major Indian cities (all states, district HQs, large towns). Idempotent upsert by slug."""
+    now = datetime.now(timezone.utc).isoformat()
+    INDIA_CITIES = [
+        # ── Maharashtra ──────────────────────────────────────────────────────
+        {"slug":"mumbai","name":"Mumbai","state":"maharashtra","district":"Mumbai","tier":1,"nearby_highways":["NH-48","NH-66","NH-160"],"lat":19.0760,"lng":72.8777},
+        {"slug":"pune","name":"Pune","state":"maharashtra","district":"Pune","tier":1,"nearby_highways":["NH-48","NH-65","NH-60"],"lat":18.5204,"lng":73.8567},
+        {"slug":"nagpur","name":"Nagpur","state":"maharashtra","district":"Nagpur","tier":2,"nearby_highways":["NH-44","NH-6","NH-7"],"lat":21.1458,"lng":79.0882},
+        {"slug":"nashik","name":"Nashik","state":"maharashtra","district":"Nashik","tier":2,"nearby_highways":["NH-160","NH-61","NH-848"],"lat":19.9975,"lng":73.7898},
+        {"slug":"aurangabad","name":"Aurangabad","state":"maharashtra","district":"Aurangabad","tier":2,"nearby_highways":["NH-52","NH-753","NH-752"],"lat":19.8762,"lng":75.3433},
+        {"slug":"solapur","name":"Solapur","state":"maharashtra","district":"Solapur","tier":2,"nearby_highways":["NH-65","NH-548"],"lat":17.6599,"lng":75.9064},
+        {"slug":"kolhapur","name":"Kolhapur","state":"maharashtra","district":"Kolhapur","tier":2,"nearby_highways":["NH-48","NH-166"],"lat":16.7050,"lng":74.2433},
+        {"slug":"thane","name":"Thane","state":"maharashtra","district":"Thane","tier":2,"nearby_highways":["NH-48","NH-160"],"lat":19.2183,"lng":72.9781},
+        {"slug":"amravati","name":"Amravati","state":"maharashtra","district":"Amravati","tier":3,"nearby_highways":["NH-53","NH-161"],"lat":20.9374,"lng":77.7796},
+        {"slug":"nanded","name":"Nanded","state":"maharashtra","district":"Nanded","tier":3,"nearby_highways":["NH-361","NH-752"],"lat":19.1383,"lng":77.3210},
+        {"slug":"jalgaon","name":"Jalgaon","state":"maharashtra","district":"Jalgaon","tier":3,"nearby_highways":["NH-53","NH-752"],"lat":21.0077,"lng":75.5626},
+        {"slug":"akola","name":"Akola","state":"maharashtra","district":"Akola","tier":3,"nearby_highways":["NH-53","NH-161"],"lat":20.7096,"lng":77.0021},
+        {"slug":"latur","name":"Latur","state":"maharashtra","district":"Latur","tier":3,"nearby_highways":["NH-361","NH-550"],"lat":18.4088,"lng":76.5604},
+        {"slug":"chandrapur","name":"Chandrapur","state":"maharashtra","district":"Chandrapur","tier":3,"nearby_highways":["NH-930","NH-930B"],"lat":19.9615,"lng":79.2961},
+        {"slug":"lonavala","name":"Lonavala","state":"maharashtra","district":"Pune","tier":4,"nearby_highways":["NH-48"],"lat":18.7487,"lng":73.4120},
+        {"slug":"shirdi","name":"Shirdi","state":"maharashtra","district":"Ahmednagar","tier":3,"nearby_highways":["NH-60","NH-61"],"lat":19.7667,"lng":74.4776},
+        # ── Delhi ─────────────────────────────────────────────────────────────
+        {"slug":"delhi","name":"Delhi","state":"delhi","district":"Delhi","tier":1,"nearby_highways":["NH-44","NH-48","NH-58","NH-24","NH-71"],"lat":28.7041,"lng":77.1025},
+        {"slug":"new-delhi","name":"New Delhi","state":"delhi","district":"Delhi","tier":1,"nearby_highways":["NH-44","NH-48","NH-58"],"lat":28.6139,"lng":77.2090},
+        # ── Rajasthan ────────────────────────────────────────────────────────
+        {"slug":"jaipur","name":"Jaipur","state":"rajasthan","district":"Jaipur","tier":1,"nearby_highways":["NH-48","NH-11","NH-52","NH-148"],"lat":26.9124,"lng":75.7873},
+        {"slug":"jodhpur","name":"Jodhpur","state":"rajasthan","district":"Jodhpur","tier":2,"nearby_highways":["NH-62","NH-112","NH-114"],"lat":26.2389,"lng":73.0243},
+        {"slug":"udaipur","name":"Udaipur","state":"rajasthan","district":"Udaipur","tier":2,"nearby_highways":["NH-48","NH-58","NH-162"],"lat":24.5854,"lng":73.7125},
+        {"slug":"kota","name":"Kota","state":"rajasthan","district":"Kota","tier":2,"nearby_highways":["NH-52","NH-27"],"lat":25.2138,"lng":75.8648},
+        {"slug":"ajmer","name":"Ajmer","state":"rajasthan","district":"Ajmer","tier":2,"nearby_highways":["NH-48","NH-58","NH-162"],"lat":26.4499,"lng":74.6399},
+        {"slug":"bikaner","name":"Bikaner","state":"rajasthan","district":"Bikaner","tier":2,"nearby_highways":["NH-11","NH-62"],"lat":28.0229,"lng":73.3119},
+        {"slug":"alwar","name":"Alwar","state":"rajasthan","district":"Alwar","tier":3,"nearby_highways":["NH-48","NH-11"],"lat":27.5530,"lng":76.6346},
+        {"slug":"bharatpur","name":"Bharatpur","state":"rajasthan","district":"Bharatpur","tier":3,"nearby_highways":["NH-21","NH-44"],"lat":27.2152,"lng":77.5030},
+        {"slug":"sikar","name":"Sikar","state":"rajasthan","district":"Sikar","tier":3,"nearby_highways":["NH-11","NH-52"],"lat":27.6094,"lng":75.1397},
+        {"slug":"chittorgarh","name":"Chittorgarh","state":"rajasthan","district":"Chittorgarh","tier":3,"nearby_highways":["NH-48","NH-76"],"lat":24.8887,"lng":74.6269},
+        {"slug":"bhilwara","name":"Bhilwara","state":"rajasthan","district":"Bhilwara","tier":3,"nearby_highways":["NH-48","NH-162"],"lat":25.3407,"lng":74.6313},
+        {"slug":"sri-ganganagar","name":"Sri Ganganagar","state":"rajasthan","district":"Sri Ganganagar","tier":3,"nearby_highways":["NH-54","NH-62"],"lat":29.9100,"lng":73.8789},
+        {"slug":"barmer","name":"Barmer","state":"rajasthan","district":"Barmer","tier":3,"nearby_highways":["NH-25","NH-112"],"lat":25.7463,"lng":71.3938},
+        {"slug":"nagaur","name":"Nagaur","state":"rajasthan","district":"Nagaur","tier":3,"nearby_highways":["NH-11","NH-62"],"lat":27.2013,"lng":73.7339},
+        {"slug":"hanumangarh","name":"Hanumangarh","state":"rajasthan","district":"Hanumangarh","tier":3,"nearby_highways":["NH-52","NH-54"],"lat":29.5826,"lng":74.3264},
+        {"slug":"tonk","name":"Tonk","state":"rajasthan","district":"Tonk","tier":3,"nearby_highways":["NH-48","NH-52"],"lat":26.1672,"lng":75.7901},
+        {"slug":"jaisalmer","name":"Jaisalmer","state":"rajasthan","district":"Jaisalmer","tier":3,"nearby_highways":["NH-15","NH-25"],"lat":26.9157,"lng":70.9083},
+        {"slug":"jhunjhunu","name":"Jhunjhunu","state":"rajasthan","district":"Jhunjhunu","tier":3,"nearby_highways":["NH-11","NH-52"],"lat":28.1289,"lng":75.3997},
+        {"slug":"sawai-madhopur","name":"Sawai Madhopur","state":"rajasthan","district":"Sawai Madhopur","tier":3,"nearby_highways":["NH-52","NH-21"],"lat":25.9901,"lng":76.3538},
+        {"slug":"dausa","name":"Dausa","state":"rajasthan","district":"Dausa","tier":3,"nearby_highways":["NH-11","NH-21"],"lat":26.8804,"lng":76.3362},
+        {"slug":"dholpur","name":"Dholpur","state":"rajasthan","district":"Dholpur","tier":3,"nearby_highways":["NH-3","NH-44"],"lat":26.6956,"lng":77.8944},
+        {"slug":"pali","name":"Pali","state":"rajasthan","district":"Pali","tier":3,"nearby_highways":["NH-62","NH-25"],"lat":25.7739,"lng":73.3298},
+        {"slug":"dungarpur","name":"Dungarpur","state":"rajasthan","district":"Dungarpur","tier":3,"nearby_highways":["NH-27","NH-162"],"lat":23.8436,"lng":73.7153},
+        # ── Uttar Pradesh ────────────────────────────────────────────────────
+        {"slug":"lucknow","name":"Lucknow","state":"uttar-pradesh","district":"Lucknow","tier":1,"nearby_highways":["NH-27","NH-28","NH-56","NH-731"],"lat":26.8467,"lng":80.9462},
+        {"slug":"kanpur","name":"Kanpur","state":"uttar-pradesh","district":"Kanpur","tier":1,"nearby_highways":["NH-19","NH-27","NH-86"],"lat":26.4499,"lng":80.3319},
+        {"slug":"varanasi","name":"Varanasi","state":"uttar-pradesh","district":"Varanasi","tier":2,"nearby_highways":["NH-19","NH-29","NH-56"],"lat":25.3176,"lng":82.9739},
+        {"slug":"agra","name":"Agra","state":"uttar-pradesh","district":"Agra","tier":2,"nearby_highways":["NH-19","NH-44","NH-21"],"lat":27.1767,"lng":78.0081},
+        {"slug":"prayagraj","name":"Prayagraj","state":"uttar-pradesh","district":"Prayagraj","tier":2,"nearby_highways":["NH-19","NH-30","NH-35"],"lat":25.4358,"lng":81.8463},
+        {"slug":"meerut","name":"Meerut","state":"uttar-pradesh","district":"Meerut","tier":2,"nearby_highways":["NH-58","NH-235","NH-334"],"lat":28.9845,"lng":77.7064},
+        {"slug":"ghaziabad","name":"Ghaziabad","state":"uttar-pradesh","district":"Ghaziabad","tier":2,"nearby_highways":["NH-58","NH-235","NH-334"],"lat":28.6692,"lng":77.4538},
+        {"slug":"aligarh","name":"Aligarh","state":"uttar-pradesh","district":"Aligarh","tier":2,"nearby_highways":["NH-91","NH-519"],"lat":27.8974,"lng":78.0880},
+        {"slug":"bareilly","name":"Bareilly","state":"uttar-pradesh","district":"Bareilly","tier":2,"nearby_highways":["NH-30","NH-24","NH-74"],"lat":28.3670,"lng":79.4304},
+        {"slug":"moradabad","name":"Moradabad","state":"uttar-pradesh","district":"Moradabad","tier":2,"nearby_highways":["NH-24","NH-74"],"lat":28.8386,"lng":78.7733},
+        {"slug":"gorakhpur","name":"Gorakhpur","state":"uttar-pradesh","district":"Gorakhpur","tier":2,"nearby_highways":["NH-28","NH-29","NH-730"],"lat":26.7606,"lng":83.3732},
+        {"slug":"mathura","name":"Mathura","state":"uttar-pradesh","district":"Mathura","tier":2,"nearby_highways":["NH-2","NH-19","NH-44"],"lat":27.4924,"lng":77.6737},
+        {"slug":"jhansi","name":"Jhansi","state":"uttar-pradesh","district":"Jhansi","tier":2,"nearby_highways":["NH-44","NH-27","NH-76"],"lat":25.4484,"lng":78.5685},
+        {"slug":"muzaffarnagar","name":"Muzaffarnagar","state":"uttar-pradesh","district":"Muzaffarnagar","tier":3,"nearby_highways":["NH-58","NH-334"],"lat":29.4727,"lng":77.7085},
+        {"slug":"saharanpur","name":"Saharanpur","state":"uttar-pradesh","district":"Saharanpur","tier":3,"nearby_highways":["NH-73","NH-709A"],"lat":29.9680,"lng":77.5510},
+        {"slug":"firozabad","name":"Firozabad","state":"uttar-pradesh","district":"Firozabad","tier":3,"nearby_highways":["NH-19","NH-91"],"lat":27.1592,"lng":78.3957},
+        {"slug":"ayodhya","name":"Ayodhya","state":"uttar-pradesh","district":"Ayodhya","tier":3,"nearby_highways":["NH-27","NH-28"],"lat":26.7922,"lng":82.1998},
+        {"slug":"hapur","name":"Hapur","state":"uttar-pradesh","district":"Hapur","tier":3,"nearby_highways":["NH-9","NH-58"],"lat":28.7301,"lng":77.7757},
+        {"slug":"noida","name":"Noida","state":"uttar-pradesh","district":"Gautam Buddha Nagar","tier":2,"nearby_highways":["NH-58","NH-24","NH-91"],"lat":28.5355,"lng":77.3910},
+        {"slug":"greater-noida","name":"Greater Noida","state":"uttar-pradesh","district":"Gautam Buddha Nagar","tier":2,"nearby_highways":["NH-19","NH-24"],"lat":28.4745,"lng":77.5040},
+        {"slug":"bulandshahr","name":"Bulandshahr","state":"uttar-pradesh","district":"Bulandshahr","tier":3,"nearby_highways":["NH-91","NH-519"],"lat":28.4067,"lng":77.8497},
+        {"slug":"ballia","name":"Ballia","state":"uttar-pradesh","district":"Ballia","tier":3,"nearby_highways":["NH-19","NH-31"],"lat":25.7524,"lng":84.1474},
+        {"slug":"gonda","name":"Gonda","state":"uttar-pradesh","district":"Gonda","tier":3,"nearby_highways":["NH-27","NH-28"],"lat":27.1344,"lng":81.9602},
+        {"slug":"lakhimpur-kheri","name":"Lakhimpur Kheri","state":"uttar-pradesh","district":"Lakhimpur Kheri","tier":3,"nearby_highways":["NH-24","NH-730"],"lat":27.9419,"lng":80.7679},
+        {"slug":"sultanpur","name":"Sultanpur","state":"uttar-pradesh","district":"Sultanpur","tier":3,"nearby_highways":["NH-56","NH-731"],"lat":26.2648,"lng":82.0727},
+        {"slug":"rae-bareli","name":"Rae Bareli","state":"uttar-pradesh","district":"Rae Bareli","tier":3,"nearby_highways":["NH-27","NH-56"],"lat":26.2309,"lng":81.2419},
+        {"slug":"unnao","name":"Unnao","state":"uttar-pradesh","district":"Unnao","tier":3,"nearby_highways":["NH-27","NH-19"],"lat":26.5496,"lng":80.4903},
+        {"slug":"mirzapur","name":"Mirzapur","state":"uttar-pradesh","district":"Mirzapur","tier":3,"nearby_highways":["NH-19","NH-35"],"lat":25.1457,"lng":82.5691},
+        {"slug":"jaunpur","name":"Jaunpur","state":"uttar-pradesh","district":"Jaunpur","tier":3,"nearby_highways":["NH-56","NH-731"],"lat":25.7463,"lng":82.6836},
+        {"slug":"sitapur","name":"Sitapur","state":"uttar-pradesh","district":"Sitapur","tier":3,"nearby_highways":["NH-24","NH-730"],"lat":27.5632,"lng":80.6834},
+        # ── Karnataka ────────────────────────────────────────────────────────
+        {"slug":"bengaluru","name":"Bengaluru","state":"karnataka","district":"Bengaluru Urban","tier":1,"nearby_highways":["NH-44","NH-75","NH-648","NH-48","NH-275"],"lat":12.9716,"lng":77.5946},
+        {"slug":"mysuru","name":"Mysuru","state":"karnataka","district":"Mysuru","tier":2,"nearby_highways":["NH-275","NH-212"],"lat":12.2958,"lng":76.6394},
+        {"slug":"mangaluru","name":"Mangaluru","state":"karnataka","district":"Dakshina Kannada","tier":2,"nearby_highways":["NH-66","NH-75"],"lat":12.9141,"lng":74.8560},
+        {"slug":"hubballi","name":"Hubballi","state":"karnataka","district":"Dharwad","tier":2,"nearby_highways":["NH-48","NH-67","NH-218"],"lat":15.3647,"lng":75.1240},
+        {"slug":"belagavi","name":"Belagavi","state":"karnataka","district":"Belagavi","tier":2,"nearby_highways":["NH-48","NH-67"],"lat":15.8497,"lng":74.4977},
+        {"slug":"davangere","name":"Davangere","state":"karnataka","district":"Davangere","tier":2,"nearby_highways":["NH-48","NH-150A"],"lat":14.4644,"lng":75.9218},
+        {"slug":"ballari","name":"Ballari","state":"karnataka","district":"Ballari","tier":2,"nearby_highways":["NH-67","NH-150A"],"lat":15.1394,"lng":76.9214},
+        {"slug":"kalaburagi","name":"Kalaburagi","state":"karnataka","district":"Kalaburagi","tier":2,"nearby_highways":["NH-150A","NH-61"],"lat":17.3297,"lng":76.8343},
+        {"slug":"tumakuru","name":"Tumakuru","state":"karnataka","district":"Tumakuru","tier":2,"nearby_highways":["NH-48","NH-206"],"lat":13.3379,"lng":77.1173},
+        {"slug":"shivamogga","name":"Shivamogga","state":"karnataka","district":"Shivamogga","tier":3,"nearby_highways":["NH-206","NH-169A"],"lat":13.9299,"lng":75.5681},
+        {"slug":"vijayapura","name":"Vijayapura","state":"karnataka","district":"Vijayapura","tier":3,"nearby_highways":["NH-167","NH-218"],"lat":16.8302,"lng":75.7100},
+        {"slug":"raichur","name":"Raichur","state":"karnataka","district":"Raichur","tier":3,"nearby_highways":["NH-67","NH-150A"],"lat":16.2120,"lng":77.3439},
+        {"slug":"udupi","name":"Udupi","state":"karnataka","district":"Udupi","tier":3,"nearby_highways":["NH-66","NH-169"],"lat":13.3409,"lng":74.7421},
+        {"slug":"hassan","name":"Hassan","state":"karnataka","district":"Hassan","tier":3,"nearby_highways":["NH-75","NH-169"],"lat":13.0068,"lng":76.1004},
+        {"slug":"chitradurga","name":"Chitradurga","state":"karnataka","district":"Chitradurga","tier":3,"nearby_highways":["NH-48","NH-150A"],"lat":14.2251,"lng":76.3980},
+        {"slug":"chikkamagaluru","name":"Chikkamagaluru","state":"karnataka","district":"Chikkamagaluru","tier":3,"nearby_highways":["NH-169","NH-206"],"lat":13.3161,"lng":75.7720},
+        # ── Tamil Nadu ───────────────────────────────────────────────────────
+        {"slug":"chennai","name":"Chennai","state":"tamil-nadu","district":"Chennai","tier":1,"nearby_highways":["NH-16","NH-48","NH-32","NH-38","NH-716"],"lat":13.0827,"lng":80.2707},
+        {"slug":"coimbatore","name":"Coimbatore","state":"tamil-nadu","district":"Coimbatore","tier":2,"nearby_highways":["NH-544","NH-548","NH-67"],"lat":11.0168,"lng":76.9558},
+        {"slug":"madurai","name":"Madurai","state":"tamil-nadu","district":"Madurai","tier":2,"nearby_highways":["NH-44","NH-85","NH-38"],"lat":9.9252,"lng":78.1198},
+        {"slug":"tiruchirappalli","name":"Tiruchirappalli","state":"tamil-nadu","district":"Tiruchirappalli","tier":2,"nearby_highways":["NH-44","NH-67","NH-38"],"lat":10.7905,"lng":78.7047},
+        {"slug":"salem","name":"Salem","state":"tamil-nadu","district":"Salem","tier":2,"nearby_highways":["NH-44","NH-544","NH-79"],"lat":11.6643,"lng":78.1460},
+        {"slug":"tirunelveli","name":"Tirunelveli","state":"tamil-nadu","district":"Tirunelveli","tier":2,"nearby_highways":["NH-44","NH-87"],"lat":8.7139,"lng":77.7567},
+        {"slug":"tiruppur","name":"Tiruppur","state":"tamil-nadu","district":"Tiruppur","tier":2,"nearby_highways":["NH-544","NH-67"],"lat":11.1085,"lng":77.3411},
+        {"slug":"erode","name":"Erode","state":"tamil-nadu","district":"Erode","tier":2,"nearby_highways":["NH-544","NH-79"],"lat":11.3410,"lng":77.7172},
+        {"slug":"vellore","name":"Vellore","state":"tamil-nadu","district":"Vellore","tier":2,"nearby_highways":["NH-48","NH-234"],"lat":12.9165,"lng":79.1325},
+        {"slug":"thoothukudi","name":"Thoothukudi","state":"tamil-nadu","district":"Thoothukudi","tier":2,"nearby_highways":["NH-44","NH-87"],"lat":8.7642,"lng":78.1348},
+        {"slug":"kanchipuram","name":"Kanchipuram","state":"tamil-nadu","district":"Kanchipuram","tier":3,"nearby_highways":["NH-48","NH-32"],"lat":12.8185,"lng":79.6947},
+        {"slug":"hosur","name":"Hosur","state":"tamil-nadu","district":"Krishnagiri","tier":3,"nearby_highways":["NH-44","NH-648"],"lat":12.7409,"lng":77.8253},
+        {"slug":"nagercoil","name":"Nagercoil","state":"tamil-nadu","district":"Kanyakumari","tier":3,"nearby_highways":["NH-44","NH-87"],"lat":8.1787,"lng":77.4332},
+        {"slug":"thanjavur","name":"Thanjavur","state":"tamil-nadu","district":"Thanjavur","tier":3,"nearby_highways":["NH-226","NH-44"],"lat":10.7870,"lng":79.1378},
+        {"slug":"dharmapuri","name":"Dharmapuri","state":"tamil-nadu","district":"Dharmapuri","tier":3,"nearby_highways":["NH-44","NH-234"],"lat":12.1277,"lng":78.1581},
+        {"slug":"krishnagiri","name":"Krishnagiri","state":"tamil-nadu","district":"Krishnagiri","tier":3,"nearby_highways":["NH-44","NH-48"],"lat":12.5186,"lng":78.2139},
+        # ── Gujarat ──────────────────────────────────────────────────────────
+        {"slug":"ahmedabad","name":"Ahmedabad","state":"gujarat","district":"Ahmedabad","tier":1,"nearby_highways":["NH-48","NH-147","NH-27","NH-753"],"lat":23.0225,"lng":72.5714},
+        {"slug":"surat","name":"Surat","state":"gujarat","district":"Surat","tier":1,"nearby_highways":["NH-48","NH-53","NH-228B"],"lat":21.1702,"lng":72.8311},
+        {"slug":"vadodara","name":"Vadodara","state":"gujarat","district":"Vadodara","tier":2,"nearby_highways":["NH-48","NH-64"],"lat":22.3072,"lng":73.1812},
+        {"slug":"rajkot","name":"Rajkot","state":"gujarat","district":"Rajkot","tier":2,"nearby_highways":["NH-27","NH-947","NH-8B"],"lat":22.3039,"lng":70.8022},
+        {"slug":"bhavnagar","name":"Bhavnagar","state":"gujarat","district":"Bhavnagar","tier":2,"nearby_highways":["NH-47","NH-227"],"lat":21.7645,"lng":72.1519},
+        {"slug":"jamnagar","name":"Jamnagar","state":"gujarat","district":"Jamnagar","tier":2,"nearby_highways":["NH-27","NH-947"],"lat":22.4707,"lng":70.0577},
+        {"slug":"junagadh","name":"Junagadh","state":"gujarat","district":"Junagadh","tier":2,"nearby_highways":["NH-27","NH-947"],"lat":21.5222,"lng":70.4579},
+        {"slug":"gandhinagar","name":"Gandhinagar","state":"gujarat","district":"Gandhinagar","tier":2,"nearby_highways":["NH-48","NH-147"],"lat":23.2156,"lng":72.6369},
+        {"slug":"anand","name":"Anand","state":"gujarat","district":"Anand","tier":3,"nearby_highways":["NH-48","NH-64"],"lat":22.5645,"lng":72.9289},
+        {"slug":"morbi","name":"Morbi","state":"gujarat","district":"Morbi","tier":3,"nearby_highways":["NH-27","NH-947"],"lat":22.8222,"lng":70.8378},
+        {"slug":"mehsana","name":"Mehsana","state":"gujarat","district":"Mehsana","tier":3,"nearby_highways":["NH-48","NH-27"],"lat":23.5880,"lng":72.3693},
+        {"slug":"bharuch","name":"Bharuch","state":"gujarat","district":"Bharuch","tier":3,"nearby_highways":["NH-48","NH-53"],"lat":21.7051,"lng":72.9959},
+        {"slug":"gandhidham","name":"Gandhidham","state":"gujarat","district":"Kutch","tier":3,"nearby_highways":["NH-27","NH-341"],"lat":23.0753,"lng":70.1337},
+        {"slug":"bhuj","name":"Bhuj","state":"gujarat","district":"Kutch","tier":3,"nearby_highways":["NH-27","NH-341"],"lat":23.2419,"lng":69.6669},
+        {"slug":"navsari","name":"Navsari","state":"gujarat","district":"Navsari","tier":3,"nearby_highways":["NH-48","NH-228B"],"lat":20.9467,"lng":72.9520},
+        # ── Haryana ──────────────────────────────────────────────────────────
+        {"slug":"gurugram","name":"Gurugram","state":"haryana","district":"Gurugram","tier":1,"nearby_highways":["NH-48","NH-58"],"lat":28.4595,"lng":77.0266},
+        {"slug":"faridabad","name":"Faridabad","state":"haryana","district":"Faridabad","tier":2,"nearby_highways":["NH-44","NH-19"],"lat":28.4089,"lng":77.3178},
+        {"slug":"rohtak","name":"Rohtak","state":"haryana","district":"Rohtak","tier":2,"nearby_highways":["NH-9","NH-71A","NH-71"],"lat":28.8955,"lng":76.6066},
+        {"slug":"hisar","name":"Hisar","state":"haryana","district":"Hisar","tier":2,"nearby_highways":["NH-9","NH-52","NH-152D"],"lat":29.1492,"lng":75.7217},
+        {"slug":"panipat","name":"Panipat","state":"haryana","district":"Panipat","tier":2,"nearby_highways":["NH-44","NH-709"],"lat":29.3909,"lng":76.9635},
+        {"slug":"ambala","name":"Ambala","state":"haryana","district":"Ambala","tier":2,"nearby_highways":["NH-44","NH-152D"],"lat":30.3782,"lng":76.7767},
+        {"slug":"sonipat","name":"Sonipat","state":"haryana","district":"Sonipat","tier":2,"nearby_highways":["NH-44","NH-352"],"lat":28.9931,"lng":77.0151},
+        {"slug":"karnal","name":"Karnal","state":"haryana","district":"Karnal","tier":2,"nearby_highways":["NH-44","NH-709"],"lat":29.6857,"lng":76.9905},
+        {"slug":"yamunanagar","name":"Yamunanagar","state":"haryana","district":"Yamunanagar","tier":3,"nearby_highways":["NH-44","NH-344"],"lat":30.1290,"lng":77.2674},
+        {"slug":"bhiwani","name":"Bhiwani","state":"haryana","district":"Bhiwani","tier":3,"nearby_highways":["NH-9","NH-152D"],"lat":28.7975,"lng":76.1322},
+        {"slug":"rewari","name":"Rewari","state":"haryana","district":"Rewari","tier":3,"nearby_highways":["NH-48","NH-248A"],"lat":28.1986,"lng":76.6183},
+        {"slug":"sirsa","name":"Sirsa","state":"haryana","district":"Sirsa","tier":3,"nearby_highways":["NH-10","NH-52"],"lat":29.5326,"lng":75.0165},
+        {"slug":"palwal","name":"Palwal","state":"haryana","district":"Palwal","tier":3,"nearby_highways":["NH-44","NH-19"],"lat":28.1436,"lng":77.3270},
+        {"slug":"panchkula","name":"Panchkula","state":"haryana","district":"Panchkula","tier":3,"nearby_highways":["NH-152D","NH-7"],"lat":30.6942,"lng":76.8606},
+        {"slug":"jind","name":"Jind","state":"haryana","district":"Jind","tier":3,"nearby_highways":["NH-71","NH-65"],"lat":29.3162,"lng":76.3155},
+        {"slug":"kaithal","name":"Kaithal","state":"haryana","district":"Kaithal","tier":3,"nearby_highways":["NH-65","NH-152"],"lat":29.8014,"lng":76.3994},
+        {"slug":"kurukshetra","name":"Kurukshetra","state":"haryana","district":"Kurukshetra","tier":3,"nearby_highways":["NH-44","NH-152D"],"lat":29.9695,"lng":76.8783},
+        # ── Punjab ───────────────────────────────────────────────────────────
+        {"slug":"ludhiana","name":"Ludhiana","state":"punjab","district":"Ludhiana","tier":2,"nearby_highways":["NH-44","NH-7","NH-95"],"lat":30.9010,"lng":75.8573},
+        {"slug":"amritsar","name":"Amritsar","state":"punjab","district":"Amritsar","tier":2,"nearby_highways":["NH-3","NH-7","NH-503"],"lat":31.6340,"lng":74.8723},
+        {"slug":"jalandhar","name":"Jalandhar","state":"punjab","district":"Jalandhar","tier":2,"nearby_highways":["NH-44","NH-354","NH-503"],"lat":31.3260,"lng":75.5762},
+        {"slug":"patiala","name":"Patiala","state":"punjab","district":"Patiala","tier":2,"nearby_highways":["NH-44","NH-7","NH-205A"],"lat":30.3398,"lng":76.3869},
+        {"slug":"mohali","name":"Mohali","state":"punjab","district":"Mohali","tier":2,"nearby_highways":["NH-44","NH-7","NH-152D"],"lat":30.7046,"lng":76.7179},
+        {"slug":"bathinda","name":"Bathinda","state":"punjab","district":"Bathinda","tier":2,"nearby_highways":["NH-7","NH-54","NH-152"],"lat":30.2110,"lng":74.9455},
+        {"slug":"hoshiarpur","name":"Hoshiarpur","state":"punjab","district":"Hoshiarpur","tier":3,"nearby_highways":["NH-44","NH-354"],"lat":31.5143,"lng":75.9115},
+        {"slug":"moga","name":"Moga","state":"punjab","district":"Moga","tier":3,"nearby_highways":["NH-54","NH-503"],"lat":30.8186,"lng":75.1736},
+        {"slug":"firozpur","name":"Firozpur","state":"punjab","district":"Firozpur","tier":3,"nearby_highways":["NH-7","NH-15"],"lat":30.9330,"lng":74.6142},
+        {"slug":"gurdaspur","name":"Gurdaspur","state":"punjab","district":"Gurdaspur","tier":3,"nearby_highways":["NH-44A","NH-354B"],"lat":32.0358,"lng":75.4065},
+        {"slug":"pathankot","name":"Pathankot","state":"punjab","district":"Pathankot","tier":3,"nearby_highways":["NH-44","NH-354","NH-44A"],"lat":32.2643,"lng":75.6527},
+        {"slug":"sangrur","name":"Sangrur","state":"punjab","district":"Sangrur","tier":3,"nearby_highways":["NH-7","NH-152"],"lat":30.2342,"lng":75.8480},
+        {"slug":"barnala","name":"Barnala","state":"punjab","district":"Barnala","tier":3,"nearby_highways":["NH-7","NH-54"],"lat":30.3782,"lng":75.5451},
+        # ── Madhya Pradesh ───────────────────────────────────────────────────
+        {"slug":"bhopal","name":"Bhopal","state":"madhya-pradesh","district":"Bhopal","tier":1,"nearby_highways":["NH-46","NH-45","NH-43","NH-12"],"lat":23.2599,"lng":77.4126},
+        {"slug":"indore","name":"Indore","state":"madhya-pradesh","district":"Indore","tier":2,"nearby_highways":["NH-47","NH-52","NH-59","NH-3"],"lat":22.7196,"lng":75.8577},
+        {"slug":"jabalpur","name":"Jabalpur","state":"madhya-pradesh","district":"Jabalpur","tier":2,"nearby_highways":["NH-44","NH-30","NH-43"],"lat":23.1815,"lng":79.9864},
+        {"slug":"gwalior","name":"Gwalior","state":"madhya-pradesh","district":"Gwalior","tier":2,"nearby_highways":["NH-44","NH-3","NH-27"],"lat":26.2183,"lng":78.1828},
+        {"slug":"ujjain","name":"Ujjain","state":"madhya-pradesh","district":"Ujjain","tier":2,"nearby_highways":["NH-47","NH-52"],"lat":23.1765,"lng":75.7885},
+        {"slug":"sagar","name":"Sagar","state":"madhya-pradesh","district":"Sagar","tier":3,"nearby_highways":["NH-44","NH-86"],"lat":23.8388,"lng":78.7378},
+        {"slug":"dewas","name":"Dewas","state":"madhya-pradesh","district":"Dewas","tier":3,"nearby_highways":["NH-47","NH-52"],"lat":22.9623,"lng":76.0510},
+        {"slug":"satna","name":"Satna","state":"madhya-pradesh","district":"Satna","tier":3,"nearby_highways":["NH-30","NH-35"],"lat":24.5833,"lng":80.8333},
+        {"slug":"ratlam","name":"Ratlam","state":"madhya-pradesh","district":"Ratlam","tier":3,"nearby_highways":["NH-52","NH-48"],"lat":23.3315,"lng":75.0367},
+        {"slug":"rewa","name":"Rewa","state":"madhya-pradesh","district":"Rewa","tier":3,"nearby_highways":["NH-30","NH-135"],"lat":24.5362,"lng":81.2963},
+        {"slug":"singrauli","name":"Singrauli","state":"madhya-pradesh","district":"Singrauli","tier":3,"nearby_highways":["NH-39","NH-75E"],"lat":24.1997,"lng":82.6731},
+        {"slug":"chhindwara","name":"Chhindwara","state":"madhya-pradesh","district":"Chhindwara","tier":3,"nearby_highways":["NH-547","NH-44"],"lat":22.0574,"lng":78.9382},
+        {"slug":"shivpuri","name":"Shivpuri","state":"madhya-pradesh","district":"Shivpuri","tier":3,"nearby_highways":["NH-3","NH-27"],"lat":25.4364,"lng":77.6567},
+        {"slug":"morena","name":"Morena","state":"madhya-pradesh","district":"Morena","tier":3,"nearby_highways":["NH-3","NH-44"],"lat":26.5038,"lng":77.9982},
+        {"slug":"guna","name":"Guna","state":"madhya-pradesh","district":"Guna","tier":3,"nearby_highways":["NH-3","NH-46"],"lat":24.6480,"lng":77.3132},
+        {"slug":"burhanpur","name":"Burhanpur","state":"madhya-pradesh","district":"Burhanpur","tier":3,"nearby_highways":["NH-53","NH-44"],"lat":21.3073,"lng":76.2228},
+        # ── West Bengal ──────────────────────────────────────────────────────
+        {"slug":"kolkata","name":"Kolkata","state":"west-bengal","district":"Kolkata","tier":1,"nearby_highways":["NH-19","NH-16","NH-12","NH-117"],"lat":22.5726,"lng":88.3639},
+        {"slug":"howrah","name":"Howrah","state":"west-bengal","district":"Howrah","tier":2,"nearby_highways":["NH-19","NH-12","NH-116"],"lat":22.5958,"lng":88.2636},
+        {"slug":"asansol","name":"Asansol","state":"west-bengal","district":"Paschim Bardhaman","tier":2,"nearby_highways":["NH-19","NH-60"],"lat":23.6888,"lng":86.9661},
+        {"slug":"siliguri","name":"Siliguri","state":"west-bengal","district":"Darjeeling","tier":2,"nearby_highways":["NH-31","NH-10","NH-27"],"lat":26.7271,"lng":88.3953},
+        {"slug":"durgapur","name":"Durgapur","state":"west-bengal","district":"Paschim Bardhaman","tier":2,"nearby_highways":["NH-19","NH-2B"],"lat":23.5204,"lng":87.3119},
+        {"slug":"bardhaman","name":"Bardhaman","state":"west-bengal","district":"Purba Bardhaman","tier":3,"nearby_highways":["NH-19","NH-12"],"lat":23.2324,"lng":87.8615},
+        {"slug":"malda","name":"Malda","state":"west-bengal","district":"Malda","tier":3,"nearby_highways":["NH-12","NH-512"],"lat":25.0108,"lng":88.1416},
+        {"slug":"kharagpur","name":"Kharagpur","state":"west-bengal","district":"Paschim Medinipur","tier":3,"nearby_highways":["NH-16","NH-60"],"lat":22.3460,"lng":87.2320},
+        {"slug":"haldia","name":"Haldia","state":"west-bengal","district":"Purba Medinipur","tier":3,"nearby_highways":["NH-116","NH-116B"],"lat":22.0667,"lng":88.0686},
+        {"slug":"jalpaiguri","name":"Jalpaiguri","state":"west-bengal","district":"Jalpaiguri","tier":3,"nearby_highways":["NH-27","NH-31"],"lat":26.5449,"lng":88.7179},
+        {"slug":"krishnanagar","name":"Krishnanagar","state":"west-bengal","district":"Nadia","tier":3,"nearby_highways":["NH-12","NH-35"],"lat":23.3994,"lng":88.5011},
+        {"slug":"purulia","name":"Purulia","state":"west-bengal","district":"Purulia","tier":3,"nearby_highways":["NH-32","NH-60"],"lat":23.3351,"lng":86.3667},
+        {"slug":"bankura","name":"Bankura","state":"west-bengal","district":"Bankura","tier":3,"nearby_highways":["NH-60","NH-32"],"lat":23.2294,"lng":87.0675},
+        # ── Andhra Pradesh ───────────────────────────────────────────────────
+        {"slug":"visakhapatnam","name":"Visakhapatnam","state":"andhra-pradesh","district":"Visakhapatnam","tier":2,"nearby_highways":["NH-16","NH-543","NH-516E"],"lat":17.6868,"lng":83.2185},
+        {"slug":"vijayawada","name":"Vijayawada","state":"andhra-pradesh","district":"Krishna","tier":2,"nearby_highways":["NH-65","NH-9","NH-16"],"lat":16.5062,"lng":80.6480},
+        {"slug":"guntur","name":"Guntur","state":"andhra-pradesh","district":"Guntur","tier":2,"nearby_highways":["NH-16","NH-65","NH-167"],"lat":16.2975,"lng":80.4575},
+        {"slug":"nellore","name":"Nellore","state":"andhra-pradesh","district":"Sri Potti Sriramulu Nellore","tier":2,"nearby_highways":["NH-16","NH-516"],"lat":14.4426,"lng":79.9865},
+        {"slug":"kurnool","name":"Kurnool","state":"andhra-pradesh","district":"Kurnool","tier":2,"nearby_highways":["NH-44","NH-65","NH-167"],"lat":15.8281,"lng":78.0373},
+        {"slug":"rajahmundry","name":"Rajahmundry","state":"andhra-pradesh","district":"East Godavari","tier":2,"nearby_highways":["NH-16","NH-214"],"lat":17.0005,"lng":81.8040},
+        {"slug":"kakinada","name":"Kakinada","state":"andhra-pradesh","district":"East Godavari","tier":2,"nearby_highways":["NH-16","NH-214"],"lat":16.9891,"lng":82.2475},
+        {"slug":"tirupati","name":"Tirupati","state":"andhra-pradesh","district":"Chittoor","tier":2,"nearby_highways":["NH-716","NH-40"],"lat":13.6288,"lng":79.4192},
+        {"slug":"kadapa","name":"Kadapa","state":"andhra-pradesh","district":"YSR Kadapa","tier":3,"nearby_highways":["NH-44","NH-67"],"lat":14.4673,"lng":78.8242},
+        {"slug":"anantapur","name":"Anantapur","state":"andhra-pradesh","district":"Anantapur","tier":3,"nearby_highways":["NH-44","NH-205"],"lat":14.6819,"lng":77.6006},
+        {"slug":"eluru","name":"Eluru","state":"andhra-pradesh","district":"West Godavari","tier":3,"nearby_highways":["NH-16","NH-214"],"lat":16.7070,"lng":81.0956},
+        {"slug":"ongole","name":"Ongole","state":"andhra-pradesh","district":"Prakasam","tier":3,"nearby_highways":["NH-16"],"lat":15.5057,"lng":80.0499},
+        {"slug":"vizianagaram","name":"Vizianagaram","state":"andhra-pradesh","district":"Vizianagaram","tier":3,"nearby_highways":["NH-16","NH-43"],"lat":18.1066,"lng":83.3956},
+        {"slug":"chittoor","name":"Chittoor","state":"andhra-pradesh","district":"Chittoor","tier":3,"nearby_highways":["NH-40","NH-71"],"lat":13.2172,"lng":79.1003},
+        # ── Telangana ────────────────────────────────────────────────────────
+        {"slug":"hyderabad","name":"Hyderabad","state":"telangana","district":"Hyderabad","tier":1,"nearby_highways":["NH-44","NH-65","NH-163","NH-167","NH-765"],"lat":17.3850,"lng":78.4867},
+        {"slug":"warangal","name":"Warangal","state":"telangana","district":"Warangal","tier":2,"nearby_highways":["NH-163","NH-163A"],"lat":17.9689,"lng":79.5941},
+        {"slug":"nizamabad","name":"Nizamabad","state":"telangana","district":"Nizamabad","tier":2,"nearby_highways":["NH-44","NH-361"],"lat":18.6725,"lng":78.0941},
+        {"slug":"khammam","name":"Khammam","state":"telangana","district":"Khammam","tier":2,"nearby_highways":["NH-30","NH-65"],"lat":17.2473,"lng":80.1514},
+        {"slug":"karimnagar","name":"Karimnagar","state":"telangana","district":"Karimnagar","tier":2,"nearby_highways":["NH-63","NH-363"],"lat":18.4386,"lng":79.1288},
+        {"slug":"ramagundam","name":"Ramagundam","state":"telangana","district":"Peddapalli","tier":3,"nearby_highways":["NH-363","NH-163"],"lat":18.7572,"lng":79.4745},
+        {"slug":"mahbubnagar","name":"Mahbubnagar","state":"telangana","district":"Mahbubnagar","tier":3,"nearby_highways":["NH-44","NH-167"],"lat":16.7376,"lng":77.9876},
+        {"slug":"nalgonda","name":"Nalgonda","state":"telangana","district":"Nalgonda","tier":3,"nearby_highways":["NH-65","NH-565"],"lat":17.0574,"lng":79.2670},
+        {"slug":"sangareddy","name":"Sangareddy","state":"telangana","district":"Sangareddy","tier":3,"nearby_highways":["NH-65","NH-765"],"lat":17.6236,"lng":78.0862},
+        {"slug":"siddipet","name":"Siddipet","state":"telangana","district":"Siddipet","tier":3,"nearby_highways":["NH-65","NH-44"],"lat":18.1016,"lng":78.8519},
+        # ── Kerala ───────────────────────────────────────────────────────────
+        {"slug":"thiruvananthapuram","name":"Thiruvananthapuram","state":"kerala","district":"Thiruvananthapuram","tier":2,"nearby_highways":["NH-66","NH-544","NH-183"],"lat":8.5241,"lng":76.9366},
+        {"slug":"kochi","name":"Kochi","state":"kerala","district":"Ernakulam","tier":2,"nearby_highways":["NH-66","NH-544","NH-85"],"lat":9.9312,"lng":76.2673},
+        {"slug":"kozhikode","name":"Kozhikode","state":"kerala","district":"Kozhikode","tier":2,"nearby_highways":["NH-66","NH-766"],"lat":11.2588,"lng":75.7804},
+        {"slug":"thrissur","name":"Thrissur","state":"kerala","district":"Thrissur","tier":2,"nearby_highways":["NH-66","NH-544","NH-544C"],"lat":10.5276,"lng":76.2144},
+        {"slug":"kollam","name":"Kollam","state":"kerala","district":"Kollam","tier":2,"nearby_highways":["NH-66","NH-183"],"lat":8.8932,"lng":76.6141},
+        {"slug":"alappuzha","name":"Alappuzha","state":"kerala","district":"Alappuzha","tier":3,"nearby_highways":["NH-66","NH-183"],"lat":9.4981,"lng":76.3388},
+        {"slug":"kannur","name":"Kannur","state":"kerala","district":"Kannur","tier":3,"nearby_highways":["NH-66","NH-66A"],"lat":11.8745,"lng":75.3704},
+        {"slug":"palakkad","name":"Palakkad","state":"kerala","district":"Palakkad","tier":3,"nearby_highways":["NH-544","NH-966"],"lat":10.7867,"lng":76.6548},
+        {"slug":"kottayam","name":"Kottayam","state":"kerala","district":"Kottayam","tier":3,"nearby_highways":["NH-183","NH-220"],"lat":9.5916,"lng":76.5222},
+        {"slug":"malappuram","name":"Malappuram","state":"kerala","district":"Malappuram","tier":3,"nearby_highways":["NH-66","NH-966"],"lat":11.0510,"lng":76.0711},
+        {"slug":"kasaragod","name":"Kasaragod","state":"kerala","district":"Kasaragod","tier":3,"nearby_highways":["NH-66","NH-66A"],"lat":12.4996,"lng":74.9869},
+        {"slug":"wayanad","name":"Wayanad","state":"kerala","district":"Wayanad","tier":3,"nearby_highways":["NH-766","NH-212"],"lat":11.6854,"lng":76.1320},
+        # ── Bihar ────────────────────────────────────────────────────────────
+        {"slug":"patna","name":"Patna","state":"bihar","district":"Patna","tier":1,"nearby_highways":["NH-19","NH-30","NH-31","NH-83","NH-30A"],"lat":25.5941,"lng":85.1376},
+        {"slug":"gaya","name":"Gaya","state":"bihar","district":"Gaya","tier":2,"nearby_highways":["NH-83","NH-22","NH-919"],"lat":24.7914,"lng":85.0002},
+        {"slug":"muzaffarpur","name":"Muzaffarpur","state":"bihar","district":"Muzaffarpur","tier":2,"nearby_highways":["NH-28","NH-57","NH-722"],"lat":26.1197,"lng":85.3910},
+        {"slug":"bhagalpur","name":"Bhagalpur","state":"bihar","district":"Bhagalpur","tier":2,"nearby_highways":["NH-80","NH-33"],"lat":25.2425,"lng":86.9842},
+        {"slug":"darbhanga","name":"Darbhanga","state":"bihar","district":"Darbhanga","tier":2,"nearby_highways":["NH-57","NH-27"],"lat":26.1522,"lng":85.8960},
+        {"slug":"purnia","name":"Purnia","state":"bihar","district":"Purnia","tier":3,"nearby_highways":["NH-57","NH-31"],"lat":25.7771,"lng":87.4753},
+        {"slug":"motihari","name":"Motihari","state":"bihar","district":"East Champaran","tier":3,"nearby_highways":["NH-28","NH-727"],"lat":26.6489,"lng":84.9166},
+        {"slug":"begusarai","name":"Begusarai","state":"bihar","district":"Begusarai","tier":3,"nearby_highways":["NH-28","NH-31"],"lat":25.4182,"lng":86.1272},
+        {"slug":"chapra","name":"Chapra","state":"bihar","district":"Saran","tier":3,"nearby_highways":["NH-19","NH-31"],"lat":25.7796,"lng":84.7413},
+        {"slug":"katihar","name":"Katihar","state":"bihar","district":"Katihar","tier":3,"nearby_highways":["NH-31","NH-80"],"lat":25.5520,"lng":87.5720},
+        {"slug":"samastipur","name":"Samastipur","state":"bihar","district":"Samastipur","tier":3,"nearby_highways":["NH-28","NH-57"],"lat":25.8586,"lng":85.7822},
+        {"slug":"bihar-sharif","name":"Bihar Sharif","state":"bihar","district":"Nalanda","tier":3,"nearby_highways":["NH-82","NH-31"],"lat":25.1980,"lng":85.5235},
+        {"slug":"arrah","name":"Arrah","state":"bihar","district":"Bhojpur","tier":3,"nearby_highways":["NH-30","NH-19"],"lat":25.5568,"lng":84.6605},
+        {"slug":"sitamarhi","name":"Sitamarhi","state":"bihar","district":"Sitamarhi","tier":3,"nearby_highways":["NH-104","NH-104B"],"lat":26.5942,"lng":85.4906},
+        # ── Odisha ───────────────────────────────────────────────────────────
+        {"slug":"bhubaneswar","name":"Bhubaneswar","state":"odisha","district":"Khurda","tier":2,"nearby_highways":["NH-16","NH-55","NH-43","NH-215"],"lat":20.2961,"lng":85.8245},
+        {"slug":"cuttack","name":"Cuttack","state":"odisha","district":"Cuttack","tier":2,"nearby_highways":["NH-16","NH-55","NH-53"],"lat":20.4625,"lng":85.8830},
+        {"slug":"rourkela","name":"Rourkela","state":"odisha","district":"Sundargarh","tier":2,"nearby_highways":["NH-23","NH-143"],"lat":22.2604,"lng":84.8536},
+        {"slug":"berhampur","name":"Berhampur","state":"odisha","district":"Ganjam","tier":2,"nearby_highways":["NH-16","NH-57"],"lat":19.3149,"lng":84.7941},
+        {"slug":"sambalpur","name":"Sambalpur","state":"odisha","district":"Sambalpur","tier":2,"nearby_highways":["NH-53","NH-49","NH-143"],"lat":21.4669,"lng":83.9756},
+        {"slug":"puri","name":"Puri","state":"odisha","district":"Puri","tier":2,"nearby_highways":["NH-316","NH-316A"],"lat":19.8135,"lng":85.8312},
+        {"slug":"balasore","name":"Balasore","state":"odisha","district":"Balasore","tier":3,"nearby_highways":["NH-16","NH-49"],"lat":21.4927,"lng":86.9317},
+        {"slug":"baripada","name":"Baripada","state":"odisha","district":"Mayurbhanj","tier":3,"nearby_highways":["NH-18","NH-49"],"lat":21.9357,"lng":86.7314},
+        {"slug":"jharsuguda","name":"Jharsuguda","state":"odisha","district":"Jharsuguda","tier":3,"nearby_highways":["NH-49","NH-143"],"lat":21.8550,"lng":84.0063},
+        {"slug":"keonjhar","name":"Keonjhar","state":"odisha","district":"Keonjhar","tier":3,"nearby_highways":["NH-18","NH-20"],"lat":21.6290,"lng":85.5810},
+        # ── Chhattisgarh ─────────────────────────────────────────────────────
+        {"slug":"raipur","name":"Raipur","state":"chhattisgarh","district":"Raipur","tier":2,"nearby_highways":["NH-53","NH-30","NH-43","NH-130"],"lat":21.2514,"lng":81.6296},
+        {"slug":"bhilai","name":"Bhilai","state":"chhattisgarh","district":"Durg","tier":2,"nearby_highways":["NH-53","NH-130"],"lat":21.2090,"lng":81.4285},
+        {"slug":"bilaspur","name":"Bilaspur","state":"chhattisgarh","district":"Bilaspur","tier":2,"nearby_highways":["NH-130","NH-130B"],"lat":22.0796,"lng":82.1391},
+        {"slug":"korba","name":"Korba","state":"chhattisgarh","district":"Korba","tier":3,"nearby_highways":["NH-130","NH-130B"],"lat":22.3595,"lng":82.7501},
+        {"slug":"durg","name":"Durg","state":"chhattisgarh","district":"Durg","tier":3,"nearby_highways":["NH-53","NH-130"],"lat":21.1900,"lng":81.2849},
+        {"slug":"rajnandgaon","name":"Rajnandgaon","state":"chhattisgarh","district":"Rajnandgaon","tier":3,"nearby_highways":["NH-30","NH-130"],"lat":21.0972,"lng":81.0297},
+        {"slug":"jagdalpur","name":"Jagdalpur","state":"chhattisgarh","district":"Bastar","tier":3,"nearby_highways":["NH-30","NH-130C"],"lat":19.0780,"lng":82.0290},
+        {"slug":"raigarh","name":"Raigarh","state":"chhattisgarh","district":"Raigarh","tier":3,"nearby_highways":["NH-49","NH-130"],"lat":21.8974,"lng":83.3950},
+        # ── Jharkhand ────────────────────────────────────────────────────────
+        {"slug":"ranchi","name":"Ranchi","state":"jharkhand","district":"Ranchi","tier":2,"nearby_highways":["NH-33","NH-23","NH-75","NH-143"],"lat":23.3441,"lng":85.3096},
+        {"slug":"jamshedpur","name":"Jamshedpur","state":"jharkhand","district":"East Singhbhum","tier":2,"nearby_highways":["NH-33","NH-6","NH-32"],"lat":22.8046,"lng":86.2029},
+        {"slug":"dhanbad","name":"Dhanbad","state":"jharkhand","district":"Dhanbad","tier":2,"nearby_highways":["NH-2","NH-32"],"lat":23.7957,"lng":86.4304},
+        {"slug":"bokaro","name":"Bokaro","state":"jharkhand","district":"Bokaro","tier":2,"nearby_highways":["NH-32","NH-23"],"lat":23.6693,"lng":86.1511},
+        {"slug":"deoghar","name":"Deoghar","state":"jharkhand","district":"Deoghar","tier":3,"nearby_highways":["NH-114","NH-133A"],"lat":24.4853,"lng":86.6945},
+        {"slug":"hazaribagh","name":"Hazaribagh","state":"jharkhand","district":"Hazaribagh","tier":3,"nearby_highways":["NH-33","NH-23"],"lat":23.9925,"lng":85.3637},
+        {"slug":"giridih","name":"Giridih","state":"jharkhand","district":"Giridih","tier":3,"nearby_highways":["NH-114","NH-23"],"lat":24.1886,"lng":86.2948},
+        {"slug":"ramgarh","name":"Ramgarh","state":"jharkhand","district":"Ramgarh","tier":3,"nearby_highways":["NH-23","NH-32"],"lat":23.6338,"lng":85.5162},
+        # ── Assam ────────────────────────────────────────────────────────────
+        {"slug":"guwahati","name":"Guwahati","state":"assam","district":"Kamrup Metropolitan","tier":2,"nearby_highways":["NH-17","NH-37","NH-27","NH-27A"],"lat":26.1445,"lng":91.7362},
+        {"slug":"silchar","name":"Silchar","state":"assam","district":"Cachar","tier":3,"nearby_highways":["NH-306","NH-37"],"lat":24.8333,"lng":92.7789},
+        {"slug":"dibrugarh","name":"Dibrugarh","state":"assam","district":"Dibrugarh","tier":3,"nearby_highways":["NH-37","NH-152"],"lat":27.4728,"lng":94.9120},
+        {"slug":"jorhat","name":"Jorhat","state":"assam","district":"Jorhat","tier":3,"nearby_highways":["NH-37","NH-315"],"lat":26.7509,"lng":94.2037},
+        {"slug":"nagaon","name":"Nagaon","state":"assam","district":"Nagaon","tier":3,"nearby_highways":["NH-37","NH-715"],"lat":26.3458,"lng":92.6844},
+        {"slug":"tinsukia","name":"Tinsukia","state":"assam","district":"Tinsukia","tier":3,"nearby_highways":["NH-37","NH-152"],"lat":27.4894,"lng":95.3594},
+        {"slug":"tezpur","name":"Tezpur","state":"assam","district":"Sonitpur","tier":3,"nearby_highways":["NH-715","NH-52"],"lat":26.6338,"lng":92.8005},
+        {"slug":"bongaigaon","name":"Bongaigaon","state":"assam","district":"Bongaigaon","tier":3,"nearby_highways":["NH-27","NH-17"],"lat":26.4773,"lng":90.5585},
+        # ── Himachal Pradesh ──────────────────────────────────────────────────
+        {"slug":"shimla","name":"Shimla","state":"himachal-pradesh","district":"Shimla","tier":2,"nearby_highways":["NH-22","NH-5","NH-705A"],"lat":31.1048,"lng":77.1734},
+        {"slug":"manali","name":"Manali","state":"himachal-pradesh","district":"Kullu","tier":3,"nearby_highways":["NH-3","NH-21"],"lat":32.2396,"lng":77.1887},
+        {"slug":"dharamshala","name":"Dharamshala","state":"himachal-pradesh","district":"Kangra","tier":3,"nearby_highways":["NH-503","NH-88"],"lat":32.2190,"lng":76.3234},
+        {"slug":"mandi","name":"Mandi","state":"himachal-pradesh","district":"Mandi","tier":3,"nearby_highways":["NH-3","NH-21","NH-154"],"lat":31.7070,"lng":76.9320},
+        {"slug":"solan","name":"Solan","state":"himachal-pradesh","district":"Solan","tier":3,"nearby_highways":["NH-5","NH-22"],"lat":30.9083,"lng":77.0974},
+        {"slug":"kullu","name":"Kullu","state":"himachal-pradesh","district":"Kullu","tier":3,"nearby_highways":["NH-3","NH-305"],"lat":31.9579,"lng":77.1095},
+        {"slug":"hamirpur-hp","name":"Hamirpur","state":"himachal-pradesh","district":"Hamirpur","tier":3,"nearby_highways":["NH-70","NH-88"],"lat":31.6863,"lng":76.5219},
+        {"slug":"una-hp","name":"Una","state":"himachal-pradesh","district":"Una","tier":3,"nearby_highways":["NH-70","NH-503"],"lat":31.4674,"lng":76.2660},
+        {"slug":"nahan","name":"Nahan","state":"himachal-pradesh","district":"Sirmaur","tier":3,"nearby_highways":["NH-707","NH-7"],"lat":30.5582,"lng":77.2951},
+        # ── Uttarakhand ──────────────────────────────────────────────────────
+        {"slug":"dehradun","name":"Dehradun","state":"uttarakhand","district":"Dehradun","tier":2,"nearby_highways":["NH-58","NH-72","NH-7","NH-72A"],"lat":30.3165,"lng":78.0322},
+        {"slug":"haridwar","name":"Haridwar","state":"uttarakhand","district":"Haridwar","tier":2,"nearby_highways":["NH-58","NH-74"],"lat":29.9457,"lng":78.1642},
+        {"slug":"roorkee","name":"Roorkee","state":"uttarakhand","district":"Haridwar","tier":3,"nearby_highways":["NH-58","NH-74"],"lat":29.8543,"lng":77.8880},
+        {"slug":"haldwani","name":"Haldwani","state":"uttarakhand","district":"Nainital","tier":3,"nearby_highways":["NH-109","NH-87"],"lat":29.2183,"lng":79.5130},
+        {"slug":"rudrapur","name":"Rudrapur","state":"uttarakhand","district":"Udham Singh Nagar","tier":3,"nearby_highways":["NH-74","NH-87"],"lat":28.9783,"lng":79.3997},
+        {"slug":"rishikesh","name":"Rishikesh","state":"uttarakhand","district":"Dehradun","tier":3,"nearby_highways":["NH-58","NH-7"],"lat":30.0869,"lng":78.2676},
+        {"slug":"nainital","name":"Nainital","state":"uttarakhand","district":"Nainital","tier":3,"nearby_highways":["NH-109","NH-87"],"lat":29.3803,"lng":79.4636},
+        {"slug":"kashipur","name":"Kashipur","state":"uttarakhand","district":"Udham Singh Nagar","tier":3,"nearby_highways":["NH-74","NH-334B"],"lat":29.2093,"lng":78.9642},
+        {"slug":"almora","name":"Almora","state":"uttarakhand","district":"Almora","tier":3,"nearby_highways":["NH-109","NH-87"],"lat":29.5972,"lng":79.6477},
+        {"slug":"pithoragarh","name":"Pithoragarh","state":"uttarakhand","district":"Pithoragarh","tier":3,"nearby_highways":["NH-9","NH-125"],"lat":29.5817,"lng":80.2168},
+        # ── Goa ──────────────────────────────────────────────────────────────
+        {"slug":"panaji","name":"Panaji","state":"goa","district":"North Goa","tier":2,"nearby_highways":["NH-66","NH-4A","NH-748"],"lat":15.4989,"lng":73.8278},
+        {"slug":"margao","name":"Margao","state":"goa","district":"South Goa","tier":3,"nearby_highways":["NH-66","NH-748"],"lat":15.2832,"lng":73.9862},
+        {"slug":"vasco-da-gama","name":"Vasco da Gama","state":"goa","district":"South Goa","tier":3,"nearby_highways":["NH-66","NH-17B"],"lat":15.3983,"lng":73.8139},
+        {"slug":"mapusa","name":"Mapusa","state":"goa","district":"North Goa","tier":3,"nearby_highways":["NH-66","NH-4A"],"lat":15.5919,"lng":73.8086},
+        # ── Chandigarh (UT) ───────────────────────────────────────────────────
+        {"slug":"chandigarh","name":"Chandigarh","state":"chandigarh","district":"Chandigarh","tier":2,"nearby_highways":["NH-44","NH-7","NH-22","NH-152D"],"lat":30.7333,"lng":76.7794},
+        # ── Jammu & Kashmir (UT) ───────────────────────────────────────────
+        {"slug":"jammu","name":"Jammu","state":"jammu-kashmir","district":"Jammu","tier":2,"nearby_highways":["NH-44","NH-1A","NH-44A"],"lat":32.7266,"lng":74.8570},
+        {"slug":"srinagar","name":"Srinagar","state":"jammu-kashmir","district":"Srinagar","tier":2,"nearby_highways":["NH-44","NH-1D"],"lat":34.0837,"lng":74.7973},
+        {"slug":"leh","name":"Leh","state":"ladakh","district":"Leh","tier":3,"nearby_highways":["NH-1","NH-301"],"lat":34.1526,"lng":77.5771},
+        # ── Puducherry (UT) ──────────────────────────────────────────────────
+        {"slug":"puducherry","name":"Puducherry","state":"puducherry","district":"Puducherry","tier":2,"nearby_highways":["NH-45A","NH-532","NH-179A"],"lat":11.9416,"lng":79.8083},
+        # ── Tripura ──────────────────────────────────────────────────────────
+        {"slug":"agartala","name":"Agartala","state":"tripura","district":"West Tripura","tier":2,"nearby_highways":["NH-44","NH-8"],"lat":23.8315,"lng":91.2868},
+        {"slug":"dharmanagar","name":"Dharmanagar","state":"tripura","district":"North Tripura","tier":3,"nearby_highways":["NH-8","NH-108"],"lat":24.3796,"lng":92.1652},
+        # ── Meghalaya ────────────────────────────────────────────────────────
+        {"slug":"shillong","name":"Shillong","state":"meghalaya","district":"East Khasi Hills","tier":2,"nearby_highways":["NH-44","NH-40","NH-6","NH-44"],"lat":25.5788,"lng":91.8933},
+        {"slug":"tura","name":"Tura","state":"meghalaya","district":"West Garo Hills","tier":3,"nearby_highways":["NH-217","NH-62"],"lat":25.5140,"lng":90.2142},
+        # ── Manipur ──────────────────────────────────────────────────────────
+        {"slug":"imphal","name":"Imphal","state":"manipur","district":"Imphal West","tier":2,"nearby_highways":["NH-2","NH-37","NH-53","NH-150"],"lat":24.8170,"lng":93.9368},
+        # ── Nagaland ─────────────────────────────────────────────────────────
+        {"slug":"kohima","name":"Kohima","state":"nagaland","district":"Kohima","tier":2,"nearby_highways":["NH-29","NH-39","NH-155"],"lat":25.6751,"lng":94.1086},
+        {"slug":"dimapur","name":"Dimapur","state":"nagaland","district":"Dimapur","tier":3,"nearby_highways":["NH-37","NH-39"],"lat":25.9091,"lng":93.7274},
+        # ── Mizoram ──────────────────────────────────────────────────────────
+        {"slug":"aizawl","name":"Aizawl","state":"mizoram","district":"Aizawl","tier":2,"nearby_highways":["NH-54","NH-54A","NH-154"],"lat":23.7307,"lng":92.7173},
+        # ── Arunachal Pradesh ─────────────────────────────────────────────────
+        {"slug":"itanagar","name":"Itanagar","state":"arunachal-pradesh","district":"Papum Pare","tier":2,"nearby_highways":["NH-415","NH-13"],"lat":27.0844,"lng":93.6053},
+        {"slug":"naharlagun","name":"Naharlagun","state":"arunachal-pradesh","district":"Papum Pare","tier":3,"nearby_highways":["NH-415","NH-13"],"lat":27.1050,"lng":93.6962},
+        # ── Sikkim ───────────────────────────────────────────────────────────
+        {"slug":"gangtok","name":"Gangtok","state":"sikkim","district":"East Sikkim","tier":2,"nearby_highways":["NH-310","NH-27A"],"lat":27.3389,"lng":88.6065},
+    ]
+    upserted = 0
+    for city in INDIA_CITIES:
+        city.setdefault("plazaCount", 0)
+        city.setdefault("sathiCount", 0)
+        city.setdefault("content_body", None)
+        city.setdefault("faq_pairs", [])
+        city.setdefault("meta_description", None)
+        city["updated_at"] = now
+        await db.cities.update_one({"slug": city["slug"]}, {"$set": city}, upsert=True)
+        upserted += 1
+    logger.info(f"[batch-seed-india] Upserted {upserted} cities")
+    return {"ok": True, "upserted": upserted, "total": len(INDIA_CITIES)}
+
+
+@admin_router.post("/cities/{slug}/generate-content", dependencies=[Depends(_check_admin)])
+async def admin_generate_city_content(slug: str):
+    """Generate unique AI content for a single city using Gemini."""
+    if not GEMINI_API_KEY:
+        raise HTTPException(503, "GEMINI_API_KEY not configured")
+    city = await db.cities.find_one({"slug": slug}, {"_id": 0})
+    if not city:
+        raise HTTPException(404, "City not found")
+
+    city_name = city["name"]
+    state_name = city.get("state", "India").replace("-", " ").title()
+    highways = city.get("nearby_highways", [])
+    hw_str = ", ".join(highways) if highways else "nearby national highways"
+    district = city.get("district", city_name)
+
+    meta_prompt = (
+        f"Generate SEO metadata for a FASTag services page targeting '{city_name}, {state_name}'.\n"
+        f"Return ONLY a JSON object with these exact keys:\n"
+        f'{{"meta_description": "155-char SEO description for FASTag services in {city_name}",\n'
+        f'"faq_pairs": [{{"q": "question", "a": "answer"}}, ...5 items...]}}\n\n'
+        f"Context: {city_name} is in {district} district, {state_name}. Nearby highways: {hw_str}.\n"
+        f"FAQs must mention {city_name} and relevant toll roads. Return valid JSON only."
+    )
+
+    body_prompt = (
+        f"Write a 450-word informative HTML section about FASTag services in {city_name}, {state_name}.\n\n"
+        f"Requirements:\n"
+        f"- Open with <h2>FASTag Services in {city_name}</h2>\n"
+        f"- Mention these nearby highways: {hw_str}\n"
+        f"- Cover: why FASTag issues are common on these routes, types of problems (mischarges, blacklisting, KYC), "
+        f"how ApnaFastag Sathis help travellers in {district} district\n"
+        f"- Include one <ul> list of common FASTag issues specific to this region\n"
+        f"- End with a paragraph about getting instant help via ApnaFastag\n"
+        f"- Be factual and specific to {city_name}. No generic filler.\n"
+        f"- Use ONLY these HTML tags: <h2>, <h3>, <p>, <ul>, <li>, <strong>\n"
+        f"- Do NOT use markdown. Output raw HTML only."
+    )
+
+    try:
+        import asyncio
+        genai, chosen = await _get_gemini_model()
+        model = genai.GenerativeModel(chosen)
+        cfg = genai.types.GenerationConfig(temperature=0.6, max_output_tokens=3000)
+
+        # Meta call
+        meta_resp = model.generate_content(meta_prompt, generation_config=cfg)
+        meta_raw = _extract_text(meta_resp)
+        if "```" in meta_raw:
+            meta_raw = meta_raw.split("```")[1]
+            if meta_raw.startswith("json"): meta_raw = meta_raw[4:]
+        bs = meta_raw.find("{"); be = meta_raw.rfind("}")
+        if bs != -1 and be > bs: meta_raw = meta_raw[bs:be+1]
+        meta_data = json.loads(meta_raw)
+
+        # Body call
+        body_resp = model.generate_content(body_prompt, generation_config=cfg)
+        body_html = _extract_text(body_resp)
+        # Strip markdown fences if present
+        if "```" in body_html:
+            body_html = body_html.split("```")[1]
+            if body_html.lower().startswith("html"): body_html = body_html[4:]
+            body_html = body_html.strip()
+
+        await db.cities.update_one(
+            {"slug": slug},
+            {"$set": {
+                "content_body":    body_html,
+                "faq_pairs":       meta_data.get("faq_pairs", []),
+                "meta_description":meta_data.get("meta_description", "")[:160],
+                "updated_at":      datetime.now(timezone.utc).isoformat(),
+            }}
+        )
+        logger.info(f"[city-content] Generated content for {city_name}")
+        return {"ok": True, "city": city_name, "body_len": len(body_html), "faqs": len(meta_data.get("faq_pairs", []))}
+
+    except json.JSONDecodeError as e:
+        raise HTTPException(500, f"AI returned malformed JSON: {str(e)}")
+    except ImportError:
+        raise HTTPException(503, "google-generativeai package not installed")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[city-content] Error for {slug}: {e}")
+        raise HTTPException(500, f"Content generation failed: {str(e)}")
+
+
+@admin_router.post("/cities/batch-generate-content", dependencies=[Depends(_check_admin)])
+async def admin_batch_generate_city_content(data: dict = Body(default={})):
+    """Generate AI content for all cities missing content_body. Throttled at 2s per city."""
+    if not GEMINI_API_KEY:
+        raise HTTPException(503, "GEMINI_API_KEY not configured")
+    tier_filter = data.get("tier")  # Optional: [1, 2, 3] — if omitted, all tiers
+    batch_limit = min(int(data.get("limit", 100)), 500)
+
+    query: dict = {"content_body": None}
+    if tier_filter:
+        query["tier"] = {"$in": tier_filter}
+
+    cities = await db.cities.find(query, {"_id": 0, "slug": 1, "name": 1, "state": 1,
+                                           "district": 1, "nearby_highways": 1}
+                                  ).limit(batch_limit).to_list(batch_limit)
+
+    if not cities:
+        return {"ok": True, "generated": 0, "skipped": 0, "message": "All cities already have content"}
+
+    generated, errors_list = 0, []
+    for c in cities:
+        try:
+            await admin_generate_city_content(c["slug"])
+            generated += 1
+            await asyncio.sleep(2)  # rate-limit Gemini
+        except Exception as e:
+            errors_list.append({"slug": c["slug"], "error": str(e)})
+
+    return {
+        "ok":        True,
+        "generated": generated,
+        "failed":    len(errors_list),
+        "total":     len(cities),
+        "errors":    errors_list[:10],  # first 10 errors only
+    }
+
+
 @admin_router.post("/cities/import", dependencies=[Depends(_check_admin)])
 async def admin_import_cities(cities: List[dict]):
     imported = skipped = 0
@@ -1875,8 +2350,11 @@ async def get_highway(slug: str):
     return doc
 
 @api.get("/cities")
-async def list_cities():
-    docs = await db.cities.find({}, {"_id": 0}).sort("name", 1).to_list(200)
+async def list_cities(state: Optional[str] = None, limit: int = 200):
+    query = {}
+    if state:
+        query["state"] = {"$regex": state, "$options": "i"}
+    docs = await db.cities.find(query, {"_id": 0}).sort("name", 1).to_list(min(limit, 500))
     return docs
 
 @api.get("/cities/{slug}")
@@ -1884,6 +2362,16 @@ async def get_city(slug: str):
     doc = await db.cities.find_one({"slug": slug}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "City not found")
+    # Enrich with live counts (fast, with fallback to stored values)
+    try:
+        city_name = doc.get("name", "")
+        city_state = doc.get("state", "")
+        sathi_count = await db.sathis.count_documents({"state": {"$regex": city_state, "$options": "i"}}) if city_state else 0
+        plaza_count = await db.plazas.count_documents({"city": {"$regex": city_name, "$options": "i"}}) if city_name else 0
+        if sathi_count: doc["sathiCount"] = sathi_count
+        if plaza_count: doc["plazaCount"] = plaza_count
+    except Exception:
+        pass  # fallback to stored counts
     return doc
 
 @api.get("/banks")

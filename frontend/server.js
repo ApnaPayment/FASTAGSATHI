@@ -128,6 +128,22 @@ async function sathiOgTags(slug) {
   return ogTags({ title, description, image, url, type: "profile" });
 }
 
+// ── Build OG tags for a City page ─────────────────────────────────────────────
+async function cityOgTags(slug) {
+  const c = await fetchBackend(`/api/cities/${slug}`);
+  if (!c || !c.name) return null;
+
+  const stateName = c.state ? c.state.charAt(0).toUpperCase() + c.state.slice(1) : "";
+  const sathis    = c.sathiCount  ? `${c.sathiCount} Sathis` : "Expanding soon";
+  const plazas    = c.plazaCount  ? `, ${c.plazaCount} toll plazas` : "";
+  const title     = `FASTag help in ${c.name} — ${sathis}${plazas}`;
+  const description = (c.meta_description ||
+    `Resolve FASTag disputes, blacklisting and KYC issues in ${c.name}${stateName ? `, ${stateName}` : ""}. Verified Sathis available 24×7.`
+  ).slice(0, 200);
+
+  return ogTags({ title, description, image: DEFAULT_OG_IMAGE, url: `${SITE}/city/${slug}` });
+}
+
 // ── Build OG tags for a Help article ──────────────────────────────────────────
 async function helpOgTags(slug) {
   const a = await fetchBackend(`/api/help/${slug}`);
@@ -279,7 +295,16 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 4. Normal static serving (browsers, etc.)
+  // 4. Bot OG injection for City pages: /city/:slug
+  const cityMatch = pathname.match(/^\/city\/([^/]+)\/?$/);
+  if (cityMatch && isBot(ua)) {
+    const slug = cityMatch[1];
+    console.log(`[og] bot=${ua.slice(0,40)} → /city/${slug}`);
+    await serveWithOg(req, res, () => cityOgTags(slug));
+    return;
+  }
+
+  // 5. Normal static serving (browsers, etc.)
   serveStatic(req, res);
 });
 
@@ -287,5 +312,5 @@ server.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`   Static files → ${BUILD_DIR}`);
   console.log(`   /api/*       → https://${BACKEND}`);
-  console.log(`   OG injection → /sathi/:slug, /help/:slug (bots only)`);
+  console.log(`   OG injection → /sathi/:slug, /help/:slug, /city/:slug (bots only)`);
 });

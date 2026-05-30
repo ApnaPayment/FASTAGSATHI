@@ -2791,6 +2791,136 @@ function BanksLogoTab() {
   );
 }
 
+// ─── Cities Admin Section (wraps GenericDataTable + India seed buttons) ──────
+
+function CitiesAdminSection() {
+  const [seeding, setSeeding]       = useState(false);
+  const [seedResult, setSeedResult] = useState(null);
+  const [batching, setBatching]     = useState(false);
+  const [batchResult, setBatchResult] = useState(null);
+  const [genSlug, setGenSlug]       = useState("");
+  const [genning, setGenning]       = useState(false);
+  const [genResult, setGenResult]   = useState(null);
+
+  async function handleSeedIndia() {
+    if (!window.confirm("Seed ~250 major Indian cities? This is idempotent — safe to re-run.")) return;
+    setSeeding(true); setSeedResult(null);
+    try {
+      const r = await adminApi.seedIndiaCities();
+      setSeedResult({ ok: true, msg: `✅ ${r.data.inserted} inserted, ${r.data.updated} updated` });
+    } catch (e) {
+      setSeedResult({ ok: false, msg: `❌ ${e.response?.data?.detail || e.message}` });
+    } finally { setSeeding(false); }
+  }
+
+  async function handleBatchGenerate() {
+    if (!window.confirm("Generate AI content for all cities missing it (tiers 1–3)? This calls Gemini — may take several minutes.")) return;
+    setBatching(true); setBatchResult(null);
+    try {
+      const r = await adminApi.batchGenerateCityContent({ tier: [1, 2, 3], limit: 100 });
+      setBatchResult({ ok: true, msg: `✅ Generated: ${r.data.generated}, Skipped: ${r.data.skipped}` });
+    } catch (e) {
+      setBatchResult({ ok: false, msg: `❌ ${e.response?.data?.detail || e.message}` });
+    } finally { setBatching(false); }
+  }
+
+  async function handleGenSingle() {
+    if (!genSlug.trim()) return;
+    setGenning(true); setGenResult(null);
+    try {
+      const r = await adminApi.generateCityContent(genSlug.trim());
+      setGenResult({ ok: true, msg: `✅ Content generated for ${r.data.slug}` });
+    } catch (e) {
+      setGenResult({ ok: false, msg: `❌ ${e.response?.data?.detail || e.message}` });
+    } finally { setGenning(false); }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Action bar */}
+      <div className="bg-[#F8F9FA] border-2 border-[#0A0A0A] rounded-2xl p-5 space-y-4">
+        <h3 className="font-bold text-[#0A0A0A] text-sm uppercase tracking-widest">India City SEO Tools</h3>
+
+        <div className="flex flex-wrap gap-3 items-center">
+          <button
+            onClick={handleSeedIndia}
+            disabled={seeding}
+            className="flex items-center gap-2 bg-[#0A0A0A] text-white font-bold text-sm px-4 py-2.5 rounded-xl hover:bg-[#1a1a1a] disabled:opacity-50 transition-colors"
+          >
+            {seeding ? "⏳ Seeding…" : "🌱 Seed India Cities"}
+          </button>
+          <button
+            onClick={handleBatchGenerate}
+            disabled={batching}
+            className="flex items-center gap-2 bg-[#FF6B00] text-white font-bold text-sm px-4 py-2.5 rounded-xl hover:bg-[#e55f00] disabled:opacity-50 transition-colors"
+          >
+            {batching ? "⏳ Generating…" : "🤖 Batch Generate Content (Tier 1–3)"}
+          </button>
+        </div>
+
+        {seedResult && (
+          <p className={`text-sm font-semibold ${seedResult.ok ? "text-green-700" : "text-red-600"}`}>{seedResult.msg}</p>
+        )}
+        {batchResult && (
+          <p className={`text-sm font-semibold ${batchResult.ok ? "text-green-700" : "text-red-600"}`}>{batchResult.msg}</p>
+        )}
+
+        {/* Per-city generate */}
+        <div className="border-t border-[#E5E7EB] pt-3">
+          <p className="text-xs text-[#6B7280] mb-2 font-medium">Generate content for a single city (by slug):</p>
+          <div className="flex gap-2">
+            <input
+              value={genSlug}
+              onChange={e => setGenSlug(e.target.value)}
+              placeholder="e.g. jaipur"
+              className="flex-1 border-2 border-[#E5E7EB] rounded-lg px-3 py-2 text-sm focus:border-[#FF6B00] outline-none font-mono"
+            />
+            <button
+              onClick={handleGenSingle}
+              disabled={genning || !genSlug.trim()}
+              className="bg-[#6366F1] text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-[#4F46E5] disabled:opacity-50 transition-colors whitespace-nowrap"
+            >
+              {genning ? "⏳" : "⚡ Generate"}
+            </button>
+          </div>
+          {genResult && (
+            <p className={`text-sm font-semibold mt-2 ${genResult.ok ? "text-green-700" : "text-red-600"}`}>{genResult.msg}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Main table */}
+      <GenericDataTable
+        label="City"
+        icon={Building2}
+        fetchFn={(p) => adminApi.cities(p)}
+        createFn={(d) => adminApi.createCity(d)}
+        updateFn={(slug, d) => adminApi.updateCity(slug, d)}
+        deleteFn={(slug) => adminApi.deleteCity(slug)}
+        importFn={(list) => adminApi.importCities(list)}
+        columns={[
+          { key: "name",         label: "City" },
+          { key: "state",        label: "State" },
+          { key: "tier",         label: "Tier", render: (r) => r.tier ? <span className="inline-block bg-[#FF6B00]/10 text-[#FF6B00] text-xs font-bold px-2 py-0.5 rounded-full">T{r.tier}</span> : "—" },
+          { key: "plazaCount",   label: "Plazas" },
+          { key: "sathiCount",   label: "Sathis" },
+          { key: "content_body", label: "Content", render: (r) => r.content_body ? <span className="text-green-600 font-bold">✅</span> : <span className="text-[#9CA3AF]">⏳</span> },
+          { key: "slug",         label: "Slug", render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.slug}</span> },
+        ]}
+        formFields={[
+          { key: "name",       label: "City Name",    required: true,  placeholder: "Mumbai" },
+          { key: "slug",       label: "Slug",         required: true,  placeholder: "mumbai", disabled: true },
+          { key: "state",      label: "State",        required: true,  placeholder: "maharashtra" },
+          { key: "tier",       label: "Tier (1-4)",   type: "number",  placeholder: "3" },
+          { key: "plazaCount", label: "Plaza Count",  type: "number",  placeholder: "8" },
+          { key: "sathiCount", label: "Sathi Count",  type: "number",  placeholder: "42" },
+        ]}
+        templateNote='JSON array: [{"slug":"mumbai","name":"Mumbai","state":"maharashtra","tier":1,"plazaCount":8,"sathiCount":42}]'
+      />
+    </div>
+  );
+}
+
 function SitemapTab() {
   const [subTab, setSubTab] = useState("Overview");
   const [stats, setStats] = useState(null);
@@ -2988,32 +3118,7 @@ function SitemapTab() {
       )}
 
       {/* ── Cities ── */}
-      {subTab === "Cities" && (
-        <GenericDataTable
-          label="City"
-          icon={Building2}
-          fetchFn={(p) => adminApi.cities(p)}
-          createFn={(d) => adminApi.createCity(d)}
-          updateFn={(slug, d) => adminApi.updateCity(slug, d)}
-          deleteFn={(slug) => adminApi.deleteCity(slug)}
-          importFn={(list) => adminApi.importCities(list)}
-          columns={[
-            { key: "name",       label: "City" },
-            { key: "state",      label: "State" },
-            { key: "plazaCount", label: "Plazas" },
-            { key: "sathiCount", label: "Sathis" },
-            { key: "slug",       label: "Slug", render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.slug}</span> },
-          ]}
-          formFields={[
-            { key: "name",       label: "City Name",    required: true,  placeholder: "Mumbai" },
-            { key: "slug",       label: "Slug",         required: true,  placeholder: "mumbai", disabled: true },
-            { key: "state",      label: "State",        required: true,  placeholder: "Maharashtra" },
-            { key: "plazaCount", label: "Plaza Count",  type: "number",  placeholder: "8" },
-            { key: "sathiCount", label: "Sathi Count",  type: "number",  placeholder: "42" },
-          ]}
-          templateNote='JSON array: [{"slug":"mumbai","name":"Mumbai","state":"Maharashtra","plazaCount":8,"sathiCount":42}]'
-        />
-      )}
+      {subTab === "Cities" && <CitiesAdminSection />}
 
       {/* ── Banks ── */}
       {subTab === "Banks" && <BanksLogoTab />}
