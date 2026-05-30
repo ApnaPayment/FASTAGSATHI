@@ -36,9 +36,9 @@ _admin_default = "sathi-admin-2026"
 JWT_SECRET = os.environ.get("JWT_SECRET", _jwt_default)
 ADMIN_SECRET = os.environ.get("ADMIN_SECRET", _admin_default)
 if JWT_SECRET == _jwt_default:
-    logger.warning("⚠️  JWT_SECRET is using the insecure default — set JWT_SECRET env var in production!")
+    print("⚠️  WARNING: JWT_SECRET is using the insecure default — set JWT_SECRET env var in production!", flush=True)
 if ADMIN_SECRET == _admin_default:
-    logger.warning("⚠️  ADMIN_SECRET is using the insecure default — set ADMIN_SECRET env var in production!")
+    print("⚠️  WARNING: ADMIN_SECRET is using the insecure default — set ADMIN_SECRET env var in production!", flush=True)
 # Absolute origin of THIS backend service (used for logo/favicon image URLs).
 # Reads RAILWAY_PUBLIC_DOMAIN which Railway injects automatically into backend services.
 # Falls back to the known production URL.
