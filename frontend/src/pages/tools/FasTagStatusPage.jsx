@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import PageHero from "@/components/layout/PageHero";
 import PageCTA from "@/components/layout/PageCTA";
 import SEO, { webAppSchema } from "@/components/seo/SEO";
 import { track } from "@/lib/analytics";
@@ -61,15 +60,15 @@ export default function FasTagStatusPage() {
         })}
       />
 
-      <PageHero
-        eyebrow="Free tool"
-        title={<>FASTag <span className="text-[#FF6B00]">status check</span></>}
-        sub="Enter your vehicle number to instantly see if your FASTag is active, blacklisted, or has a KYC issue. Live data — no app or login needed."
-        breadcrumb={[{ label: "Tools", to: "/" }, { label: "FASTag Status" }]}
-      />
-
-      <section className="pt-2 pb-12 bg-[#F8F9FA]">
+      <section className="pt-28 pb-10 bg-[#F8F9FA]">
         <div className="max-w-2xl mx-auto px-4 sm:px-6">
+          <div className="mb-5">
+            <span className="inline-block bg-[#FF6B00] text-white px-3 py-1 text-[11px] font-black uppercase tracking-widest rounded mb-3">Free tool</span>
+            <h1 className="font-display font-black text-3xl sm:text-4xl mb-1">
+              FASTag <span className="text-[#FF6B00]">status check</span>
+            </h1>
+            <p className="text-sm text-[#4B5563]">Instantly see if your FASTag is active, blacklisted, or has a KYC issue. Live data — no app or login needed.</p>
+          </div>
 
           {/* Input card */}
           <div className="bg-white border-2 border-[#0A0A0A] rounded-3xl p-5 sm:p-7 shadow-[6px_6px_0_#FF6B00]">
