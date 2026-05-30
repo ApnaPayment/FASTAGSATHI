@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useCallback } from "react";
-import PageHero from "@/components/layout/PageHero";
 import PageCTA from "@/components/layout/PageCTA";
 import SEO, { webAppSchema } from "@/components/seo/SEO";
 import { track } from "@/lib/analytics";
@@ -117,15 +116,18 @@ export default function RechargeTagPage() {
         })}
       />
 
-      <PageHero
-        eyebrow="Free tool"
-        title={<>FASTag <span className="text-[#FF6B00]">recharge</span></>}
-        sub="Enter your vehicle number to look up your tag, then pay any amount via your UPI app — GPay, PhonePe, Paytm, or any BHIM-compatible app."
-        breadcrumb={[{ label: "Tools", to: "/" }, { label: "FASTag Recharge" }]}
-      />
-
-      <section className="pt-2 pb-12 bg-[#F8F9FA]">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 space-y-5">
+      <section className="pt-28 pb-10 bg-[#F8F9FA]">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6">
+          {/* Compact inline header */}
+          <div className="mb-5">
+            <span className="inline-block bg-[#FF6B00] text-white px-3 py-1 text-[11px] font-black uppercase tracking-widest rounded mb-3">Free tool</span>
+            <h1 className="font-display font-black text-3xl sm:text-4xl mb-1">
+              FASTag <span className="text-[#FF6B00]">recharge</span>
+            </h1>
+            <p className="text-sm text-[#4B5563]">Enter your vehicle number, pick an amount, pay via GPay / PhonePe / Paytm.</p>
+          </div>
+        </div>
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 space-y-4">
 
           {/* Step 1 — Vehicle lookup */}
           <div className="bg-white border-2 border-[#0A0A0A] rounded-3xl p-5 sm:p-7 shadow-[6px_6px_0_#FF6B00]">
@@ -418,9 +420,9 @@ export default function RechargeTagPage() {
 
           {/* How it works */}
           {!tagInfo && !loading && (
-            <div className="bg-white border-2 border-[#E5E7EB] rounded-3xl p-5 sm:p-7">
-              <h3 className="font-display font-black text-lg mb-4">How it works</h3>
-              <div className="space-y-4">
+            <div className="bg-white border-2 border-[#E5E7EB] rounded-3xl p-4 sm:p-5">
+              <h3 className="font-display font-black text-base mb-3">How it works</h3>
+              <div className="space-y-3">
                 {[
                   { icon: Car,    step: "1", title: "Enter vehicle number", desc: "We look up your FASTag ID and issuing bank automatically from the NHAI portal." },
                   { icon: Wallet, step: "2", title: "Choose recharge amount", desc: "Pick any amount from ₹50 to ₹10,000. Quick-select buttons for common amounts." },
