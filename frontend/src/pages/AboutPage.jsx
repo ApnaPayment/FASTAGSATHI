@@ -5,10 +5,8 @@ import SEO from "@/components/seo/SEO";
 import { track } from "@/lib/analytics";
 
 const TEAM = [
-  { name: "Rohan Mehta", role: "Co-founder, CEO", bio: "8 yrs ops at Rapido. Filed his first FASTag dispute in 2019, never got a refund." },
-  { name: "Anjali Singh", role: "Co-founder, CTO", bio: "Ex-Razorpay. Built the Sathi matching engine on Firebase." },
-  { name: "Vikram Yadav", role: "Head of Sathi Network", bio: "Ex-OYO field. Personally onboarded the first 100 Sathis." },
-  { name: "Lakshmi Iyer", role: "Head of Trust & Safety", bio: "Ex-Uber India. Owns KYC, fraud, dispute escalations." },
+  { name: "Mukesh Choudhary", role: "Co-founder & Director", bio: "Director at ApnaPayment. Built payment infrastructure for thousands of businesses across India before turning his focus to fixing India's FASTag ecosystem." },
+  { name: "Ankit Sharma", role: "Co-founder & Director", bio: "Director at ApnaPayment. Leads product, technology and Sathi network operations — on a mission to make every toll plaza dispute resolvable in 90 seconds." },
 ];
 
 const MILESTONES = [
