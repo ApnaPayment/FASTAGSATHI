@@ -1,4 +1,6 @@
 # ApnaFastag — robots.txt
+
+# ── Standard crawlers ─────────────────────────────────────────────────────────
 User-agent: *
 Allow: /
 
@@ -8,8 +10,53 @@ Disallow: /my-jobs
 Disallow: /dashboard
 Disallow: /login
 
-# Primary sitemap index (contains links to all sub-sitemaps)
-Sitemap: https://apnafastag.com/sitemap.xml
+# ── AI crawlers — explicitly allowed ─────────────────────────────────────────
 
-# Backend-direct sitemap index (dynamic pages — plazas, states, banks, help, Sathis)
+# OpenAI (ChatGPT)
+User-agent: GPTBot
+Allow: /
+
+# OpenAI search plugin
+User-agent: OAI-SearchBot
+Allow: /
+
+# Google Gemini / AI Overviews
+User-agent: Google-Extended
+Allow: /
+
+# Anthropic Claude
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+# Perplexity
+User-agent: PerplexityBot
+Allow: /
+
+# Meta AI (Llama)
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: Meta-ExternalFetcher
+Allow: /
+
+# Microsoft Copilot / Bing AI
+User-agent: bingbot
+Allow: /
+
+# Apple
+User-agent: Applebot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# Common Crawl (used by many AI training datasets)
+User-agent: CCBot
+Allow: /
+
+# ── Sitemaps ──────────────────────────────────────────────────────────────────
+Sitemap: https://apnafastag.com/sitemap.xml
 Sitemap: https://fastagsathi-production.up.railway.app/sitemap.xml
