@@ -31,8 +31,14 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
 DB_NAME = os.environ.get("DB_NAME", "apnafastag")
-JWT_SECRET = os.environ.get("JWT_SECRET", "sathi-dev-secret-change-in-prod")
-ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "sathi-admin-2026")
+_jwt_default = "sathi-dev-secret-change-in-prod"
+_admin_default = "sathi-admin-2026"
+JWT_SECRET = os.environ.get("JWT_SECRET", _jwt_default)
+ADMIN_SECRET = os.environ.get("ADMIN_SECRET", _admin_default)
+if JWT_SECRET == _jwt_default:
+    logger.warning("⚠️  JWT_SECRET is using the insecure default — set JWT_SECRET env var in production!")
+if ADMIN_SECRET == _admin_default:
+    logger.warning("⚠️  ADMIN_SECRET is using the insecure default — set ADMIN_SECRET env var in production!")
 # Absolute origin of THIS backend service (used for logo/favicon image URLs).
 # Reads RAILWAY_PUBLIC_DOMAIN which Railway injects automatically into backend services.
 # Falls back to the known production URL.
@@ -624,12 +630,27 @@ async def create_fastag_order(body: FasTagOrderIn):
 
 @fastag_router.get("/orders/track")
 async def track_fastag_order(order_id: str, phone: str):
+    """Track a FASTag order. Requires order_id + phone to prove ownership; strips full PII from response."""
     doc = await db.fastag_orders.find_one(
         {"order_id": order_id, "customer_phone": phone},
-        {"_id": 0, "chassis_last6": 0},
+        {
+            "_id": 0,
+            "chassis_last6": 0,    # never expose chassis details
+            "customer_email": 0,   # strip email
+            "delivery_address": 0, # strip full address
+            "delivery_pincode": 0, # strip pincode
+            # keep: order_id, bank_slug, vehicle_type, vehicle_number, status, payment_status,
+            #       delivery_city, delivery_state, amount, tracking_notes, created_at, updated_at
+        },
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Order not found. Check order ID and phone number.")
+    # Mask phone in response (user already knows their own phone)
+    if doc.get("customer_phone"):
+        doc["customer_phone"] = "••••" + doc["customer_phone"][-4:]
+    if doc.get("customer_name"):
+        # Keep name — it's their own order
+        pass
     return doc
 
 @fastag_router.get("/orders/verify/{order_id}")
@@ -658,13 +679,21 @@ async def get_state(slug: str):
 
 sathis_router = APIRouter(prefix="/sathis", tags=["sathis"])
 
+# Fields that must never be exposed on public Sathi endpoints
+_SATHI_PUBLIC_PROJECTION = {
+    "_id": 0,
+    "registered_phone": 0,  # internal phone number
+    "contact": 0,           # contains phone/whatsapp PII
+    "whatsapp": 0,          # direct WhatsApp contact
+}
+
 @sathis_router.get("")
 async def list_sathis():
-    return await db.sathis.find({}, {"_id": 0}).to_list(1000)
+    return await db.sathis.find({}, _SATHI_PUBLIC_PROJECTION).to_list(1000)
 
 @sathis_router.get("/{slug}")
 async def get_sathi(slug: str):
-    doc = await db.sathis.find_one({"slug": slug}, {"_id": 0})
+    doc = await db.sathis.find_one({"slug": slug}, _SATHI_PUBLIC_PROJECTION)
     if not doc:
         raise HTTPException(status_code=404, detail="Sathi not found")
     return doc
@@ -868,7 +897,24 @@ async def my_jobs(current: dict = Depends(_require_user)):
 
 @jobs_router.get("/ref/{ref_code}")
 async def job_by_ref(ref_code: str):
-    doc = await db.jobs.find_one({"ref_code": ref_code.upper()}, {"_id": 0})
+    """Public reference lookup — returns safe status fields only, no PII."""
+    doc = await db.jobs.find_one(
+        {"ref_code": ref_code.upper()},
+        {
+            "_id": 0,
+            "id": 1,
+            "ref_code": 1,
+            "sathi_slug": 1,
+            "sathi_name": 1,
+            "sathi_city": 1,
+            "issue": 1,
+            "vehicle_number": 1,
+            "status": 1,
+            "created_at": 1,
+            "updated_at": 1,
+            "resolved_at": 1,
+        }
+    )
     if not doc:
         raise HTTPException(status_code=404, detail="No dispute found with this reference number")
     return doc
@@ -882,7 +928,8 @@ async def get_job(job_id: str, current: dict = Depends(_require_user)):
 
 @jobs_router.patch("/{job_id}/status")
 async def update_job_status(job_id: str, body: JobStatusUpdateIn, current: dict = Depends(_require_user)):
-    doc = await db.jobs.find_one({"id": job_id}, {"_id": 0})
+    # Fetch job and enforce ownership: only the job owner (customer) can update status
+    doc = await db.jobs.find_one({"id": job_id, "user_id": current["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Job not found")
     now = datetime.now(timezone.utc).isoformat()
@@ -1174,7 +1221,7 @@ PLAZA_SEED = [
 async def admin_login(body: dict):
     if body.get("secret") != ADMIN_SECRET:
         raise HTTPException(status_code=403, detail="Invalid admin secret")
-    return {"ok": True, "secret": ADMIN_SECRET}
+    return {"ok": True}
 
 @admin_router.get("/stats", dependencies=[Depends(_check_admin)])
 async def admin_stats():
@@ -3478,10 +3525,16 @@ async def submit_sathi_application(body: SathiApplicationIn):
     return {"ref": ref, "message": "Application submitted successfully"}
 
 @applications_router.get("/check/{phone}")
-async def check_application(phone: str):
+async def check_application(phone: str, current: dict = Depends(_require_user)):
+    """Check application status. Only the applicant (matched by phone) may query their own application."""
+    # Only allow the authenticated user to check their own phone number
+    if current.get("sub") != phone and current.get("phone") != phone:
+        raise HTTPException(status_code=403, detail="You can only check your own application")
     doc = await db.sathi_applications.find_one({"phone": phone}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="No application found")
+    # Strip PII fields before returning
+    doc.pop("phone", None)
     return doc
 
 # ─── FASTag status proxy ──────────────────────────────────────────────────────
@@ -4135,10 +4188,14 @@ async def sitemap_sathis():
 
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
+_cors_default = "https://apnafastag.com,https://www.apnafastag.com,http://localhost:3000"
+_cors_origins = os.environ.get("CORS_ORIGINS", _cors_default).split(",")
+if "*" in _cors_origins:
+    logger.warning("⚠️  CORS is configured with wildcard '*' — set CORS_ORIGINS env var in production!")
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
+    allow_origins=_cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
