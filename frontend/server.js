@@ -297,6 +297,15 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // 1b. Redirect old sitemap sub-paths (without /api/) to correct /api/ paths
+  // Google may have cached the wrong URLs from the old static sitemap.xml
+  const sitemapRedirect = pathname.match(/^\/(sitemap-[a-z0-9-]+\.xml)$/);
+  if (sitemapRedirect) {
+    res.writeHead(301, { "Location": `/api/${sitemapRedirect[1]}`, "Cache-Control": "public, max-age=86400" });
+    res.end();
+    return;
+  }
+
   // 2. Bot OG injection for Sathi profiles: /sathi/:slug
   const sathiMatch = pathname.match(/^\/sathi\/([^/]+)\/?$/);
   if (sathiMatch && isBot(ua)) {
