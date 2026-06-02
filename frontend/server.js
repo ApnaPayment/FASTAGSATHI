@@ -128,6 +128,26 @@ async function sathiOgTags(slug) {
   return ogTags({ title, description, image, url, type: "profile" });
 }
 
+// ── Build OG tags for a Plaza/Toll page ──────────────────────────────────────
+async function plazaOgTags(slug) {
+  const p = await fetchBackend(`/api/plazas/${slug}`);
+  if (!p || !p.name) return null;
+
+  const title = `${p.name} (${p.highway || ""}) toll rates 2026 — FASTag help · ApnaFastag`.trim();
+  const description = `${p.name} on ${p.highway || "highway"} at ${p.city || ""}: toll rates (car ₹${p.carRate || "—"}, truck ₹${p.truckRate || "—"}), FASTag disputes & verified Sathis on-spot.`.trim();
+  return ogTags({ title, description, image: DEFAULT_OG_IMAGE, url: `${SITE}/toll/${slug}` });
+}
+
+// ── Build OG tags for a State page ───────────────────────────────────────────
+async function stateOgTags(slug) {
+  const s = await fetchBackend(`/api/states/${slug}`);
+  if (!s || !s.name) return null;
+
+  const title = `${s.name} toll plazas, FASTag help & Sathis · ApnaFastag`;
+  const description = `FASTag help across ${s.plazaCount || "all"} toll plazas in ${s.name}. ${s.sathiCount || ""} verified Sathis resolve disputes, blacklists & KYC on-spot.`.trim();
+  return ogTags({ title, description, image: DEFAULT_OG_IMAGE, url: `${SITE}/state/${slug}` });
+}
+
 // ── Build OG tags for a City page ─────────────────────────────────────────────
 async function cityOgTags(slug) {
   const c = await fetchBackend(`/api/cities/${slug}`);
@@ -295,7 +315,25 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 4. Bot OG injection for City pages: /city/:slug
+  // 4. Bot OG injection for Plaza/Toll pages: /toll/:slug
+  const tollMatch = pathname.match(/^\/toll\/([^/]+)\/?$/);
+  if (tollMatch && isBot(ua)) {
+    const slug = tollMatch[1];
+    console.log(`[og] bot=${ua.slice(0,40)} → /toll/${slug}`);
+    await serveWithOg(req, res, () => plazaOgTags(slug));
+    return;
+  }
+
+  // 5. Bot OG injection for State pages: /state/:slug
+  const stateMatch = pathname.match(/^\/state\/([^/]+)\/?$/);
+  if (stateMatch && isBot(ua)) {
+    const slug = stateMatch[1];
+    console.log(`[og] bot=${ua.slice(0,40)} → /state/${slug}`);
+    await serveWithOg(req, res, () => stateOgTags(slug));
+    return;
+  }
+
+  // 6. Bot OG injection for City pages: /city/:slug
   const cityMatch = pathname.match(/^\/city\/([^/]+)\/?$/);
   if (cityMatch && isBot(ua)) {
     const slug = cityMatch[1];
@@ -304,7 +342,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 5. Normal static serving (browsers, etc.)
+  // 7. Normal static serving (browsers, etc.)
   serveStatic(req, res);
 });
 
@@ -312,5 +350,5 @@ server.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`   Static files → ${BUILD_DIR}`);
   console.log(`   /api/*       → https://${BACKEND}`);
-  console.log(`   OG injection → /sathi/:slug, /help/:slug, /city/:slug (bots only)`);
+  console.log(`   OG injection → /sathi/:slug /help/:slug /toll/:slug /state/:slug /city/:slug (bots only)`);
 });

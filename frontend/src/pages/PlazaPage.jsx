@@ -57,6 +57,7 @@ export default function PlazaPage() {
   if (!plaza) {
     return (
       <section className="pt-40 pb-32 text-center px-6">
+        <SEO title="Toll plaza not found · ApnaFastag" description="This toll plaza page does not exist." path={`/toll/${plazaSlug}`} noindex />
         <h1 className="font-display font-black text-4xl">Plaza not found</h1>
         <Link to="/coverage" className="text-[#FF6B00] font-bold mt-4 inline-block">Back to coverage →</Link>
       </section>

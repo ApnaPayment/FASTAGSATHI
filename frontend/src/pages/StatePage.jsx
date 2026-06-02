@@ -48,6 +48,7 @@ export default function StatePage() {
   if (!state) {
     return (
       <section className="pt-40 pb-32 text-center">
+        <SEO title="State not found · ApnaFastag" description="This state page does not exist." path={`/state/${stateSlug}`} noindex />
         <h1 className="font-display font-black text-4xl">State not found</h1>
         <Link to="/coverage" className="text-[#FF6B00] font-bold mt-4 inline-block">Back to coverage →</Link>
       </section>

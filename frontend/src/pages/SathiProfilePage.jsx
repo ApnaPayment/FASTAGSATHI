@@ -78,6 +78,7 @@ export default function SathiProfilePage() {
   if (!s) {
     return (
       <section className="pt-40 pb-32 text-center">
+        <SEO title="Sathi not found · ApnaFastag" description="This Sathi profile does not exist." path={`/sathi/${slug}`} noindex />
         <h1 className="font-display font-black text-4xl">Sathi not found</h1>
         <Link to="/find" className="text-[#FF6B00] font-bold mt-4 inline-block">Find a Sathi near you →</Link>
       </section>
