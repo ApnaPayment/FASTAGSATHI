@@ -1,6 +1,9 @@
 import axios from "axios";
 
-const BASE = process.env.REACT_APP_BACKEND_URL || "";
+// Always use relative URLs so /api/* goes through the server.js proxy.
+// For local dev, set "proxy": "http://localhost:8000" in package.json
+// (CRA forwards /api/* to the local backend automatically).
+const BASE = "";
 
 const api = axios.create({ baseURL: BASE });
 
