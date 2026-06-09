@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import PageHero from "@/components/layout/PageHero";
-import SEO from "@/components/seo/SEO";
+import SEO, { orgSchema } from "@/components/seo/SEO";
 import { MapPin, Search, Compass, AlertCircle, Star, BadgeCheck, ArrowRight, Milestone, Siren } from "lucide-react";
 import { motion } from "framer-motion";
 import MapView from "@/components/map/MapView";
@@ -64,6 +64,19 @@ export default function FindSathiPage() {
         title="Find a Sathi near you"
         description="See verified Fastag Sathis around your location on a live map. Pick by plaza or directly by agent. Login with mobile OTP to start contacting."
         path="/find"
+        jsonLd={[
+          orgSchema,
+          {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            url: "https://apnafastag.com",
+            potentialAction: {
+              "@type": "SearchAction",
+              target: { "@type": "EntryPoint", urlTemplate: "https://apnafastag.com/find?q={search_term_string}" },
+              "query-input": "required name=search_term_string",
+            },
+          },
+        ]}
       />
 
       <PageHero

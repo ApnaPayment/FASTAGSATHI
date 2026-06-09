@@ -100,6 +100,13 @@ export default function SathiProfilePage() {
     address: { "@type": "PostalAddress", addressLocality: s.city, addressRegion: state?.name, addressCountry: "IN" },
     ...(plaza?.name ? { location: { "@type": "Place", name: plaza.name } } : {}),
     aggregateRating: s.reviewCount > 0 ? { "@type": "AggregateRating", ratingValue: s.rating, reviewCount: s.reviewCount, bestRating: 5, worstRating: 1 } : undefined,
+    review: (s.reviews || []).slice(0, 5).map((r) => ({
+      "@type": "Review",
+      author: { "@type": "Person", name: r.author || "ApnaFastag User" },
+      reviewRating: { "@type": "Rating", ratingValue: r.stars, bestRating: 5, worstRating: 1 },
+      reviewBody: r.text || undefined,
+      datePublished: r.date ? new Date(r.date).toISOString().split("T")[0] : undefined,
+    })),
     url: `https://apnafastag.com/sathi/${s.slug}`,
     priceRange: "₹99–₹499",
     areaServed: { "@type": "Place", name: s.city || state?.name },
