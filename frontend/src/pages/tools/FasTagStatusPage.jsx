@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import PageCTA from "@/components/layout/PageCTA";
-import SEO, { webAppSchema } from "@/components/seo/SEO";
+import SEO, { webAppSchema, faqSchema } from "@/components/seo/SEO";
 import { track } from "@/lib/analytics";
 import { toolsApi } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
@@ -53,11 +53,15 @@ export default function FasTagStatusPage() {
         description="Check your FASTag status instantly by vehicle number. See if your tag is active, blacklisted, low balance, or KYC pending. Works for all banks."
         path="/tools/fastag-status"
         keywords="fastag status check, fastag vehicle number check, fastag blacklist check, fastag active status"
-        jsonLd={webAppSchema({
-          name: "FASTag Status Checker",
-          description: "Free FASTag status lookup by vehicle number.",
-          url: "https://apnafastag.com/tools/fastag-status",
-        })}
+        jsonLd={[
+          webAppSchema({ name: "FASTag Status Checker", description: "Free FASTag status lookup by vehicle number.", url: "https://apnafastag.com/tools/fastag-status" }),
+          faqSchema([
+            { q: "How do I check if my FASTag is active or blacklisted?", a: "Enter your vehicle registration number in the FASTag Status Checker. It shows whether your tag is active, blacklisted, low balance, or KYC pending." },
+            { q: "Why is my FASTag blacklisted?", a: "FASTag gets blacklisted due to insufficient balance, KYC not completed, or a dispute flag. A Sathi can initiate the unblacklist process on-spot at any toll plaza." },
+            { q: "What does 'KYC pending' mean on my FASTag?", a: "KYC pending means your Aadhaar and PAN aren't linked to your FASTag account. Your tag will be blocked at toll plazas until KYC is completed." },
+            { q: "Can a blacklisted FASTag be reactivated?", a: "Yes. Contact your issuing bank or ping a Sathi at a toll plaza. Sathis can initiate re-KYC or balance top-up to reactivate your tag within minutes." },
+          ]),
+        ]}
       />
 
       <section className="pt-28 pb-10 bg-[#F8F9FA]">

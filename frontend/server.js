@@ -128,6 +128,24 @@ async function sathiOgTags(slug) {
   return ogTags({ title, description, image, url, type: "profile" });
 }
 
+// ── Build OG tags for a Highway page ─────────────────────────────────────────
+async function highwayOgTags(slug) {
+  const h = await fetchBackend(`/api/highways/${slug}`);
+  if (!h || !h.name) return null;
+  const title = `${h.name} toll plazas, rates & FASTag help · ApnaFastag`;
+  const description = `${h.fullName || h.name}: ${h.plazaCount || "all"} toll plazas, live rates, FASTag dispute & Sathi help across ${(h.states || []).join(", ")}.`.slice(0, 200);
+  return ogTags({ title, description, image: DEFAULT_OG_IMAGE, url: `${SITE}/highway/${slug}` });
+}
+
+// ── Build OG tags for a Bank page ─────────────────────────────────────────────
+async function bankOgTags(slug) {
+  const b = await fetchBackend(`/api/banks/${slug}`);
+  if (!b || !b.name) return null;
+  const title = `${b.name} FASTag — balance check, helpline & dispute help · ApnaFastag`;
+  const description = `${b.name} FASTag balance check, customer care helpline, dispute filing, blacklist fix and recharge guide. Verified Sathis available 24×7.`.slice(0, 200);
+  return ogTags({ title, description, image: DEFAULT_OG_IMAGE, url: `${SITE}/bank/${slug}` });
+}
+
 // ── Build OG tags for a Plaza/Toll page ──────────────────────────────────────
 async function plazaOgTags(slug) {
   const p = await fetchBackend(`/api/plazas/${slug}`);
@@ -324,7 +342,25 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 4. Bot OG injection for Plaza/Toll pages: /toll/:slug
+  // 4. Bot OG injection for Highway pages: /highway/:slug
+  const highwayMatch = pathname.match(/^\/highway\/([^/]+)\/?$/);
+  if (highwayMatch && isBot(ua)) {
+    const slug = highwayMatch[1];
+    console.log(`[og] bot=${ua.slice(0,40)} → /highway/${slug}`);
+    await serveWithOg(req, res, () => highwayOgTags(slug));
+    return;
+  }
+
+  // 4b. Bot OG injection for Bank pages: /bank/:slug
+  const bankMatch = pathname.match(/^\/bank\/([^/]+)\/?$/);
+  if (bankMatch && isBot(ua)) {
+    const slug = bankMatch[1];
+    console.log(`[og] bot=${ua.slice(0,40)} → /bank/${slug}`);
+    await serveWithOg(req, res, () => bankOgTags(slug));
+    return;
+  }
+
+  // 4c. Bot OG injection for Plaza/Toll pages: /toll/:slug
   const tollMatch = pathname.match(/^\/toll\/([^/]+)\/?$/);
   if (tollMatch && isBot(ua)) {
     const slug = tollMatch[1];
@@ -359,5 +395,5 @@ server.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`   Static files → ${BUILD_DIR}`);
   console.log(`   /api/*       → https://${BACKEND}`);
-  console.log(`   OG injection → /sathi/:slug /help/:slug /toll/:slug /state/:slug /city/:slug (bots only)`);
+  console.log(`   OG injection → /sathi /help /highway /bank /toll /state /city (bots only)`);
 });

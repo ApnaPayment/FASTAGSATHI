@@ -4611,6 +4611,7 @@ async def sitemap_static():
         ("/contact",             "0.40", "monthly"),
         ("/privacy",             "0.20", "yearly"),
         ("/terms",               "0.20", "yearly"),
+        ("/refund-policy",       "0.20", "yearly"),
     ]
     rows = [_url(SITE + path, pri, freq, today if freq in ("daily","hourly","weekly") else "") for path, pri, freq in entries]
     return FResponse(content=_urlset(rows), media_type="application/xml")
@@ -4671,7 +4672,7 @@ async def sitemap_help_redirect():
 @app.get("/api/sitemap-sathis.xml", include_in_schema=False)
 async def sitemap_sathis():
     from fastapi.responses import Response as FResponse
-    sathis = await db.sathis.find({}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
+    sathis = await db.sathis.find({"verified": True}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
     rows = [_url(f"{SITE}/sathi/{s['slug']}", "0.80", "weekly", (s.get("updated_at") or "")[:10]) for s in sathis]
     return FResponse(content=_urlset(rows), media_type="application/xml")
 

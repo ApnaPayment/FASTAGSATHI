@@ -93,7 +93,7 @@ export default function HelpArticlePage() {
     }),
     breadcrumbSchema([
       { label: "Help Center", url: "/help" },
-      { label: article.category, url: `/help?category=${article.category}` },
+      { label: article.category, url: `/help#${article.category.toLowerCase()}` },
       { label: article.title },
     ]),
     ...(article.faq_pairs && article.faq_pairs.length > 0
