@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Literal
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-import asyncio, os, uuid, logging, random, shutil, httpx, re, json, hmac, hashlib, base64
+import asyncio, os, uuid, logging, random, shutil, httpx, re, json, hmac, hashlib, base64, time
 from bs4 import BeautifulSoup
 from sse_starlette.sse import EventSourceResponse
 try:
@@ -4557,14 +4557,37 @@ def _url(loc: str, priority: str = "0.7", freq: str = "monthly", lastmod: str = 
 def _today() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
+# ─── Sitemap cache (prevents Railway concurrency 503s when bots batch-fetch) ──
+# Sitemaps are regenerated from DB on first request then served from memory for
+# SITEMAP_TTL seconds. Cache-Control headers also let Cloudflare cache at edge.
+SITEMAP_TTL = 3600  # 1 hour
+_sitemap_cache: dict = {}  # key -> {"xml": str, "ts": float}
+
+def _sitemap_cached(key: str):
+    entry = _sitemap_cache.get(key)
+    if entry and (time.time() - entry["ts"]) < SITEMAP_TTL:
+        return entry["xml"]
+    return None
+
+def _sitemap_store(key: str, xml: str):
+    _sitemap_cache[key] = {"xml": xml, "ts": time.time()}
+
+def _sitemap_resp(xml: str):
+    from fastapi.responses import Response as FResponse
+    return FResponse(
+        content=xml,
+        media_type="application/xml",
+        headers={"Cache-Control": f"public, max-age={SITEMAP_TTL}, s-maxage={SITEMAP_TTL}"},
+    )
+
 # ─── Sitemap index ────────────────────────────────────────────────────────────
 
 @app.get("/sitemap.xml", include_in_schema=False)
 async def sitemap_index():
-    from fastapi.responses import Response as FResponse
+    cached = _sitemap_cached("index")
+    if cached:
+        return _sitemap_resp(cached)
     today = _today()
-    # Base sub-sitemaps (always present)
-    # All sub-sitemaps live under /api/ so they're proxied on the custom domain
     subs = [
         "api/sitemap-static.xml",
         "api/sitemap-plazas.xml",
@@ -4574,24 +4597,25 @@ async def sitemap_index():
         "api/sitemap-cities.xml",
         "api/sitemap-sathis.xml",
     ]
-    # Paginated help sitemaps — one file per 1000 articles (safe below Google's 50k limit)
     article_count = await db.articles.count_documents({"is_published": True})
-    pages = max(1, -(-article_count // 1000))  # ceiling division
+    pages = max(1, -(-article_count // 1000))
     for p in range(1, pages + 1):
         subs.append(f"api/sitemap-help-{p}.xml")
-
     rows = [f'  <sitemap><loc>{SITE}/{s}</loc><lastmod>{today}</lastmod></sitemap>' for s in subs]
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
     xml += '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     xml += "\n".join(rows)
     xml += "\n</sitemapindex>"
-    return FResponse(content=xml, media_type="application/xml")
+    _sitemap_store("index", xml)
+    return _sitemap_resp(xml)
 
 # ─── Category sitemaps ────────────────────────────────────────────────────────
 
 @app.get("/api/sitemap-static.xml", include_in_schema=False)
 async def sitemap_static():
-    from fastapi.responses import Response as FResponse
+    cached = _sitemap_cached("static")
+    if cached:
+        return _sitemap_resp(cached)
     today = _today()
     entries = [
         ("/",                    "1.0",  "daily"),
@@ -4614,54 +4638,62 @@ async def sitemap_static():
         ("/refund-policy",       "0.20", "yearly"),
     ]
     rows = [_url(SITE + path, pri, freq, today if freq in ("daily","hourly","weekly") else "") for path, pri, freq in entries]
-    return FResponse(content=_urlset(rows), media_type="application/xml")
+    xml = _urlset(rows)
+    _sitemap_store("static", xml)
+    return _sitemap_resp(xml)
 
 @app.get("/api/sitemap-plazas.xml", include_in_schema=False)
 async def sitemap_plazas():
-    from fastapi.responses import Response as FResponse
+    cached = _sitemap_cached("plazas")
+    if cached: return _sitemap_resp(cached)
     plazas = await db.plazas.find({}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
-    rows = [_url(f"{SITE}/toll/{p['slug']}", "0.85", "weekly", (p.get("updated_at") or "")[:10]) for p in plazas]
-    return FResponse(content=_urlset(rows), media_type="application/xml")
+    xml = _urlset([_url(f"{SITE}/toll/{p['slug']}", "0.85", "weekly", (p.get("updated_at") or "")[:10]) for p in plazas])
+    _sitemap_store("plazas", xml); return _sitemap_resp(xml)
 
 @app.get("/api/sitemap-states.xml", include_in_schema=False)
 async def sitemap_states():
-    from fastapi.responses import Response as FResponse
+    cached = _sitemap_cached("states")
+    if cached: return _sitemap_resp(cached)
     states = await db.states.find({}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
-    rows = [_url(f"{SITE}/state/{s['slug']}", "0.70", "monthly", (s.get("updated_at") or "")[:10]) for s in states]
-    return FResponse(content=_urlset(rows), media_type="application/xml")
+    xml = _urlset([_url(f"{SITE}/state/{s['slug']}", "0.70", "monthly", (s.get("updated_at") or "")[:10]) for s in states])
+    _sitemap_store("states", xml); return _sitemap_resp(xml)
 
 @app.get("/api/sitemap-banks.xml", include_in_schema=False)
 async def sitemap_banks():
-    from fastapi.responses import Response as FResponse
+    cached = _sitemap_cached("banks")
+    if cached: return _sitemap_resp(cached)
     banks = await db.banks.find({"is_active": {"$ne": False}}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
-    rows = [_url(f"{SITE}/bank/{b['slug']}", "0.80", "monthly", (b.get("updated_at") or "")[:10]) for b in banks]
-    return FResponse(content=_urlset(rows), media_type="application/xml")
+    xml = _urlset([_url(f"{SITE}/bank/{b['slug']}", "0.80", "monthly", (b.get("updated_at") or "")[:10]) for b in banks])
+    _sitemap_store("banks", xml); return _sitemap_resp(xml)
 
 @app.get("/api/sitemap-highways.xml", include_in_schema=False)
 async def sitemap_highways():
-    from fastapi.responses import Response as FResponse
+    cached = _sitemap_cached("highways")
+    if cached: return _sitemap_resp(cached)
     highways = await db.highways.find({"is_active": {"$ne": False}}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
-    rows = [_url(f"{SITE}/highway/{h['slug']}", "0.75", "monthly", (h.get("updated_at") or "")[:10]) for h in highways]
-    return FResponse(content=_urlset(rows), media_type="application/xml")
+    xml = _urlset([_url(f"{SITE}/highway/{h['slug']}", "0.75", "monthly", (h.get("updated_at") or "")[:10]) for h in highways])
+    _sitemap_store("highways", xml); return _sitemap_resp(xml)
 
 @app.get("/api/sitemap-cities.xml", include_in_schema=False)
 async def sitemap_cities():
-    from fastapi.responses import Response as FResponse
+    cached = _sitemap_cached("cities")
+    if cached: return _sitemap_resp(cached)
     cities = await db.cities.find({}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
-    rows = [_url(f"{SITE}/city/{c['slug']}", "0.75", "monthly", (c.get("updated_at") or "")[:10]) for c in cities]
-    return FResponse(content=_urlset(rows), media_type="application/xml")
+    xml = _urlset([_url(f"{SITE}/city/{c['slug']}", "0.75", "monthly", (c.get("updated_at") or "")[:10]) for c in cities])
+    _sitemap_store("cities", xml); return _sitemap_resp(xml)
 
 @app.get("/api/sitemap-help-{page}.xml", include_in_schema=False)
 async def sitemap_help_page(page: int):
-    from fastapi.responses import Response as FResponse
+    key = f"help-{page}"
+    cached = _sitemap_cached(key)
+    if cached: return _sitemap_resp(cached)
     PAGE_SIZE = 1000
     skip = (page - 1) * PAGE_SIZE
     articles = await db.articles.find(
-        {"is_published": True},
-        {"_id": 0, "slug": 1, "updated_at": 1}
+        {"is_published": True}, {"_id": 0, "slug": 1, "updated_at": 1}
     ).sort("created_at", 1).skip(skip).limit(PAGE_SIZE).to_list(PAGE_SIZE)
-    rows = [_url(f"{SITE}/help/{a['slug']}", "0.70", "monthly", (a.get("updated_at") or "")[:10]) for a in articles]
-    return FResponse(content=_urlset(rows), media_type="application/xml")
+    xml = _urlset([_url(f"{SITE}/help/{a['slug']}", "0.70", "monthly", (a.get("updated_at") or "")[:10]) for a in articles])
+    _sitemap_store(key, xml); return _sitemap_resp(xml)
 
 # Legacy redirect so any old bookmark of /sitemap-help.xml still works
 @app.get("/api/sitemap-help.xml", include_in_schema=False)
@@ -4671,10 +4703,11 @@ async def sitemap_help_redirect():
 
 @app.get("/api/sitemap-sathis.xml", include_in_schema=False)
 async def sitemap_sathis():
-    from fastapi.responses import Response as FResponse
+    cached = _sitemap_cached("sathis")
+    if cached: return _sitemap_resp(cached)
     sathis = await db.sathis.find({"verified": True}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
-    rows = [_url(f"{SITE}/sathi/{s['slug']}", "0.80", "weekly", (s.get("updated_at") or "")[:10]) for s in sathis]
-    return FResponse(content=_urlset(rows), media_type="application/xml")
+    xml = _urlset([_url(f"{SITE}/sathi/{s['slug']}", "0.80", "weekly", (s.get("updated_at") or "")[:10]) for s in sathis])
+    _sitemap_store("sathis", xml); return _sitemap_resp(xml)
 
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
