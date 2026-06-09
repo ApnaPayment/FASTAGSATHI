@@ -19,6 +19,7 @@ export const PLAZAS = [
   { slug: "electronic-city-nh44", name: "Electronic City Plaza", highway: "NH-44", state: "karnataka",   city: "Bengaluru",     lat: 12.84, lng: 77.66, carRate: 40,  truckRate: 165, monthlyComplaints: 680,  avgWait: "4 min", topIssue: "Mischarge" },
   { slug: "vadodara-nh48",        name: "Vadodara Plaza",        highway: "NH-48", state: "gujarat",     city: "Vadodara",      lat: 22.30, lng: 73.20, carRate: 95,  truckRate: 410, monthlyComplaints: 380,  avgWait: "3 min", topIssue: "KYC pending" },
   { slug: "palwal-nh19",          name: "Palwal Plaza",          highway: "NH-19", state: "haryana",     city: "Palwal",        lat: 28.14, lng: 77.33, carRate: 85,  truckRate: 380, monthlyComplaints: 510,  avgWait: "5 min", topIssue: "Tag blacklisted" },
+  { slug: "kolkata-nh12",         name: "Kolkata NH-12 Toll Plaza", highway: "NH-12", state: "west-bengal", city: "Kolkata",       lat: 22.57, lng: 88.43, carRate: 75,  truckRate: 310, monthlyComplaints: 620,  avgWait: "4 min", topIssue: "Mischarge double-deduction" },
 ];
 
 export const BANKS = [
