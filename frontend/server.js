@@ -239,6 +239,10 @@ async function serveWithOg(req, res, ogBuilder) {
 function proxyToBackend(req, res) {
   const headers = { host: BACKEND };
   for (const [k, v] of Object.entries(req.headers)) {
+    // Skip host — we already set it to BACKEND above; forwarding the original
+    // "apnafastag.com" host would cause Railway to route the request back to
+    // the frontend service, creating an infinite loop → 502/503 timeouts.
+    if (k.toLowerCase() === "host") continue;
     if (!HOP_BY_HOP.has(k.toLowerCase()) && k.toLowerCase() !== "accept-encoding") {
       headers[k] = v;
     }
