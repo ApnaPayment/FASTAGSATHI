@@ -55,13 +55,20 @@ export default function SathiProfilePage() {
   const { user } = useAuth();
   const [s, setS] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const ALL_BANKS = useBanksWithLogos();
 
   useEffect(() => {
     setLoading(true);
+    setNotFound(false);
     sathiApi.get(slug)
       .then((r) => setS(r.data))
-      .catch(() => setS(getSathiBySlug(slug) || null))
+      .catch((err) => {
+        const fallback = getSathiBySlug(slug);
+        if (fallback) { setS(fallback); return; }
+        // Only noindex on genuine 404 — network errors shouldn't hide the page
+        if (err?.response?.status === 404) setNotFound(true);
+      })
       .finally(() => setLoading(false));
   }, [slug]);
 
@@ -75,12 +82,20 @@ export default function SathiProfilePage() {
     );
   }
 
-  if (!s) {
+  if (notFound) {
     return (
       <section className="pt-40 pb-32 text-center">
         <SEO title="Sathi not found · ApnaFastag" description="This Sathi profile does not exist." path={`/sathi/${slug}`} noindex />
         <h1 className="font-display font-black text-4xl">Sathi not found</h1>
         <Link to="/find" className="text-[#FF6B00] font-bold mt-4 inline-block">Find a Sathi near you →</Link>
+      </section>
+    );
+  }
+
+  if (!s) {
+    return (
+      <section className="pt-40 pb-32 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#FF6B00]" />
       </section>
     );
   }

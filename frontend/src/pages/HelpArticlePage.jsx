@@ -56,7 +56,10 @@ export default function HelpArticlePage() {
         setArticle(r.data);
         document.title = `${r.data.meta_title || r.data.title} · ApnaFastag`;
       })
-      .catch(() => setNotFound(true))
+      .catch((err) => {
+        // Only noindex on genuine 404 — network errors shouldn't hide the page
+        if (err?.response?.status === 404) setNotFound(true);
+      })
       .finally(() => setLoading(false));
   }, [slug]);
 
