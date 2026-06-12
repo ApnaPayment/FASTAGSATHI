@@ -13,6 +13,7 @@ export default function StatePage() {
   const [state, setState] = useState(null);
   const [plazas, setPlazas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -23,10 +24,16 @@ export default function StatePage() {
         ]);
         setState(stateRes.data);
         setPlazas(plazasRes.data);
-      } catch {
+      } catch (err) {
+        const is404 = err?.response?.status === 404;
         const fallbackState = STATES.find((s) => s.slug === stateSlug);
-        setState(fallbackState || null);
-        setPlazas(PLAZAS.filter((p) => p.state === stateSlug));
+        if (fallbackState) {
+          setState(fallbackState);
+          setPlazas(PLAZAS.filter((p) => p.state === stateSlug));
+        } else if (is404) {
+          setNotFound(true);
+        }
+        // Non-404 network error with no seed fallback: leave state null, no noindex
       } finally {
         setLoading(false);
       }
@@ -45,7 +52,7 @@ export default function StatePage() {
     return <section className="pt-40 pb-32 text-center"><p className="text-[#4B5563] text-lg">Loading…</p></section>;
   }
 
-  if (!state) {
+  if (notFound) {
     return (
       <section className="pt-40 pb-32 text-center">
         <SEO title="State not found · ApnaFastag" description="This state page does not exist." path={`/state/${stateSlug}`} noindex />
@@ -53,6 +60,10 @@ export default function StatePage() {
         <Link to="/coverage" className="text-[#FF6B00] font-bold mt-4 inline-block">Back to coverage →</Link>
       </section>
     );
+  }
+
+  if (!state) {
+    return <section className="pt-40 pb-32 text-center"><p className="text-[#4B5563] text-lg">Loading…</p></section>;
   }
 
   return (

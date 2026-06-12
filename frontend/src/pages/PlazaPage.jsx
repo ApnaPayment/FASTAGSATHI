@@ -15,6 +15,7 @@ export default function PlazaPage() {
   const [state, setState] = useState(null);
   const [nearby, setNearby] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -29,13 +30,19 @@ export default function PlazaPage() {
         ]);
         setState(stateRes.data);
         setNearby((nearbyRes.data || []).filter((x) => x.slug !== plazaSlug).slice(0, 3));
-      } catch {
+      } catch (err) {
+        const is404 = err?.response?.status === 404;
         const fallbackPlaza = PLAZAS.find((p) => p.slug === plazaSlug);
-        setPlaza(fallbackPlaza || null);
         if (fallbackPlaza) {
+          setPlaza(fallbackPlaza);
           setState(STATES.find((s) => s.slug === fallbackPlaza.state) || null);
           setNearby(PLAZAS.filter((p) => p.state === fallbackPlaza.state && p.slug !== plazaSlug).slice(0, 3));
+        } else if (is404) {
+          // Plaza genuinely doesn't exist — noindex is correct
+          setNotFound(true);
         }
+        // Non-404 error (network/proxy issue) with no seed fallback:
+        // leave plaza null but don't set notFound so we don't noindex
       } finally {
         setLoading(false);
       }
@@ -54,7 +61,7 @@ export default function PlazaPage() {
     return <section className="pt-40 pb-32 text-center"><p className="text-[#4B5563] text-lg">Loading…</p></section>;
   }
 
-  if (!plaza) {
+  if (notFound) {
     return (
       <section className="pt-40 pb-32 text-center px-6">
         <SEO title="Toll plaza not found · ApnaFastag" description="This toll plaza page does not exist." path={`/toll/${plazaSlug}`} noindex />
@@ -62,6 +69,10 @@ export default function PlazaPage() {
         <Link to="/coverage" className="text-[#FF6B00] font-bold mt-4 inline-block">Back to coverage →</Link>
       </section>
     );
+  }
+
+  if (!plaza) {
+    return <section className="pt-40 pb-32 text-center"><p className="text-[#4B5563] text-lg">Loading…</p></section>;
   }
 
   return (
