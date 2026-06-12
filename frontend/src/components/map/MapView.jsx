@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Circle } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+const BACKEND = "";
 const fullUrl = (url) => { if (!url) return ""; if (url.startsWith("http") || url.startsWith("data:")) return url; if (BACKEND.includes("localhost") && !window.location.hostname.includes("localhost")) return ""; return `${BACKEND}${url}`; };
 
 const sathiIcon = (sathi) => {

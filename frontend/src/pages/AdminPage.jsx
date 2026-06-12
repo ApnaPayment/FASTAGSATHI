@@ -14,7 +14,7 @@ import { BANKS as SEED_BANKS, STATES as SEED_STATES } from "@/data/seed";
 
 const TABS = ["Dashboard", "Applications", "Jobs", "Sathis", "Customers", "Promo Codes", "Settlements", "FASTag Orders", "Plazas", "Sitemap", "Content", "Recharge Banks", "Branding"];
 
-const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+const BACKEND = "";
 const fullUrl = (url) => { if (!url) return ""; if (url.startsWith("http") || url.startsWith("data:")) return url; if (BACKEND.includes("localhost") && !window.location.hostname.includes("localhost")) return ""; return `${BACKEND}${url}`; };
 
 const STATUS_COLORS = {
@@ -2396,7 +2396,7 @@ function ContentTab() {
 
 const SITEMAP_SUB_TABS = ["Overview", "States", "Highways", "Cities", "Banks"];
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
+const BACKEND_URL = "";
 
 /** Generic reusable import modal for JSON/CSV */
 function ImportModal({ title, templateNote, onImport, onClose, importing, result }) {
