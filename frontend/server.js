@@ -391,7 +391,27 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 7. Normal static serving (browsers, etc.)
+  // 7. Static OG injection for /mlff and /fastag-e-notice (bots)
+  if (pathname === "/mlff" && isBot(ua)) {
+    await serveWithOg(req, res, () => ogTags({
+      title: "MLFF India — Multi-Lane Free Flow Tolling Explained 2025 · ApnaFastag",
+      description: "MLFF lets vehicles pass toll plazas at full speed — no stopping, no queues. Learn how GNSS and ANPR gantries work, pilot locations, and what it means for your FASTag wallet.",
+      image: DEFAULT_OG_IMAGE,
+      url: `${SITE}/mlff`,
+    }));
+    return;
+  }
+  if (pathname === "/fastag-e-notice" && isBot(ua)) {
+    await serveWithOg(req, res, () => ogTags({
+      title: "FASTag e-Notice — Pay, Dispute & Avoid Penalties 2025 · ApnaFastag",
+      description: "Received a FASTag e-Notice? Learn why NHAI issues them, how the 2× penalty works, and how to pay or dispute in minutes — not weeks.",
+      image: DEFAULT_OG_IMAGE,
+      url: `${SITE}/fastag-e-notice`,
+    }));
+    return;
+  }
+
+  // 8. Normal static serving (browsers, etc.)
   serveStatic(req, res);
 });
 

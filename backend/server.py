@@ -4623,6 +4623,8 @@ async def sitemap_static():
         ("/find",                "0.95", "hourly"),
         ("/become-a-sathi",      "0.90", "weekly"),
         ("/help",                "0.90", "daily"),
+        ("/mlff",                  "0.90", "monthly"),
+        ("/fastag-e-notice",       "0.90", "weekly"),
         ("/tools/fastag-balance-check", "0.95", "weekly"),
         ("/tools/fastag-status", "0.90", "weekly"),
         ("/tools/toll-calculator","0.90", "weekly"),

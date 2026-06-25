@@ -45,6 +45,8 @@ import SathiProfilePage from "@/pages/SathiProfilePage";
 import MyJobsPage from "@/pages/MyJobsPage";
 import SathiDashboardPage from "@/pages/SathiDashboardPage";
 import AdminPage from "@/pages/AdminPage";
+import MLFFPage from "@/pages/MLFFPage";
+import ENoticePage from "@/pages/ENoticePage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
 function RouteTracker() {
@@ -94,6 +96,10 @@ function App() {
             <Route path="bank/:bankSlug" element={<BankPage />} />
             <Route path="highway/:highwaySlug" element={<HighwayPage />} />
             <Route path="city/:citySlug" element={<CityPage />} />
+
+            {/* FASTag guides */}
+            <Route path="mlff" element={<MLFFPage />} />
+            <Route path="fastag-e-notice" element={<ENoticePage />} />
 
             {/* Content */}
             <Route path="about" element={<AboutPage />} />
