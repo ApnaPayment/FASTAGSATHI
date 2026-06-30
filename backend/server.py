@@ -2321,7 +2321,7 @@ async def admin_sitemap_stats():
     banks_count      = await db.banks.count_documents({})
     sathis_count     = await db.sathis.count_documents({})
     articles_count   = await db.articles.count_documents({"is_published": True})
-    static_count     = 16
+    static_count     = 22
     return {
         "categories": [
             {"key": "static",   "label": "Static pages",   "count": static_count,   "url": "/sitemap-static.xml",   "priority": "0.8–1.0", "changefreq": "daily/monthly"},
@@ -4629,6 +4629,8 @@ async def sitemap_static():
         ("/tools/fastag-status", "0.90", "weekly"),
         ("/tools/toll-calculator","0.90", "weekly"),
         ("/tools/dispute-tracker","0.85", "weekly"),
+        ("/buy-fastag",           "0.90", "weekly"),
+        ("/tools/fastag-recharge","0.85", "weekly"),
         ("/blog",                "0.80", "weekly"),
         ("/coverage",            "0.75", "weekly"),
         ("/how-it-works",        "0.80", "monthly"),
