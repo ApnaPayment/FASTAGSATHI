@@ -358,7 +358,7 @@ export default function JoinPage() {
             <div className="grid grid-cols-2 gap-2">
               {Object.entries(T).map(([code, info]) => (
                 <button key={code} onClick={() => chooseLanguage(code)}
-                  className={`flex items-center gap-2 p-2.5 rounded-xl border-2 text-left transition-all hover:border-[#FF6B00] ${lang === code ? "border-[#FF6B00] bg-orange-50" : "border-gray-200"}`}>
+                  className={`flex items-center gap-2 p-2.5 rounded-xl border-2 text-left transition-all ${lang === code ? "border-[#FF6B00] bg-orange-50" : "border-gray-200 hover:border-gray-300"}`}>
                   <span className="text-lg">{info.flag}</span>
                   <span className="font-medium text-gray-800 text-sm">{info.name}</span>
                 </button>
