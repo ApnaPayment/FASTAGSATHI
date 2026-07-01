@@ -168,14 +168,9 @@ const BANK_PLANS = {
     ringCls: "ring-blue-400",
     dotCls: "bg-blue-500",
     icon: "🏦",
-    commissions: [
-      { label: "Car/Jeep",   value: "Up to ₹200 instant" },
-      { label: "Commercial", value: "Up to ₹500 instant" },
-      { label: "Recharge",   value: "0.25% per txn" },
-      { label: "Target",     value: "50 tags/month" },
-      { label: "Payout",     value: "25th of month" },
-      { label: "Training",   value: "Online · 2 days" },
-    ],
+    defaultCar:  "Up to ₹200 instant",
+    defaultComm: "Up to ₹500 instant",
+    target: "50 tags/month", payout: "25th of month",
     estimate: "₹8k–₹25k/mo",
     highlight: "Instant commission per tag · Salary option on discussed target",
     staff: { name: "Priya Sharma", phone: "9876543210", role: "SBI Partner Manager" },
@@ -190,14 +185,9 @@ const BANK_PLANS = {
     ringCls: "ring-purple-400",
     dotCls: "bg-purple-500",
     icon: "💜",
-    commissions: [
-      { label: "Car/Jeep",   value: "Up to ₹150 instant" },
-      { label: "Commercial", value: "Up to ₹500 instant" },
-      { label: "Recharge",   value: "0.5% per txn" },
-      { label: "Target",     value: "40 tags/month" },
-      { label: "Payout",     value: "20th of month" },
-      { label: "Training",   value: "Online + field · 3d" },
-    ],
+    defaultCar:  "Up to ₹150 instant",
+    defaultComm: "Up to ₹500 instant",
+    target: "40 tags/month", payout: "20th of month",
     estimate: "₹10k–₹35k/mo",
     highlight: "Instant commission per tag · Salary option on discussed target",
     staff: { name: "Rahul Verma", phone: "8765432109", role: "IDFC First Bank Channel Manager" },
@@ -212,14 +202,9 @@ const BANK_PLANS = {
     ringCls: "ring-orange-400",
     dotCls: "bg-[#FF6B00]",
     icon: "⚡",
-    commissions: [
-      { label: "Car/Jeep",   value: "Up to ₹150 instant" },
-      { label: "Commercial", value: "Up to ₹500 instant" },
-      { label: "Recharge",   value: "0.3% per txn" },
-      { label: "Target",     value: "30 tags/month" },
-      { label: "Payout",     value: "28th of month" },
-      { label: "Training",   value: "Online only · 1 day" },
-    ],
+    defaultCar:  "Up to ₹150 instant",
+    defaultComm: "Up to ₹500 instant",
+    target: "30 tags/month", payout: "28th of month",
     estimate: "₹8k–₹25k/mo",
     highlight: "Instant commission per tag · Salary option on discussed target",
     staff: { name: "Amit Kumar", phone: "7654321098", role: "Bajaj Finance FASTag Manager" },
@@ -256,6 +241,7 @@ export default function JoinPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]           = useState("");
   const [bankLogos, setBankLogos]   = useState({}); // slug → logo URL
+  const [bankDbData, setBankDbData] = useState({}); // slug → full bank doc (commissions etc.)
   const [form, setForm] = useState({
     name: "", mobile: "", city: "",
     bank_preference: "sbi", experience: "new", monthly_estimate: "20-50",
@@ -274,13 +260,17 @@ export default function JoinPage() {
         () => {}, { timeout: 8000 }
       );
     }
-    // Fetch bank logos from DB
+    // Fetch bank data (logos + commission values) from DB
     fetch("/api/banks")
       .then((r) => r.json())
       .then((data) => {
-        const logos = {};
-        (data.banks || []).forEach((b) => { if (b.logo) logos[b.slug] = b.logo; });
+        const logos = {}, bySlug = {};
+        (data.banks || []).forEach((b) => {
+          if (b.logo) logos[b.slug] = b.logo;
+          bySlug[b.slug] = b;
+        });
         setBankLogos(logos);
+        setBankDbData(bySlug);
       })
       .catch(() => {});
   }, []);
@@ -503,8 +493,16 @@ export default function JoinPage() {
                   </div>
                 </div>
                 <div className="p-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
-                    {activePlan.commissions.map(({ label, value }) => (
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    {(() => {
+                      const db = bankDbData[activePlan.dbSlug] || {};
+                      return [
+                        { label: "Car / Jeep",  value: db.commission_car  || activePlan.defaultCar  },
+                        { label: "Commercial",  value: db.commission_comm || activePlan.defaultComm },
+                        { label: "Target",      value: activePlan.target  },
+                        { label: "Payout",      value: activePlan.payout  },
+                      ];
+                    })().map(({ label, value }) => (
                       <div key={label} className="bg-gray-50 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
                         <span className="text-gray-500 text-xs">{label}</span>
                         <span className="font-bold text-gray-900 text-xs">{value}</span>

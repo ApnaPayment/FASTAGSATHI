@@ -2914,6 +2914,8 @@ function BanksLogoTab() {
   const [success, setSuccess]     = useState("");
   const fileInputRef = useRef(null);
   const [pendingSlug, setPendingSlug] = useState(null);
+  // Commission editing: { [slug]: { commission_car, commission_comm, saving } }
+  const [commEdits, setCommEdits] = useState({});
 
   // Merge seed data with DB data (DB logo takes precedence)
   const load = useCallback(async () => {
@@ -2972,6 +2974,30 @@ function BanksLogoTab() {
       setError("Failed to remove logo");
     } finally {
       setRemoving(null);
+    }
+  };
+
+  const setCommField = (slug, field, val) =>
+    setCommEdits((prev) => ({ ...prev, [slug]: { ...prev[slug], [field]: val } }));
+
+  const saveCommission = async (bank) => {
+    const edits = commEdits[bank.slug] || {};
+    const payload = {};
+    const car  = (edits.commission_car  ?? bank.commission_car  ?? "").trim();
+    const comm = (edits.commission_comm ?? bank.commission_comm ?? "").trim();
+    if (car)  payload.commission_car  = car;
+    if (comm) payload.commission_comm = comm;
+    if (!Object.keys(payload).length) return;
+    setCommEdits((prev) => ({ ...prev, [bank.slug]: { ...prev[bank.slug], saving: true } }));
+    try {
+      await adminApi.updateBank(bank.slug, payload);
+      setSuccess(`Commission updated for ${bank.slug}`);
+      await load();
+      setCommEdits((prev) => { const n = { ...prev }; delete n[bank.slug]; return n; });
+    } catch {
+      setError("Failed to save commission");
+    } finally {
+      setCommEdits((prev) => ({ ...prev, [bank.slug]: { ...prev[bank.slug], saving: false } }));
     }
   };
 
@@ -3044,6 +3070,39 @@ function BanksLogoTab() {
                     </button>
                   )}
                 </div>
+
+                {/* Commission edit */}
+                {(() => {
+                  const edits = commEdits[bank.slug] || {};
+                  const saving = edits.saving;
+                  return (
+                    <div className="w-full border-t border-[#E5E7EB] pt-3 mt-1 space-y-1.5">
+                      <p className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">Commission</p>
+                      <input
+                        type="text"
+                        placeholder={`Car/Jeep (${bank.commission_car || "e.g. Up to ₹200 instant"})`}
+                        value={edits.commission_car ?? (bank.commission_car || "")}
+                        onChange={(e) => setCommField(bank.slug, "commission_car", e.target.value)}
+                        className="w-full border border-[#E5E7EB] rounded-lg px-2 py-1.5 text-[11px] text-[#0A0A0A] focus:outline-none focus:ring-1 focus:ring-[#FF6B00]"
+                      />
+                      <input
+                        type="text"
+                        placeholder={`Commercial (${bank.commission_comm || "e.g. Up to ₹500 instant"})`}
+                        value={edits.commission_comm ?? (bank.commission_comm || "")}
+                        onChange={(e) => setCommField(bank.slug, "commission_comm", e.target.value)}
+                        className="w-full border border-[#E5E7EB] rounded-lg px-2 py-1.5 text-[11px] text-[#0A0A0A] focus:outline-none focus:ring-1 focus:ring-[#FF6B00]"
+                      />
+                      <button
+                        onClick={() => saveCommission(bank)}
+                        disabled={saving}
+                        className="w-full flex items-center justify-center gap-1 bg-[#0A0A0A] text-white text-[11px] font-bold px-2 py-1.5 rounded-lg hover:bg-[#1a1a1a] disabled:opacity-50 transition-colors"
+                      >
+                        {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                        {saving ? "Saving…" : "Save Commission"}
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}
