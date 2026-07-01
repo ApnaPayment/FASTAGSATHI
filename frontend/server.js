@@ -410,6 +410,15 @@ const server = http.createServer(async (req, res) => {
     }));
     return;
   }
+  if (pathname === "/join" && isBot(ua)) {
+    await serveWithOg(req, res, () => ogTags({
+      title: "Become a FASTag Sathi — Earn ₹15,000–₹50,000/Month · ApnaFastag",
+      description: "Join India's fastest-growing FASTag partner network. Issue & recharge FASTag for SBI, IDFC First Bank and Bajaj Finance. Zero investment. Apply free in 2 minutes.",
+      image: DEFAULT_OG_IMAGE,
+      url: `${SITE}/join`,
+    }));
+    return;
+  }
 
   // 8. Normal static serving (browsers, etc.)
   serveStatic(req, res);

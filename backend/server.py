@@ -199,6 +199,27 @@ class SathiApplicationIn(BaseModel):
     active_hours: Optional[dict] = {}
     whatsapp: Optional[str] = ""
 
+class SathiLeadIn(BaseModel):
+    name: str
+    mobile: str
+    city: str = ""
+    state: str = ""
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    bank_preference: str = "all"   # sbi | idfc | bajaj | all
+    experience: str = "new"
+    monthly_estimate: str = ""
+    language: str = "en"
+    source: str = "whatsapp"
+    ref: str = ""
+    message: str = ""
+
+class SathiLeadUpdateIn(BaseModel):
+    status: Optional[str] = None        # new|contacted|interested|onboarded|rejected
+    assigned_to: Optional[str] = None
+    follow_up_date: Optional[str] = None
+    notes: Optional[str] = None
+
 class StatusCheckCreate(BaseModel):
     client_name: str
 
@@ -2321,7 +2342,7 @@ async def admin_sitemap_stats():
     banks_count      = await db.banks.count_documents({})
     sathis_count     = await db.sathis.count_documents({})
     articles_count   = await db.articles.count_documents({"is_published": True})
-    static_count     = 22
+    static_count     = 23
     return {
         "categories": [
             {"key": "static",   "label": "Static pages",   "count": static_count,   "url": "/sitemap-static.xml",   "priority": "0.8–1.0", "changefreq": "daily/monthly"},
@@ -4252,6 +4273,60 @@ async def admin_reset_netc_banks():
     return {"seeded": len(docs)}
 
 
+# ─── Admin: Sathi Leads ───────────────────────────────────────────────────────
+
+@admin_router.get("/leads/stats", dependencies=[Depends(_check_admin)])
+async def admin_lead_stats():
+    total = await db.sathi_leads.count_documents({})
+    today_str = datetime.now(timezone.utc).date().isoformat()
+    new_today  = await db.sathi_leads.count_documents({"created_at": {"$gte": today_str}})
+    contacted  = await db.sathi_leads.count_documents({"status": "contacted"})
+    interested = await db.sathi_leads.count_documents({"status": "interested"})
+    onboarded  = await db.sathi_leads.count_documents({"status": "onboarded"})
+    rejected   = await db.sathi_leads.count_documents({"status": "rejected"})
+    return {
+        "total": total, "new_today": new_today,
+        "contacted": contacted, "interested": interested,
+        "onboarded": onboarded, "rejected": rejected,
+    }
+
+@admin_router.get("/leads", dependencies=[Depends(_check_admin)])
+async def admin_list_leads(
+    page: int = 1, per_page: int = 25,
+    status: str = "", bank: str = "", search: str = "", assigned: str = "",
+):
+    q = {}
+    if status:
+        q["status"] = status
+    if bank:
+        q["bank_preference"] = bank
+    if assigned:
+        q["assigned_to"] = assigned
+    if search:
+        q["$or"] = [
+            {"name":    {"$regex": search, "$options": "i"}},
+            {"mobile":  {"$regex": search, "$options": "i"}},
+            {"city":    {"$regex": search, "$options": "i"}},
+            {"lead_id": {"$regex": search, "$options": "i"}},
+        ]
+    total = await db.sathi_leads.count_documents(q)
+    skip  = (page - 1) * per_page
+    docs  = await db.sathi_leads.find(q, {"_id": 0}).sort("created_at", -1).skip(skip).limit(per_page).to_list(per_page)
+    return {"leads": docs, "total": total, "page": page, "per_page": per_page}
+
+@admin_router.patch("/leads/{lead_id}", dependencies=[Depends(_check_admin)])
+async def admin_update_lead(lead_id: str, body: SathiLeadUpdateIn):
+    upd: dict = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    if body.status        is not None: upd["status"]        = body.status
+    if body.assigned_to   is not None: upd["assigned_to"]   = body.assigned_to
+    if body.follow_up_date is not None: upd["follow_up_date"]= body.follow_up_date
+    if body.notes         is not None: upd["notes"]         = body.notes
+    result = await db.sathi_leads.update_one({"lead_id": lead_id}, {"$set": upd})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    return {"ok": True}
+
+
 # ─── Payments ─────────────────────────────────────────────────────────────────
 
 payments_router = APIRouter(prefix="/payments", tags=["payments"])
@@ -4517,6 +4592,37 @@ async def verify_payment(order_id: str, current: dict = Depends(_require_user)):
 
     return {"payment_status": "pending", "job_ref": None, "job_id": None}
 
+# ─── Public: Sathi Lead Submission ───────────────────────────────────────────
+
+@api.post("/leads/sathi")
+async def submit_sathi_lead(body: SathiLeadIn):
+    lead_id = "LEAD-" + uuid.uuid4().hex[:6].upper()
+    doc = {
+        "lead_id":        lead_id,
+        "name":           body.name.strip(),
+        "mobile":         body.mobile.strip(),
+        "city":           body.city.strip(),
+        "state":          body.state.strip(),
+        "lat":            body.lat,
+        "lng":            body.lng,
+        "bank_preference":body.bank_preference,
+        "experience":     body.experience,
+        "monthly_estimate":body.monthly_estimate,
+        "language":       body.language,
+        "source":         body.source,
+        "ref":            body.ref.strip(),
+        "message":        body.message.strip(),
+        "status":         "new",
+        "assigned_to":    "",
+        "follow_up_date": "",
+        "notes":          "",
+        "created_at":     datetime.now(timezone.utc).isoformat(),
+        "updated_at":     datetime.now(timezone.utc).isoformat(),
+    }
+    await db.sathi_leads.insert_one(doc)
+    return {"ok": True, "lead_id": lead_id}
+
+
 # ─── Wire up ──────────────────────────────────────────────────────────────────
 
 api.include_router(auth_router)
@@ -4625,6 +4731,7 @@ async def sitemap_static():
         ("/help",                "0.90", "daily"),
         ("/mlff",                  "0.90", "monthly"),
         ("/fastag-e-notice",       "0.90", "weekly"),
+        ("/join",                  "0.95", "weekly"),
         ("/tools/fastag-balance-check", "0.95", "weekly"),
         ("/tools/fastag-status", "0.90", "weekly"),
         ("/tools/toll-calculator","0.90", "weekly"),

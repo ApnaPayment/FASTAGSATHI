@@ -12,7 +12,7 @@ import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import { BANKS as SEED_BANKS, STATES as SEED_STATES } from "@/data/seed";
 
-const TABS = ["Dashboard", "Applications", "Jobs", "Sathis", "Customers", "Promo Codes", "Settlements", "FASTag Orders", "Plazas", "Sitemap", "Content", "Recharge Banks", "Branding"];
+const TABS = ["Dashboard", "Applications", "Leads", "Jobs", "Sathis", "Customers", "Promo Codes", "Settlements", "FASTag Orders", "Plazas", "Sitemap", "Content", "Recharge Banks", "Branding"];
 
 const BACKEND = "";
 const fullUrl = (url) => { if (!url) return ""; if (url.startsWith("http") || url.startsWith("data:")) return url; if (BACKEND.includes("localhost") && !window.location.hostname.includes("localhost")) return ""; return `${BACKEND}${url}`; };
@@ -182,6 +182,7 @@ function Dashboard({ onLogout }) {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {tab === "Dashboard"    && <StatsTab />}
         {tab === "Applications" && <ApplicationsTab />}
+        {tab === "Leads"        && <LeadsTab />}
         {tab === "Jobs"         && <JobsTab />}
         {tab === "Sathis"       && <SathisTab />}
         {tab === "Customers"    && <CustomersTab />}
@@ -572,6 +573,267 @@ function ApplicationsTab() {
           onClose={() => setSelected(null)}
           onRefresh={() => { load(); setSelected(null); }}
         />
+      )}
+    </div>
+  );
+}
+
+/* ─── Leads ───────────────────────────────────────────────────────────────── */
+
+const LEAD_STATUSES = ["new", "contacted", "interested", "onboarded", "rejected"];
+const LEAD_STATUS_COLORS = {
+  new:        "bg-blue-100 text-blue-800",
+  contacted:  "bg-yellow-100 text-yellow-800",
+  interested: "bg-purple-100 text-purple-800",
+  onboarded:  "bg-green-100 text-green-800",
+  rejected:   "bg-red-100 text-red-800",
+};
+const LEAD_BANK_LABELS = { sbi: "SBI", idfc: "IDFC First", bajaj: "Bajaj", all: "All Banks" };
+
+function LeadsTab() {
+  const [leads, setLeads]       = useState([]);
+  const [stats, setStats]       = useState({});
+  const [total, setTotal]       = useState(0);
+  const [loading, setLoading]   = useState(true);
+  const [filter, setFilter]     = useState({ status: "", bank: "", search: "", page: 1 });
+  const [editing, setEditing]   = useState(null);  // lead being edited
+  const [editForm, setEditForm] = useState({});
+  const [saving, setSaving]     = useState(false);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    const params = { page: filter.page, per_page: 25 };
+    if (filter.status) params.status = filter.status;
+    if (filter.bank)   params.bank   = filter.bank;
+    if (filter.search) params.search = filter.search;
+    Promise.all([
+      adminApi.leads(params),
+      adminApi.leadStats(),
+    ])
+      .then(([r, s]) => {
+        setLeads(r.data.leads || []);
+        setTotal(r.data.total || 0);
+        setStats(s.data || {});
+      })
+      .finally(() => setLoading(false));
+  }, [filter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const openEdit = (lead) => {
+    setEditing(lead);
+    setEditForm({
+      status:         lead.status || "new",
+      assigned_to:    lead.assigned_to || "",
+      follow_up_date: lead.follow_up_date || "",
+      notes:          lead.notes || "",
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    setSaving(true);
+    try {
+      await adminApi.updateLead(editing.lead_id, editForm);
+      setEditing(null);
+      load();
+    } catch { /* ignore */ }
+    finally { setSaving(false); }
+  };
+
+  const quickStatus = async (lead, status) => {
+    try {
+      await adminApi.updateLead(lead.lead_id, { status });
+      setLeads((ls) => ls.map((l) => l.lead_id === lead.lead_id ? { ...l, status } : l));
+    } catch { /* ignore */ }
+  };
+
+  const pages = Math.max(1, Math.ceil(total / 25));
+
+  return (
+    <div>
+      <h2 className="text-2xl font-black text-[#0A0A0A] mb-6">
+        Sathi Leads <span className="text-[#9CA3AF] font-normal text-lg">({total.toLocaleString()})</span>
+      </h2>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-6">
+        {[
+          { label: "Total",       val: stats.total      || 0, color: "text-gray-900" },
+          { label: "New Today",   val: stats.new_today  || 0, color: "text-blue-600" },
+          { label: "Contacted",   val: stats.contacted  || 0, color: "text-yellow-600" },
+          { label: "Interested",  val: stats.interested || 0, color: "text-purple-600" },
+          { label: "Onboarded",   val: stats.onboarded  || 0, color: "text-green-600" },
+          { label: "Rejected",    val: stats.rejected   || 0, color: "text-red-500" },
+        ].map(({ label, val, color }) => (
+          <div key={label} className="bg-white border border-[#E5E7EB] rounded-xl p-3 text-center">
+            <p className={`text-2xl font-black ${color}`}>{val}</p>
+            <p className="text-xs text-[#6B7280] mt-0.5">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 mb-4">
+        <input
+          type="text"
+          placeholder="Search name / phone / city…"
+          value={filter.search}
+          onChange={(e) => setFilter((f) => ({ ...f, search: e.target.value, page: 1 }))}
+          className="border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/30"
+        />
+        <select
+          value={filter.status}
+          onChange={(e) => setFilter((f) => ({ ...f, status: e.target.value, page: 1 }))}
+          className="border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm bg-white focus:outline-none"
+        >
+          <option value="">All Statuses</option>
+          {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+        </select>
+        <select
+          value={filter.bank}
+          onChange={(e) => setFilter((f) => ({ ...f, bank: e.target.value, page: 1 }))}
+          className="border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm bg-white focus:outline-none"
+        >
+          <option value="">All Banks</option>
+          {Object.entries(LEAD_BANK_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <button onClick={load} className="border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
+          Refresh
+        </button>
+      </div>
+
+      {/* Table */}
+      {loading ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-[#FF6B00]" /></div>
+      ) : leads.length === 0 ? (
+        <div className="text-center py-12 text-[#6B7280]">No leads found.</div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-[#E5E7EB]">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-[#E5E7EB]">
+                {["Lead ID", "Name", "Mobile", "City", "Bank", "Experience", "Date", "Status", "Assigned", "Actions"].map((h) => (
+                  <th key={h} className="text-left px-4 py-3 font-semibold text-[#374151] whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#E5E7EB]">
+              {leads.map((lead) => (
+                <tr key={lead.lead_id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 font-mono text-xs text-[#6B7280]">{lead.lead_id}</td>
+                  <td className="px-4 py-3 font-medium text-[#0A0A0A] whitespace-nowrap">{lead.name}</td>
+                  <td className="px-4 py-3">
+                    <a href={`tel:+91${lead.mobile}`} className="text-[#FF6B00] hover:underline font-medium">
+                      {lead.mobile}
+                    </a>
+                  </td>
+                  <td className="px-4 py-3 text-[#374151]">{lead.city || "—"}</td>
+                  <td className="px-4 py-3">
+                    <span className="font-semibold text-[#374151]">{LEAD_BANK_LABELS[lead.bank_preference] || lead.bank_preference}</span>
+                  </td>
+                  <td className="px-4 py-3 text-[#6B7280] text-xs">{lead.experience}</td>
+                  <td className="px-4 py-3 text-[#6B7280] text-xs whitespace-nowrap">
+                    {lead.created_at ? lead.created_at.slice(0, 10) : "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <select
+                      value={lead.status || "new"}
+                      onChange={(e) => quickStatus(lead, e.target.value)}
+                      className={`text-xs font-semibold px-2 py-1 rounded-full border-0 focus:outline-none cursor-pointer ${LEAD_STATUS_COLORS[lead.status] || "bg-gray-100 text-gray-700"}`}
+                    >
+                      {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </td>
+                  <td className="px-4 py-3 text-[#6B7280] text-xs">{lead.assigned_to || "—"}</td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => openEdit(lead)}
+                      className="text-xs bg-[#FF6B00] text-white px-3 py-1.5 rounded-lg hover:bg-orange-600 transition"
+                    >
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {pages > 1 && (
+        <div className="flex items-center gap-2 mt-4 justify-end">
+          <button disabled={filter.page <= 1} onClick={() => setFilter((f) => ({ ...f, page: f.page - 1 }))} className="px-3 py-1.5 text-sm border border-[#E5E7EB] rounded-lg disabled:opacity-40">Prev</button>
+          <span className="text-sm text-[#6B7280]">{filter.page} / {pages}</span>
+          <button disabled={filter.page >= pages} onClick={() => setFilter((f) => ({ ...f, page: f.page + 1 }))} className="px-3 py-1.5 text-sm border border-[#E5E7EB] rounded-lg disabled:opacity-40">Next</button>
+        </div>
+      )}
+
+      {/* Edit modal */}
+      {editing && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-black text-[#0A0A0A]">Edit Lead — {editing.lead_id}</h3>
+              <button onClick={() => setEditing(null)} className="text-[#6B7280] hover:text-[#0A0A0A]">✕</button>
+            </div>
+            <div className="mb-2 text-sm text-[#374151]">
+              <strong>{editing.name}</strong> · {editing.mobile} · {editing.city}
+            </div>
+
+            <div className="space-y-3 mt-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#374151] mb-1">Status</label>
+                <select
+                  value={editForm.status}
+                  onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
+                  className="w-full border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/30"
+                >
+                  {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#374151] mb-1">Assigned To</label>
+                <input
+                  type="text"
+                  value={editForm.assigned_to}
+                  onChange={(e) => setEditForm((f) => ({ ...f, assigned_to: e.target.value }))}
+                  placeholder="Staff name"
+                  className="w-full border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/30"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#374151] mb-1">Follow-up Date</label>
+                <input
+                  type="date"
+                  value={editForm.follow_up_date}
+                  onChange={(e) => setEditForm((f) => ({ ...f, follow_up_date: e.target.value }))}
+                  className="w-full border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/30"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#374151] mb-1">Notes</label>
+                <textarea
+                  rows={3}
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+                  placeholder="Call outcome, next steps…"
+                  className="w-full border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/30 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setEditing(null)} className="flex-1 border border-[#E5E7EB] rounded-xl py-2.5 text-sm font-semibold hover:bg-gray-50">
+                Cancel
+              </button>
+              <button onClick={saveEdit} disabled={saving} className="flex-1 bg-[#FF6B00] hover:bg-orange-600 text-white rounded-xl py-2.5 text-sm font-bold disabled:opacity-60">
+                {saving ? "Saving…" : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

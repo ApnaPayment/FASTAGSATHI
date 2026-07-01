@@ -47,6 +47,7 @@ import SathiDashboardPage from "@/pages/SathiDashboardPage";
 import AdminPage from "@/pages/AdminPage";
 import MLFFPage from "@/pages/MLFFPage";
 import ENoticePage from "@/pages/ENoticePage";
+import JoinPage from "@/pages/JoinPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
 function RouteTracker() {
@@ -100,6 +101,9 @@ function App() {
             {/* FASTag guides */}
             <Route path="mlff" element={<MLFFPage />} />
             <Route path="fastag-e-notice" element={<ENoticePage />} />
+
+            {/* Sathi onboarding */}
+            <Route path="join" element={<JoinPage />} />
 
             {/* Content */}
             <Route path="about" element={<AboutPage />} />

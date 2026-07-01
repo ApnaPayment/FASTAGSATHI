@@ -113,6 +113,10 @@ export const applicationApi = {
   check: (phone) => api.get(`/api/sathi-applications/check/${phone}`),
 };
 
+export const leadApi = {
+  submitJoin: (data) => api.post("/api/leads/sathi", data),
+};
+
 const ADMIN_KEY = "apnafastag.admin";
 export const getAdminSecret = () => localStorage.getItem(ADMIN_KEY);
 export const setAdminSecret = (s) => localStorage.setItem(ADMIN_KEY, s);
@@ -206,6 +210,10 @@ export const adminApi = {
   updateFastagOrder:  (id, d)  => api.patch(`/api/admin/fastag-orders/${id}`, d, { headers: adminHeaders() }),
   fastagPrices:       ()       => api.get("/api/admin/fastag-prices", { headers: adminHeaders() }),
   updateFastagPrice:  (slug,d) => api.patch(`/api/admin/fastag-prices/${slug}`, d, { headers: adminHeaders() }),
+  // Sathi leads
+  leads:       (params) => api.get("/api/admin/leads",         { params, headers: adminHeaders() }),
+  leadStats:   ()       => api.get("/api/admin/leads/stats",   { headers: adminHeaders() }),
+  updateLead:  (id, d)  => api.patch(`/api/admin/leads/${id}`, d, { headers: adminHeaders() }),
   // NETC / Recharge banks
   netcBanks:        ()        => api.get("/api/admin/netc-banks",          { headers: adminHeaders() }),
   createNetcBank:   (data)    => api.post("/api/admin/netc-banks",         data, { headers: adminHeaders() }),
