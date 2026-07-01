@@ -2255,7 +2255,7 @@ async def admin_create_bank(body: BankIn):
 async def admin_update_bank(slug: str, body: dict):
     body.pop("_id", None)
     body["updated_at"] = datetime.now(timezone.utc).isoformat()
-    await db.banks.update_one({"slug": slug}, {"$set": body})
+    await db.banks.update_one({"slug": slug}, {"$set": body}, upsert=True)
     return {"ok": True}
 
 @admin_router.delete("/banks/{slug}", dependencies=[Depends(_check_admin)])
@@ -2268,10 +2268,6 @@ async def admin_delete_bank(slug: str):
 @admin_router.post("/banks/{slug}/upload-logo", dependencies=[Depends(_check_admin)])
 async def admin_upload_bank_logo(slug: str, file: UploadFile = File(...)):
     """Upload a logo image for a bank. Stored as base64 data URL in db.banks."""
-    bank = await db.banks.find_one({"slug": slug})
-    if not bank:
-        raise HTTPException(404, "Bank not found")
-
     ext = Path(file.filename).suffix.lower() if file.filename else ""
     ALLOWED = {".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
     if ext not in ALLOWED:
@@ -2306,6 +2302,7 @@ async def admin_upload_bank_logo(slug: str, file: UploadFile = File(...)):
     await db.banks.update_one(
         {"slug": slug},
         {"$set": {"logo": data_url, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True,
     )
     logger.info(f"Bank logo uploaded for {slug} — {ext}, {len(final_bytes):,} bytes")
     return {"ok": True, "logo": data_url}

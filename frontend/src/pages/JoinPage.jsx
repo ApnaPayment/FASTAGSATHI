@@ -26,7 +26,7 @@ const T = {
     form_name:"Full Name", form_mobile:"Mobile Number", form_city:"City / Town",
     form_bank:"Preferred Bank", form_exp:"Experience", form_estimate:"Monthly Target",
     submit:"Submit Application",
-    success_title:"Application Submitted!", success_sub:"Our team will call you within 24 hours. You can also call the bank manager directly:",
+    success_title:"Application Submitted!", success_sub:"Our team will call you within 24 hours. You can also call the bank manager directly:", success_sub_nostaff:"Our team will call you within 24 hours.",
     call_now:"Call Now", or_apply:"Call directly:",
     faq_title:"Quick Answers",
     download_title:"Download the Sathi App", download_sub:"Manage your jobs, track earnings & get support — all in one app.", download_cta:"Get it on Google Play",
@@ -45,7 +45,7 @@ const T = {
     form_name:"पूरा नाम", form_mobile:"मोबाइल नंबर", form_city:"शहर/कस्बा",
     form_bank:"बैंक पार्टनर", form_exp:"अनुभव", form_estimate:"मासिक लक्ष्य",
     submit:"आवेदन जमा करें",
-    success_title:"आवेदन प्राप्त हुआ!", success_sub:"24 घंटे में टीम कॉल करेगी। या बैंक मैनेजर को अभी कॉल करें:",
+    success_title:"आवेदन प्राप्त हुआ!", success_sub:"24 घंटे में टीम कॉल करेगी। या बैंक मैनेजर को अभी कॉल करें:", success_sub_nostaff:"24 घंटे में हमारी टीम कॉल करेगी।",
     call_now:"अभी कॉल करें", or_apply:"सीधे कॉल करें:",
     faq_title:"सामान्य प्रश्न",
     download_title:"सथी ऐप डाउनलोड करें", download_sub:"जॉब मैनेज करें, कमाई ट्रैक करें और सपोर्ट पाएं — एक ही ऐप में।", download_cta:"Google Play पर पाएं",
@@ -64,7 +64,7 @@ const T = {
     form_name:"पूर्ण नाव", form_mobile:"मोबाईल नंबर", form_city:"शहर/गाव",
     form_bank:"बँक", form_exp:"अनुभव", form_estimate:"मासिक लक्ष्य",
     submit:"अर्ज सादर करा",
-    success_title:"अर्ज प्राप्त झाला!", success_sub:"24 तासात टीम कॉल करेल. किंवा बँक मॅनेजरला कॉल करा:",
+    success_title:"अर्ज प्राप्त झाला!", success_sub:"24 तासात टीम कॉल करेल. किंवा बँक मॅनेजरला कॉल करा:", success_sub_nostaff:"24 तासात आमची टीम कॉल करेल.",
     call_now:"आता कॉल करा", or_apply:"थेट कॉल करा:",
     faq_title:"सामान्य प्रश्न",
     download_title:"सथी अ‍ॅप डाउनलोड करा", download_sub:"जॉब्स मॅनेज करा, कमाई ट्रॅक करा आणि सपोर्ट मिळवा — एकाच अ‍ॅपमध्ये.", download_cta:"Google Play वर मिळवा",
@@ -83,7 +83,7 @@ const T = {
     form_name:"முழு பெயர்", form_mobile:"மொபைல் எண்", form_city:"நகரம்",
     form_bank:"வங்கி", form_exp:"அனுபவம்", form_estimate:"மாதாந்திர இலக்கு",
     submit:"சமர்ப்பிக்கவும்",
-    success_title:"விண்ணப்பம் சமர்ப்பிக்கப்பட்டது!", success_sub:"24 மணி நேரத்தில் தொடர்பு கொள்ளும்:",
+    success_title:"விண்ணப்பம் சமர்ப்பிக்கப்பட்டது!", success_sub:"24 மணி நேரத்தில் தொடர்பு கொள்ளும்:", success_sub_nostaff:"24 மணி நேரத்தில் தொடர்பு கொள்ளும்:",
     call_now:"இப்போது அழைக்கவும்", or_apply:"நேரடியாக அழைக்கவும்:",
     faq_title:"பொதுவான கேள்விகள்",
     download_title:"சாதி ஆப்பை பதிவிறக்கவும்", download_sub:"பணிகளை நிர்வகிக்கவும், வருமானத்தை கண்காணிக்கவும், ஆதரவு பெறவும் — ஒரே ஆப்பில்.", download_cta:"Google Play-யில் பெறுங்கள்",
@@ -102,7 +102,7 @@ const T = {
     form_name:"పూర్తి పేరు", form_mobile:"మొబైల్ నంబర్", form_city:"నగరం",
     form_bank:"బ్యాంక్", form_exp:"అనుభవం", form_estimate:"నెలవారీ లక్ష్యం",
     submit:"దరఖాస్తు సమర్పించండి",
-    success_title:"దరఖాస్తు సమర్పించబడింది!", success_sub:"24 గంటల్లో సంప్రదిస్తాం:",
+    success_title:"దరఖాస్తు సమర్పించబడింది!", success_sub:"24 గంటల్లో సంప్రదిస్తాం:", success_sub_nostaff:"24 గంటల్లో సంప్రదిస్తాం:",
     call_now:"ఇప్పుడే కాల్ చేయండి", or_apply:"నేరుగా కాల్ చేయండి:",
     faq_title:"సాధారణ ప్రశ్నలు",
     download_title:"సాధి యాప్ డౌన్‌లోడ్ చేయండి", download_sub:"జాబ్‌లను నిర్వహించండి, ఆదాయాన్ని ట్రాక్ చేయండి & సపోర్ట్ పొందండి — ఒకే యాప్‌లో.", download_cta:"Google Play లో పొందండి",
@@ -121,7 +121,7 @@ const T = {
     form_name:"ಪೂರ್ಣ ಹೆಸರು", form_mobile:"ಮೊಬೈಲ್ ನಂಬರ್", form_city:"ನಗರ",
     form_bank:"ಬ್ಯಾಂಕ್", form_exp:"ಅನುಭವ", form_estimate:"ಮಾಸಿಕ ಗುರಿ",
     submit:"ಅರ್ಜಿ ಸಲ್ಲಿಸಿ",
-    success_title:"ಅರ್ಜಿ ಸಲ್ಲಿಸಲಾಗಿದೆ!", success_sub:"24 ಗಂಟೆಗಳಲ್ಲಿ ಸಂಪರ್ಕಿಸುತ್ತೇವೆ:",
+    success_title:"ಅರ್ಜಿ ಸಲ್ಲಿಸಲಾಗಿದೆ!", success_sub:"24 ಗಂಟೆಗಳಲ್ಲಿ ಸಂಪರ್ಕಿಸುತ್ತೇವೆ:", success_sub_nostaff:"24 ಗಂಟೆಗಳಲ್ಲಿ ಸಂಪರ್ಕಿಸುತ್ತೇವೆ:",
     call_now:"ಈಗ ಕರೆ ಮಾಡಿ", or_apply:"ನೇರ ಕರೆ:",
     faq_title:"ಸಾಮಾನ್ಯ ಪ್ರಶ್ನೆಗಳು",
     download_title:"ಸಾಥಿ ಆ್ಯಪ್ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ", download_sub:"ಜಾಬ್‌ಗಳನ್ನು ನಿರ್ವಹಿಸಿ, ಗಳಿಕೆ ಟ್ರ್ಯಾಕ್ ಮಾಡಿ ಮತ್ತು ಸಪೋರ್ಟ್ ಪಡೆಯಿರಿ — ಒಂದೇ ಆ್ಯಪ್‌ನಲ್ಲಿ.", download_cta:"Google Play ನಲ್ಲಿ ಪಡೆಯಿರಿ",
@@ -140,7 +140,7 @@ const T = {
     form_name:"পুরো নাম", form_mobile:"মোবাইল নম্বর", form_city:"শহর",
     form_bank:"ব্যাংক", form_exp:"অভিজ্ঞতা", form_estimate:"মাসিক লক্ষ্যমাত্রা",
     submit:"আবেদন জমা দিন",
-    success_title:"আবেদন জমা হয়েছে!", success_sub:"২৪ ঘণ্টার মধ্যে যোগাযোগ করব:",
+    success_title:"আবেদন জমা হয়েছে!", success_sub:"২৪ ঘণ্টার মধ্যে যোগাযোগ করব:", success_sub_nostaff:"২৪ ঘণ্টার মধ্যে যোগাযোগ করব:",
     call_now:"এখনই কল করুন", or_apply:"সরাসরি কল করুন:",
     faq_title:"সাধারণ প্রশ্নসমূহ",
     download_title:"সাথী অ্যাপ ডাউনলোড করুন", download_sub:"জব ম্যানেজ করুন, আয় ট্র্যাক করুন এবং সহায়তা পান — একটি অ্যাপে।", download_cta:"Google Play-তে পান",
@@ -159,7 +159,7 @@ const T = {
     form_name:"પૂરું નામ", form_mobile:"મોબાઈલ નંબર", form_city:"શહેર",
     form_bank:"બેંક", form_exp:"અનુભવ", form_estimate:"માસિક લક્ષ્ય",
     submit:"અરજી સબમિટ કરો",
-    success_title:"અરજી સ્વીકારી!", success_sub:"24 કલાકમાં સંપર્ક કરીશું:",
+    success_title:"અરજી સ્વીકારી!", success_sub:"24 કલાકમાં સંપર્ક કરીશું:", success_sub_nostaff:"24 કલાકમાં સંપર્ક કરીશું:",
     call_now:"અત્યારે કૉલ કરો", or_apply:"સીધો કૉલ:",
     faq_title:"સામાન્ય પ્રશ્નો",
     download_title:"સાથી એપ ડાઉનલોડ કરો", download_sub:"જોબ મેનેજ કરો, કમાણી ટ્રેક કરો અને સપોર્ટ મેળવો — એક જ એપમાં.", download_cta:"Google Play પર મેળવો",
@@ -183,7 +183,6 @@ const BANK_PLANS = {
     target: "50 tags/month", payout: "25th of month",
     estimate: "₹8k–₹25k/mo",
     highlight: "Instant commission per tag · Salary option on discussed target",
-    staff: { name: "Priya Sharma", phone: "9876543210", role: "SBI Partner Manager" },
   },
   idfc: {
     key: "idfc", dbSlug: "idfc-fastag",
@@ -200,7 +199,6 @@ const BANK_PLANS = {
     target: "40 tags/month", payout: "20th of month",
     estimate: "₹10k–₹35k/mo",
     highlight: "Instant commission per tag · Salary option on discussed target",
-    staff: { name: "Rahul Verma", phone: "8765432109", role: "IDFC First Bank Channel Manager" },
   },
   bajaj: {
     key: "bajaj", dbSlug: "bajaj-fastag",
@@ -217,7 +215,6 @@ const BANK_PLANS = {
     target: "30 tags/month", payout: "28th of month",
     estimate: "₹8k–₹25k/mo",
     highlight: "Instant commission per tag · Salary option on discussed target",
-    staff: { name: "Amit Kumar", phone: "7654321098", role: "Bajaj Finance FASTag Manager" },
   },
 };
 
@@ -325,14 +322,12 @@ export default function JoinPage() {
       : <span className="text-2xl leading-none">{plan.icon}</span>;
   };
 
-  // Staff contact: prefer admin-managed DB values, fall back to plan defaults
+  // Staff contact: only from admin-managed DB values — no hardcoded fallback.
+  // Returns null if the admin hasn't saved a contact for this bank yet.
   const getStaff = (plan) => {
     const db = bankDbData[plan.dbSlug] || {};
-    return {
-      name:  db.staff_name  || plan.staff.name,
-      phone: db.staff_phone || plan.staff.phone,
-      role:  db.staff_role  || plan.staff.role,
-    };
+    if (!db.staff_name || !db.staff_phone) return null;
+    return { name: db.staff_name, phone: db.staff_phone, role: db.staff_role || "" };
   };
 
   const activePlan = BANK_PLANS[activeBank];
@@ -381,10 +376,13 @@ export default function JoinPage() {
               <CheckCircle2 className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-2xl font-black text-white mb-2">{t.success_title}</h1>
-            <p className="text-gray-300 mb-6 text-sm">{t.success_sub}</p>
+            <p className="text-gray-300 mb-6 text-sm">
+              {Object.values(BANK_PLANS).some((plan) => getStaff(plan)) ? t.success_sub : t.success_sub_nostaff}
+            </p>
             <div className="space-y-2">
               {Object.values(BANK_PLANS).map((plan) => {
                 const staff = getStaff(plan);
+                if (!staff) return null;
                 return (
                   <div key={plan.key} className="bg-white rounded-xl p-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
@@ -669,33 +667,38 @@ export default function JoinPage() {
                 </p>
               </form>
 
-              {/* Staff contacts */}
-              <div className="mt-4">
-                <p className="text-center text-xs text-gray-500 mb-2">{t.or_apply}</p>
-                <div className="space-y-2">
-                  {Object.values(BANK_PLANS).map((plan) => {
-                    const staff = getStaff(plan);
-                    return (
-                      <a key={plan.key} href={`tel:+91${staff.phone}`}
-                        className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-3 py-2.5 hover:border-gray-300 transition group">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center shrink-0">
-                            <BankLogo plan={plan} className="h-5 w-auto object-contain" />
+              {/* Staff contacts — only shown once the admin has saved a contact for the bank */}
+              {(() => {
+                const staffedPlans = Object.values(BANK_PLANS)
+                  .map((plan) => ({ plan, staff: getStaff(plan) }))
+                  .filter((x) => x.staff);
+                if (!staffedPlans.length) return null;
+                return (
+                  <div className="mt-4">
+                    <p className="text-center text-xs text-gray-500 mb-2">{t.or_apply}</p>
+                    <div className="space-y-2">
+                      {staffedPlans.map(({ plan, staff }) => (
+                        <a key={plan.key} href={`tel:+91${staff.phone}`}
+                          className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-3 py-2.5 hover:border-gray-300 transition group">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center shrink-0">
+                              <BankLogo plan={plan} className="h-5 w-auto object-contain" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-900 text-xs">{staff.name}</p>
+                              <p className="text-[11px] text-gray-400">{staff.role}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-semibold text-gray-900 text-xs">{staff.name}</p>
-                            <p className="text-[11px] text-gray-400">{staff.role}</p>
+                          <div className="flex items-center gap-1.5 text-[#FF6B00]">
+                            <Phone className="w-3.5 h-3.5" />
+                            <span className="text-xs font-bold">+91 {staff.phone.replace(/(\d{5})(\d{5})/, "$1 $2")}</span>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[#FF6B00]">
-                          <Phone className="w-3.5 h-3.5" />
-                          <span className="text-xs font-bold">+91 {staff.phone.replace(/(\d{5})(\d{5})/, "$1 $2")}</span>
-                        </div>
-                      </a>
-                    );
-                  })}
-                </div>
-              </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </section>
 
