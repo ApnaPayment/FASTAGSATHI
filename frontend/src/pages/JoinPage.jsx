@@ -10,14 +10,142 @@ import {
 
 // ── Translations ───────────────────────────────────────────────────────────────
 const T = {
-  en: { flag: "🇮🇳", name: "English",     headline: "Earn ₹15,000–₹50,000 Per Month", sub: "Become an Official FASTag Sathi — Zero Investment Needed", cta: "Apply Now — It's Free", lang_title: "Choose Your Language", form_name: "Full Name", form_mobile: "Mobile Number", form_city: "City / Town", form_bank: "Preferred Bank Partner", form_exp: "Your Experience", form_estimate: "Monthly FASTag Target", submit: "Submit Application", success_title: "Application Submitted!", success_sub: "Our team will contact you within 24 hours. Call the dedicated manager for your bank:", call_now: "Call Now", or_apply: "Already submitted? Call directly:" },
-  hi: { flag: "🇮🇳", name: "हिंदी",       headline: "₹15,000–₹50,000/माह कमाएं",      sub: "आधिकारिक FASTag सथी बनें — कोई निवेश नहीं", cta: "अभी आवेदन करें — मुफ्त",       lang_title: "अपनी भाषा चुनें",              form_name: "पूरा नाम",     form_mobile: "मोबाइल नंबर",    form_city: "शहर/कस्बा",      form_bank: "बैंक पार्टनर",           form_exp: "आपका अनुभव",       form_estimate: "मासिक FASTag लक्ष्य", submit: "आवेदन जमा करें",      success_title: "आवेदन प्राप्त हो गया!", success_sub: "24 घंटे में टीम संपर्क करेगी। अपने बैंक के मैनेजर को कॉल करें:", call_now: "अभी कॉल करें",        or_apply: "पहले से आवेदन? सीधे कॉल करें:" },
-  mr: { flag: "🇮🇳", name: "मराठी",       headline: "₹15,000–₹50,000/महिना कमवा",    sub: "अधिकृत FASTag सथी व्हा — कोणतीही गुंतवणूक नाही", cta: "आत्ता अर्ज करा — मोफत",      lang_title: "आपली भाषा निवडा",           form_name: "पूर्ण नाव",   form_mobile: "मोबाईल नंबर",  form_city: "शहर/गाव",        form_bank: "बँक निवडा",              form_exp: "तुमचा अनुभव",     form_estimate: "मासिक FASTag लक्ष्य", submit: "अर्ज सादर करा",      success_title: "अर्ज प्राप्त झाला!",   success_sub: "24 तासात टीम संपर्क करेल। बँकेच्या मॅनेजरला कॉल करा:", call_now: "आता कॉल करा",         or_apply: "अर्ज केलाय? थेट कॉल करा:"  },
-  ta: { flag: "🇮🇳", name: "தமிழ்",       headline: "மாதம் ₹15,000–₹50,000 சம்பாதியுங்கள்", sub: "உத்தியோகபூர்வ FASTag சாதி ஆகுங்கள் — முதலீடு தேவையில்லை", cta: "இப்போது விண்ணப்பிக்கவும்", lang_title: "உங்கள் மொழியை தேர்வு செய்யவும்", form_name: "முழு பெயர்", form_mobile: "மொபைல் எண்", form_city: "நகரம்", form_bank: "வங்கி", form_exp: "அனுபவம்", form_estimate: "மாதாந்திர இலக்கு", submit: "சமர்ப்பிக்கவும்", success_title: "விண்ணப்பம் சமர்ப்பிக்கப்பட்டது!", success_sub: "24 மணி நேரத்தில் தொடர்பு கொள்ளும். மேலாளரை அழைக்கவும்:", call_now: "இப்போது அழைக்கவும்", or_apply: "ஏற்கனவே விண்ணப்பித்தீர்களா?" },
-  te: { flag: "🇮🇳", name: "తెలుగు",      headline: "నెలకు ₹15,000–₹50,000 సంపాదించండి", sub: "అధికారిక FASTag సాధి అవ్వండి — పెట్టుబడి అవసరం లేదు", cta: "ఇప్పుడే దరఖాస్తు చేయండి", lang_title: "మీ భాషను ఎంచుకోండి", form_name: "పూర్తి పేరు", form_mobile: "మొబైల్ నంబర్", form_city: "నగరం", form_bank: "బ్యాంక్", form_exp: "అనుభవం", form_estimate: "నెలవారీ లక్ష్యం", submit: "దరఖాస్తు సమర్పించండి", success_title: "దరఖాస్తు సమర్పించబడింది!", success_sub: "24 గంటల్లో మా బృందం సంప్రదిస్తుంది:", call_now: "ఇప్పుడే కాల్ చేయండి", or_apply: "ఇప్పటికే దరఖాస్తు చేశారా?" },
-  kn: { flag: "🇮🇳", name: "ಕನ್ನಡ",       headline: "ತಿಂಗಳಿಗೆ ₹15,000–₹50,000 ಸಂಪಾದಿಸಿ", sub: "ಅಧಿಕೃತ FASTag ಸಾಥಿ ಆಗಿ — ಯಾವುದೇ ಹೂಡಿಕೆ ಬೇಡ", cta: "ಈಗಲೇ ಅರ್ಜಿ ಸಲ್ಲಿಸಿ", lang_title: "ನಿಮ್ಮ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆ ಮಾಡಿ", form_name: "ಪೂರ್ಣ ಹೆಸರು", form_mobile: "ಮೊಬೈಲ್ ನಂಬರ್", form_city: "ನಗರ", form_bank: "ಬ್ಯಾಂಕ್", form_exp: "ಅನುಭವ", form_estimate: "ಮಾಸಿಕ ಗುರಿ", submit: "ಅರ್ಜಿ ಸಲ್ಲಿಸಿ", success_title: "ಅರ್ಜಿ ಸಲ್ಲಿಸಲಾಗಿದೆ!", success_sub: "24 ಗಂಟೆಗಳಲ್ಲಿ ತಂಡ ಸಂಪರ್ಕಿಸುತ್ತದೆ:", call_now: "ಈಗ ಕರೆ ಮಾಡಿ", or_apply: "ಈಗಾಗಲೇ ಅರ್ಜಿ ಮಾಡಿದ್ದೀರಾ?" },
-  bn: { flag: "🇮🇳", name: "বাংলা",        headline: "মাসে ₹15,000–₹50,000 উপার্জন করুন", sub: "অফিসিয়াল FASTag সাথী হন — কোনো বিনিয়োগ নেই", cta: "এখনই আবেদন করুন — বিনামূল্যে", lang_title: "আপনার ভাষা বেছে নিন", form_name: "পুরো নাম", form_mobile: "মোবাইল নম্বর", form_city: "শহর/শহরতলী", form_bank: "ব্যাংক", form_exp: "অভিজ্ঞতা", form_estimate: "মাসিক লক্ষ্যমাত্রা", submit: "আবেদন জমা দিন", success_title: "আবেদন জমা হয়েছে!", success_sub: "২৪ ঘণ্টার মধ্যে যোগাযোগ করব। ব্যাংক ম্যানেজারকে কল করুন:", call_now: "এখনই কল করুন", or_apply: "আগে আবেদন করেছেন?" },
-  gu: { flag: "🇮🇳", name: "ગુજરાતી",     headline: "મહિને ₹15,000–₹50,000 કમાઓ",    sub: "સત્તાવાર FASTag સાથી બનો — કોઈ રોકાણ નહીં", cta: "અત્યારે અરજી કરો — મફત",     lang_title: "તમારી ભાષા પસંદ કરો",       form_name: "પૂરું નામ",   form_mobile: "મોબાઈલ નંબર",  form_city: "શહેર/નગર",      form_bank: "પ્રિય બેંક",             form_exp: "અનુભવ",          form_estimate: "માસિક FASTag લક્ષ્ય",  submit: "અરજી સબમિટ કરો",   success_title: "અરજી સ્વીકારી!",       success_sub: "24 કલાકમાં ટીમ સંપર્ક કરશે. બેંક મેનેજરને કૉલ કરો:",  call_now: "અત્યારે કૉલ કરો",    or_apply: "પહેલેથી અરજી? સીધો કૉલ:" },
+  en: {
+    flag:"🇮🇳", name:"English",
+    headline:"Earn ₹15,000–₹50,000 Per Month", sub:"Become an Official FASTag Sathi — Zero Investment Needed", cta:"Apply Now — It's Free",
+    lang_title:"Choose Your Language",
+    stat_sathis:"Active Sathis", stat_earn:"Avg Monthly Earn",
+    steps_title:"3 Simple Steps to Start Earning",
+    step1_title:"Apply Free",   step1_desc:"Fill the form below — takes 2 minutes. No documents needed at this stage.",
+    step2_title:"Get Trained",  step2_desc:"Online training provided by the bank. Complete in 1–3 days from home.",
+    step3_title:"Start Earning",step3_desc:"Issue FASTag to customers. Earn commission credited monthly to your account.",
+    bank_title:"Choose Your Bank Partner", bank_sub:"Compare commissions and pick what works best for you",
+    form_title:"Apply as a Sathi", form_sub:"Fill in your details — our team will call you within 24 hours",
+    form_name:"Full Name", form_mobile:"Mobile Number", form_city:"City / Town", form_bank:"Preferred Bank Partner", form_exp:"Your Experience", form_estimate:"Monthly FASTag Target",
+    submit:"Submit Application",
+    success_title:"Application Submitted!", success_sub:"Our team will contact you within 24 hours. Call the dedicated manager for your bank:",
+    call_now:"Call Now", or_apply:"Already submitted? Call directly:",
+    faq_title:"Common Questions",
+  },
+  hi: {
+    flag:"🇮🇳", name:"हिंदी",
+    headline:"₹15,000–₹50,000/माह कमाएं", sub:"आधिकारिक FASTag सथी बनें — कोई निवेश नहीं", cta:"अभी आवेदन करें — मुफ्त",
+    lang_title:"अपनी भाषा चुनें",
+    stat_sathis:"सक्रिय सथी", stat_earn:"औसत मासिक कमाई",
+    steps_title:"3 आसान कदम — कमाना शुरू करें",
+    step1_title:"मुफ्त आवेदन",    step1_desc:"नीचे फॉर्म भरें — 2 मिनट लगते हैं। इस चरण में कोई दस्तावेज़ नहीं।",
+    step2_title:"प्रशिक्षण लें",  step2_desc:"बैंक द्वारा ऑनलाइन प्रशिक्षण। घर से 1–3 दिनों में पूरा करें।",
+    step3_title:"कमाना शुरू करें",step3_desc:"ग्राहकों को FASTag जारी करें। मासिक कमीशन सीधे बैंक खाते में।",
+    bank_title:"अपना बैंक पार्टनर चुनें", bank_sub:"कमीशन तुलना करें और सर्वोत्तम विकल्प चुनें",
+    form_title:"सथी के रूप में आवेदन करें", form_sub:"विवरण भरें — 24 घंटे में हमारी टीम कॉल करेगी",
+    form_name:"पूरा नाम", form_mobile:"मोबाइल नंबर", form_city:"शहर/कस्बा", form_bank:"बैंक पार्टनर", form_exp:"आपका अनुभव", form_estimate:"मासिक FASTag लक्ष्य",
+    submit:"आवेदन जमा करें",
+    success_title:"आवेदन प्राप्त हो गया!", success_sub:"24 घंटे में टीम संपर्क करेगी। अपने बैंक के मैनेजर को कॉल करें:",
+    call_now:"अभी कॉल करें", or_apply:"पहले से आवेदन? सीधे कॉल करें:",
+    faq_title:"सामान्य प्रश्न",
+  },
+  mr: {
+    flag:"🇮🇳", name:"मराठी",
+    headline:"₹15,000–₹50,000/महिना कमवा", sub:"अधिकृत FASTag सथी व्हा — कोणतीही गुंतवणूक नाही", cta:"आत्ता अर्ज करा — मोफत",
+    lang_title:"आपली भाषा निवडा",
+    stat_sathis:"सक्रिय सथी", stat_earn:"सरासरी मासिक कमाई",
+    steps_title:"3 सोपे टप्पे — कमाई सुरू करा",
+    step1_title:"मोफत अर्ज",      step1_desc:"खालील फॉर्म भरा — 2 मिनिटे लागतात. कागदपत्रे नाहीत.",
+    step2_title:"प्रशिक्षण घ्या", step2_desc:"बँकेकडून ऑनलाइन प्रशिक्षण. घरून 1–3 दिवसांत पूर्ण करा.",
+    step3_title:"कमाई सुरू करा",  step3_desc:"ग्राहकांना FASTag द्या. मासिक कमिशन बँक खात्यात जमा होते.",
+    bank_title:"आपला बँक पार्टनर निवडा", bank_sub:"कमिशन तुलना करा आणि सर्वोत्तम निवडा",
+    form_title:"सथी म्हणून अर्ज करा", form_sub:"तपशील भरा — 24 तासांत आमची टीम कॉल करेल",
+    form_name:"पूर्ण नाव", form_mobile:"मोबाईल नंबर", form_city:"शहर/गाव", form_bank:"बँक निवडा", form_exp:"तुमचा अनुभव", form_estimate:"मासिक FASTag लक्ष्य",
+    submit:"अर्ज सादर करा",
+    success_title:"अर्ज प्राप्त झाला!", success_sub:"24 तासात टीम संपर्क करेल। बँकेच्या मॅनेजरला कॉल करा:",
+    call_now:"आता कॉल करा", or_apply:"अर्ज केलाय? थेट कॉल करा:",
+    faq_title:"सामान्य प्रश्न",
+  },
+  ta: {
+    flag:"🇮🇳", name:"தமிழ்",
+    headline:"மாதம் ₹15,000–₹50,000 சம்பாதியுங்கள்", sub:"உத்தியோகபூர்வ FASTag சாதி ஆகுங்கள் — முதலீடு தேவையில்லை", cta:"இப்போது விண்ணப்பிக்கவும்",
+    lang_title:"உங்கள் மொழியை தேர்வு செய்யவும்",
+    stat_sathis:"செயலில் உள்ள சாதிகள்", stat_earn:"சராசரி மாத வருமானம்",
+    steps_title:"தொடங்க 3 எளிய படிகள்",
+    step1_title:"இலவச விண்ணப்பம்", step1_desc:"கீழே படிவத்தை நிரப்பவும் — 2 நிமிடம். ஆவணங்கள் தேவையில்லை.",
+    step2_title:"பயிற்சி பெறுங்கள்",step2_desc:"வங்கியால் ஆன்லைன் பயிற்சி. வீட்டிலிருந்து 1–3 நாட்களில் முடிக்கலாம்.",
+    step3_title:"சம்பாதிக்க தொடங்குங்கள்",step3_desc:"வாடிக்கையாளர்களுக்கு FASTag வழங்குங்கள். மாதாந்திர கமிஷன் கணக்கில் வரவு.",
+    bank_title:"உங்கள் வங்கி பங்காளரை தேர்வு செய்யவும்", bank_sub:"கமிஷன்களை ஒப்பிட்டு சிறந்ததை தேர்வு செய்யுங்கள்",
+    form_title:"சாதியாக விண்ணப்பிக்கவும்", form_sub:"உங்கள் விவரங்களை நிரப்புங்கள் — 24 மணி நேரத்தில் அழைப்போம்",
+    form_name:"முழு பெயர்", form_mobile:"மொபைல் எண்", form_city:"நகரம்", form_bank:"வங்கி", form_exp:"அனுபவம்", form_estimate:"மாதாந்திர இலக்கு",
+    submit:"சமர்ப்பிக்கவும்",
+    success_title:"விண்ணப்பம் சமர்ப்பிக்கப்பட்டது!", success_sub:"24 மணி நேரத்தில் தொடர்பு கொள்ளும். மேலாளரை அழைக்கவும்:",
+    call_now:"இப்போது அழைக்கவும்", or_apply:"ஏற்கனவே விண்ணப்பித்தீர்களா?",
+    faq_title:"பொதுவான கேள்விகள்",
+  },
+  te: {
+    flag:"🇮🇳", name:"తెలుగు",
+    headline:"నెలకు ₹15,000–₹50,000 సంపాదించండి", sub:"అధికారిక FASTag సాధి అవ్వండి — పెట్టుబడి అవసరం లేదు", cta:"ఇప్పుడే దరఖాస్తు చేయండి",
+    lang_title:"మీ భాషను ఎంచుకోండి",
+    stat_sathis:"క్రియాశీల సాధులు", stat_earn:"సగటు నెలవారీ ఆదాయం",
+    steps_title:"సంపాదించడానికి 3 సరళమైన దశలు",
+    step1_title:"ఉచిత దరఖాస్తు",   step1_desc:"దిగువ ఫారమ్ నింపండి — 2 నిమిషాలు. ఈ దశలో పత్రాలు అవసరం లేదు.",
+    step2_title:"శిక్షణ పొందండి",  step2_desc:"బ్యాంక్ ఆన్‌లైన్ శిక్షణ అందిస్తుంది. ఇంటి నుండి 1–3 రోజుల్లో పూర్తి చేయండి.",
+    step3_title:"సంపాదించడం ప్రారంభించండి",step3_desc:"వినియోగదారులకు FASTag ఇవ్వండి. నెలవారీ కమిషన్ మీ ఖాతాకు జమ అవుతుంది.",
+    bank_title:"మీ బ్యాంక్ పార్టనర్ ఎంచుకోండి", bank_sub:"కమీషన్‌లను పోల్చి మీకు అత్యుత్తమైనది ఎంచుకోండి",
+    form_title:"సాధిగా దరఖాస్తు చేయండి", form_sub:"వివరాలు నింపండి — 24 గంటల్లో మా బృందం కాల్ చేస్తుంది",
+    form_name:"పూర్తి పేరు", form_mobile:"మొబైల్ నంబర్", form_city:"నగరం", form_bank:"బ్యాంక్", form_exp:"అనుభవం", form_estimate:"నెలవారీ లక్ష్యం",
+    submit:"దరఖాస్తు సమర్పించండి",
+    success_title:"దరఖాస్తు సమర్పించబడింది!", success_sub:"24 గంటల్లో మా బృందం సంప్రదిస్తుంది:",
+    call_now:"ఇప్పుడే కాల్ చేయండి", or_apply:"ఇప్పటికే దరఖాస్తు చేశారా?",
+    faq_title:"సాధారణ ప్రశ్నలు",
+  },
+  kn: {
+    flag:"🇮🇳", name:"ಕನ್ನಡ",
+    headline:"ತಿಂಗಳಿಗೆ ₹15,000–₹50,000 ಸಂಪಾದಿಸಿ", sub:"ಅಧಿಕೃತ FASTag ಸಾಥಿ ಆಗಿ — ಯಾವುದೇ ಹೂಡಿಕೆ ಬೇಡ", cta:"ಈಗಲೇ ಅರ್ಜಿ ಸಲ್ಲಿಸಿ",
+    lang_title:"ನಿಮ್ಮ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆ ಮಾಡಿ",
+    stat_sathis:"ಸಕ್ರಿಯ ಸಾಥಿಗಳು", stat_earn:"ಸರಾಸರಿ ಮಾಸಿಕ ಆದಾಯ",
+    steps_title:"ಗಳಿಸಲು 3 ಸರಳ ಹಂತಗಳು",
+    step1_title:"ಉಚಿತ ಅರ್ಜಿ",      step1_desc:"ಕೆಳಗಿನ ಫಾರ್ಮ್ ತುಂಬಿ — 2 ನಿಮಿಷ. ದಾಖಲೆಗಳು ಬೇಡ.",
+    step2_title:"ತರಬೇತಿ ಪಡೆಯಿರಿ",  step2_desc:"ಬ್ಯಾಂಕ್ ಆನ್‌ಲೈನ್ ತರಬೇತಿ ನೀಡುತ್ತದೆ. ಮನೆಯಿಂದ 1–3 ದಿನಗಳಲ್ಲಿ ಪೂರ್ಣಗೊಳಿಸಿ.",
+    step3_title:"ಗಳಿಸಲು ಪ್ರಾರಂಭಿಸಿ",step3_desc:"ಗ್ರಾಹಕರಿಗೆ FASTag ನೀಡಿ. ಮಾಸಿಕ ಕಮಿಷನ್ ಖಾತೆಗೆ ಜಮ.",
+    bank_title:"ನಿಮ್ಮ ಬ್ಯಾಂಕ್ ಪಾಲುದಾರ ಆಯ್ಕೆ ಮಾಡಿ", bank_sub:"ಕಮಿಷನ್ ಹೋಲಿಸಿ ಮತ್ತು ಸೂಕ್ತವಾದದ್ದು ಆಯ್ಕೆ ಮಾಡಿ",
+    form_title:"ಸಾಥಿಯಾಗಿ ಅರ್ಜಿ ಸಲ್ಲಿಸಿ", form_sub:"ವಿವರ ತುಂಬಿ — 24 ಗಂಟೆಯಲ್ಲಿ ತಂಡ ಕರೆ ಮಾಡುತ್ತದೆ",
+    form_name:"ಪೂರ್ಣ ಹೆಸರು", form_mobile:"ಮೊಬೈಲ್ ನಂಬರ್", form_city:"ನಗರ", form_bank:"ಬ್ಯಾಂಕ್", form_exp:"ಅನುಭವ", form_estimate:"ಮಾಸಿಕ ಗುರಿ",
+    submit:"ಅರ್ಜಿ ಸಲ್ಲಿಸಿ",
+    success_title:"ಅರ್ಜಿ ಸಲ್ಲಿಸಲಾಗಿದೆ!", success_sub:"24 ಗಂಟೆಗಳಲ್ಲಿ ತಂಡ ಸಂಪರ್ಕಿಸುತ್ತದೆ:",
+    call_now:"ಈಗ ಕರೆ ಮಾಡಿ", or_apply:"ಈಗಾಗಲೇ ಅರ್ಜಿ ಮಾಡಿದ್ದೀರಾ?",
+    faq_title:"ಸಾಮಾನ್ಯ ಪ್ರಶ್ನೆಗಳು",
+  },
+  bn: {
+    flag:"🇮🇳", name:"বাংলা",
+    headline:"মাসে ₹15,000–₹50,000 উপার্জন করুন", sub:"অফিসিয়াল FASTag সাথী হন — কোনো বিনিয়োগ নেই", cta:"এখনই আবেদন করুন — বিনামূল্যে",
+    lang_title:"আপনার ভাষা বেছে নিন",
+    stat_sathis:"সক্রিয় সাথী", stat_earn:"গড় মাসিক আয়",
+    steps_title:"আয় শুরু করতে ৩টি সহজ পদক্ষেপ",
+    step1_title:"বিনামূল্যে আবেদন",  step1_desc:"নিচের ফর্ম পূরণ করুন — ২ মিনিট। কোনো কাগজপত্র লাগবে না।",
+    step2_title:"প্রশিক্ষণ নিন",    step2_desc:"ব্যাংক অনলাইনে প্রশিক্ষণ দেবে। বাড়ি থেকে ১–৩ দিনে সম্পন্ন করুন।",
+    step3_title:"আয় শুরু করুন",    step3_desc:"গ্রাহকদের FASTag দিন। মাসিক কমিশন সরাসরি ব্যাংক অ্যাকাউন্টে।",
+    bank_title:"আপনার ব্যাংক পার্টনার বেছে নিন", bank_sub:"কমিশন তুলনা করুন এবং সেরাটি বেছে নিন",
+    form_title:"সাথী হিসেবে আবেদন করুন", form_sub:"বিবরণ পূরণ করুন — ২৪ ঘণ্টার মধ্যে টিম কল করবে",
+    form_name:"পুরো নাম", form_mobile:"মোবাইল নম্বর", form_city:"শহর/শহরতলী", form_bank:"ব্যাংক", form_exp:"অভিজ্ঞতা", form_estimate:"মাসিক লক্ষ্যমাত্রা",
+    submit:"আবেদন জমা দিন",
+    success_title:"আবেদন জমা হয়েছে!", success_sub:"২৪ ঘণ্টার মধ্যে যোগাযোগ করব। ব্যাংক ম্যানেজারকে কল করুন:",
+    call_now:"এখনই কল করুন", or_apply:"আগে আবেদন করেছেন?",
+    faq_title:"সাধারণ প্রশ্নসমূহ",
+  },
+  gu: {
+    flag:"🇮🇳", name:"ગુજરાતી",
+    headline:"મહિને ₹15,000–₹50,000 કમાઓ", sub:"સત્તાવાર FASTag સાથી બનો — કોઈ રોકાણ નહીં", cta:"અત્યારે અરજી કરો — મફત",
+    lang_title:"તમારી ભાષા પસંદ કરો",
+    stat_sathis:"સક્રિય સાથી", stat_earn:"સરેરાશ માસિક કમાણી",
+    steps_title:"કમાણી શરૂ કરવા 3 સરળ પગલાં",
+    step1_title:"મફત અરજી",     step1_desc:"નીચેનું ફોર્મ ભરો — 2 મિનિટ. કોઈ દસ્તાવેજ જરૂરી નથી.",
+    step2_title:"તાલીમ લો",     step2_desc:"બેંક ઓનલાઈન તાલીમ આપે છે. ઘરેથી 1–3 દિવસમાં પૂર્ણ કરો.",
+    step3_title:"કમાણી શરૂ કરો",step3_desc:"ગ્રાહકોને FASTag આપો. માસિક કમિશન સીધું ખાતામાં.",
+    bank_title:"તમારો બેંક પાર્ટનર પસંદ કરો", bank_sub:"કમિશન સરખાવો અને તમારા માટે શ્રેષ્ઠ પસંદ કરો",
+    form_title:"સાથી તરીકે અરજી કરો", form_sub:"વિગત ભરો — 24 કલાકમાં ટીમ ફોન કરશે",
+    form_name:"પૂરું નામ", form_mobile:"મોબાઈલ નંબર", form_city:"શહેર/નગર", form_bank:"પ્રિય બેંક", form_exp:"અનુભવ", form_estimate:"માસિક FASTag લક્ષ્ય",
+    submit:"અરજી સબમિટ કરો",
+    success_title:"અરજી સ્વીકારી!", success_sub:"24 કલાકમાં ટીમ સંપર્ક કરશે. બેંક મેનેજરને કૉલ કરો:",
+    call_now:"અત્યારે કૉલ કરો", or_apply:"પહેલેથી અરજી? સીધો કૉલ:",
+    faq_title:"સામાન્ય પ્રશ્નો",
+  },
 };
 
 // ── Bank Plans ─────────────────────────────────────────────────────────────────
@@ -265,9 +393,9 @@ export default function JoinPage() {
               {/* Trust stats */}
               <div className="flex flex-wrap gap-4 mb-10">
                 {[
-                  { icon: Users, val: "2,400+", label: "Active Sathis" },
+                  { icon: Users, val: "2,400+", label: t.stat_sathis },
                   { icon: Shield, val: "3 Banks", label: "SBI · IDFC · Bajaj" },
-                  { icon: TrendingUp, val: "₹28,000", label: "Avg Monthly Earn" },
+                  { icon: TrendingUp, val: "₹28,000", label: t.stat_earn },
                 ].map(({ icon: Icon, val, label }) => (
                   <div key={label} className="flex items-center gap-2 bg-white/10 rounded-xl px-4 py-2.5">
                     <Icon className="w-4 h-4 text-[#FF6B00]" />
@@ -302,13 +430,13 @@ export default function JoinPage() {
           <section className="bg-gray-50 py-14">
             <div className="max-w-5xl mx-auto px-4">
               <h2 className="text-2xl font-black text-gray-900 text-center mb-10">
-                3 Simple Steps to Start Earning
+                {t.steps_title}
               </h2>
               <div className="grid md:grid-cols-3 gap-6">
                 {[
-                  { step: "01", icon: Gift, title: "Apply Free", desc: "Fill the form below — takes 2 minutes. No documents needed at this stage." },
-                  { step: "02", icon: BadgeCheck, title: "Get Trained", desc: "Online training provided by the bank. Complete in 1–3 days from home." },
-                  { step: "03", icon: IndianRupee, title: "Start Earning", desc: "Issue FASTag to customers. Earn commission credited monthly to your account." },
+                  { step: "01", icon: Gift,        title: t.step1_title, desc: t.step1_desc },
+                  { step: "02", icon: BadgeCheck,  title: t.step2_title, desc: t.step2_desc },
+                  { step: "03", icon: IndianRupee, title: t.step3_title, desc: t.step3_desc },
                 ].map(({ step: s, icon: Icon, title, desc }) => (
                   <div key={s} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 relative">
                     <span className="absolute top-4 right-4 text-4xl font-black text-gray-100">{s}</span>
@@ -326,8 +454,8 @@ export default function JoinPage() {
           {/* ── Bank Plans ── */}
           <section className="py-14 bg-white">
             <div className="max-w-5xl mx-auto px-4">
-              <h2 className="text-2xl font-black text-gray-900 text-center mb-2">Choose Your Bank Partner</h2>
-              <p className="text-gray-500 text-center mb-8">Compare commissions and pick what works best for you</p>
+              <h2 className="text-2xl font-black text-gray-900 text-center mb-2">{t.bank_title}</h2>
+              <p className="text-gray-500 text-center mb-8">{t.bank_sub}</p>
 
               {/* Bank tabs */}
               <div className="flex gap-3 mb-6 overflow-x-auto pb-1">
@@ -406,8 +534,8 @@ export default function JoinPage() {
                 <span className="inline-block bg-[#FF6B00]/10 text-[#FF6B00] text-sm font-bold px-4 py-1.5 rounded-full mb-3">
                   Free Application
                 </span>
-                <h2 className="text-2xl font-black text-gray-900">Apply as a Sathi</h2>
-                <p className="text-gray-500 mt-1">Fill in your details — our team will call you within 24 hours</p>
+                <h2 className="text-2xl font-black text-gray-900">{t.form_title}</h2>
+                <p className="text-gray-500 mt-1">{t.form_sub}</p>
               </div>
 
               <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
@@ -557,7 +685,7 @@ export default function JoinPage() {
           {/* ── Quick FAQ ── */}
           <section className="py-12 bg-white border-t border-gray-100">
             <div className="max-w-2xl mx-auto px-4">
-              <h2 className="text-xl font-black text-gray-900 text-center mb-6">Common Questions</h2>
+              <h2 className="text-xl font-black text-gray-900 text-center mb-6">{t.faq_title}</h2>
               <div className="space-y-3">
                 {[
                   { q: "Do I need any investment or fees?", a: "Zero investment required. Becoming a Sathi is completely free. The bank provides the FASTag kits and tools at no cost to you." },
