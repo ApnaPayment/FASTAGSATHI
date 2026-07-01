@@ -728,7 +728,21 @@ function LeadsTab() {
                       {lead.mobile}
                     </a>
                   </td>
-                  <td className="px-4 py-3 text-[#374151]">{lead.city || "—"}</td>
+                  <td className="px-4 py-3 text-[#374151]">
+                    <div className="flex items-center gap-1.5">
+                      <span>{lead.city || "—"}</span>
+                      {lead.lat != null && lead.lng != null && (
+                        <a
+                          href={`https://www.google.com/maps?q=${lead.lat},${lead.lng}`}
+                          target="_blank" rel="noopener noreferrer"
+                          title="View captured location on map"
+                          className="text-[#FF6B00] hover:text-orange-600"
+                        >
+                          <MapPin className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     <span className="font-semibold text-[#374151]">{LEAD_BANK_LABELS[lead.bank_preference] || lead.bank_preference}</span>
                   </td>
@@ -781,6 +795,19 @@ function LeadsTab() {
             <div className="mb-2 text-sm text-[#374151]">
               <strong>{editing.name}</strong> · {editing.mobile} · {editing.city}
             </div>
+
+            {editing.lat != null && editing.lng != null ? (
+              <a
+                href={`https://www.google.com/maps?q=${editing.lat},${editing.lng}`}
+                target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#FF6B00] hover:underline mb-2"
+              >
+                <MapPin className="w-3.5 h-3.5" />
+                View captured location ({editing.lat.toFixed(4)}, {editing.lng.toFixed(4)})
+              </a>
+            ) : (
+              <p className="text-xs text-[#9CA3AF] mb-2">No location captured for this lead.</p>
+            )}
 
             <div className="space-y-3 mt-4">
               <div>
