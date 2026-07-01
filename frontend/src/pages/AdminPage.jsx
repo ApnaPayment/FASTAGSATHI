@@ -2943,6 +2943,8 @@ function BanksLogoTab() {
   const [pendingSlug, setPendingSlug] = useState(null);
   // Commission editing: { [slug]: { commission_car, commission_comm, saving } }
   const [commEdits, setCommEdits] = useState({});
+  // Staff contact editing: { [slug]: { staff_name, staff_phone, staff_role, saving } }
+  const [staffEdits, setStaffEdits] = useState({});
 
   // Merge seed data with DB data (DB logo takes precedence)
   const load = useCallback(async () => {
@@ -3028,6 +3030,29 @@ function BanksLogoTab() {
     }
   };
 
+  const setStaffField = (slug, field, val) =>
+    setStaffEdits((prev) => ({ ...prev, [slug]: { ...prev[slug], [field]: val } }));
+
+  const saveStaff = async (bank) => {
+    const edits = staffEdits[bank.slug] || {};
+    const payload = {
+      staff_name:  (edits.staff_name  ?? bank.staff_name  ?? "").trim(),
+      staff_phone: (edits.staff_phone ?? bank.staff_phone ?? "").trim(),
+      staff_role:  (edits.staff_role  ?? bank.staff_role  ?? "").trim(),
+    };
+    setStaffEdits((prev) => ({ ...prev, [bank.slug]: { ...prev[bank.slug], saving: true } }));
+    try {
+      await adminApi.updateBank(bank.slug, payload);
+      setSuccess(`Contact updated for ${bank.slug}`);
+      await load();
+      setStaffEdits((prev) => { const n = { ...prev }; delete n[bank.slug]; return n; });
+    } catch {
+      setError("Failed to save contact");
+    } finally {
+      setStaffEdits((prev) => ({ ...prev, [bank.slug]: { ...prev[bank.slug], saving: false } }));
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -3035,7 +3060,7 @@ function BanksLogoTab() {
           <h2 className="text-xl font-bold text-[#0A0A0A] flex items-center gap-2">
             <Landmark className="w-5 h-5 text-[#FF6B00]" /> Bank Logos
           </h2>
-          <p className="text-sm text-[#6B7280] mt-1">Upload PNG, SVG, or JPG logos (max 1 MB each). Logos appear on the homepage trust section and bank pages.</p>
+          <p className="text-sm text-[#6B7280] mt-1">Upload logos, set commission values, and manage the Sathi partner contact per bank — all shown on the homepage, bank pages, and the /join application page.</p>
         </div>
         <button onClick={load} className="p-2 rounded-lg border border-[#E5E7EB] hover:bg-[#F9FAFB] transition-colors" title="Refresh">
           <RefreshCw className={`w-4 h-4 text-[#6B7280] ${loading ? "animate-spin" : ""}`} />
@@ -3126,6 +3151,46 @@ function BanksLogoTab() {
                       >
                         {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                         {saving ? "Saving…" : "Save Commission"}
+                      </button>
+                    </div>
+                  );
+                })()}
+
+                {/* Staff contact edit */}
+                {(() => {
+                  const edits = staffEdits[bank.slug] || {};
+                  const saving = edits.saving;
+                  return (
+                    <div className="w-full border-t border-[#E5E7EB] pt-3 mt-1 space-y-1.5">
+                      <p className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">Sathi Contact</p>
+                      <input
+                        type="text"
+                        placeholder="Staff name"
+                        value={edits.staff_name ?? (bank.staff_name || "")}
+                        onChange={(e) => setStaffField(bank.slug, "staff_name", e.target.value)}
+                        className="w-full border border-[#E5E7EB] rounded-lg px-2 py-1.5 text-[11px] text-[#0A0A0A] focus:outline-none focus:ring-1 focus:ring-[#FF6B00]"
+                      />
+                      <input
+                        type="tel"
+                        placeholder="10-digit phone"
+                        value={edits.staff_phone ?? (bank.staff_phone || "")}
+                        onChange={(e) => setStaffField(bank.slug, "staff_phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                        className="w-full border border-[#E5E7EB] rounded-lg px-2 py-1.5 text-[11px] text-[#0A0A0A] focus:outline-none focus:ring-1 focus:ring-[#FF6B00]"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Role (e.g. Partner Manager)"
+                        value={edits.staff_role ?? (bank.staff_role || "")}
+                        onChange={(e) => setStaffField(bank.slug, "staff_role", e.target.value)}
+                        className="w-full border border-[#E5E7EB] rounded-lg px-2 py-1.5 text-[11px] text-[#0A0A0A] focus:outline-none focus:ring-1 focus:ring-[#FF6B00]"
+                      />
+                      <button
+                        onClick={() => saveStaff(bank)}
+                        disabled={saving}
+                        className="w-full flex items-center justify-center gap-1 bg-[#0A0A0A] text-white text-[11px] font-bold px-2 py-1.5 rounded-lg hover:bg-[#1a1a1a] disabled:opacity-50 transition-colors"
+                      >
+                        {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                        {saving ? "Saving…" : "Save Contact"}
                       </button>
                     </div>
                   );

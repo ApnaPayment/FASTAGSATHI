@@ -325,6 +325,16 @@ export default function JoinPage() {
       : <span className="text-2xl leading-none">{plan.icon}</span>;
   };
 
+  // Staff contact: prefer admin-managed DB values, fall back to plan defaults
+  const getStaff = (plan) => {
+    const db = bankDbData[plan.dbSlug] || {};
+    return {
+      name:  db.staff_name  || plan.staff.name,
+      phone: db.staff_phone || plan.staff.phone,
+      role:  db.staff_role  || plan.staff.role,
+    };
+  };
+
   const activePlan = BANK_PLANS[activeBank];
 
   return (
@@ -373,23 +383,26 @@ export default function JoinPage() {
             <h1 className="text-2xl font-black text-white mb-2">{t.success_title}</h1>
             <p className="text-gray-300 mb-6 text-sm">{t.success_sub}</p>
             <div className="space-y-2">
-              {Object.values(BANK_PLANS).map((plan) => (
-                <div key={plan.key} className="bg-white rounded-xl p-3 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center shrink-0">
-                      <BankLogo plan={plan} className="h-6 w-auto object-contain" />
+              {Object.values(BANK_PLANS).map((plan) => {
+                const staff = getStaff(plan);
+                return (
+                  <div key={plan.key} className="bg-white rounded-xl p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center shrink-0">
+                        <BankLogo plan={plan} className="h-6 w-auto object-contain" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-bold text-gray-900 text-sm">{staff.name}</p>
+                        <p className="text-xs text-gray-500">{plan.name}</p>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <p className="font-bold text-gray-900 text-sm">{plan.staff.name}</p>
-                      <p className="text-xs text-gray-500">{plan.name}</p>
-                    </div>
+                    <a href={`tel:+91${staff.phone}`}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-bold text-white bg-gradient-to-r ${plan.headerCls} text-xs whitespace-nowrap`}>
+                      <Phone className="w-3.5 h-3.5" />{t.call_now}
+                    </a>
                   </div>
-                  <a href={`tel:+91${plan.staff.phone}`}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-bold text-white bg-gradient-to-r ${plan.headerCls} text-xs whitespace-nowrap`}>
-                    <Phone className="w-3.5 h-3.5" />{t.call_now}
-                  </a>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* GV Partner app download */}
@@ -660,24 +673,27 @@ export default function JoinPage() {
               <div className="mt-4">
                 <p className="text-center text-xs text-gray-500 mb-2">{t.or_apply}</p>
                 <div className="space-y-2">
-                  {Object.values(BANK_PLANS).map((plan) => (
-                    <a key={plan.key} href={`tel:+91${plan.staff.phone}`}
-                      className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-3 py-2.5 hover:border-gray-300 transition group">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center shrink-0">
-                          <BankLogo plan={plan} className="h-5 w-auto object-contain" />
+                  {Object.values(BANK_PLANS).map((plan) => {
+                    const staff = getStaff(plan);
+                    return (
+                      <a key={plan.key} href={`tel:+91${staff.phone}`}
+                        className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-3 py-2.5 hover:border-gray-300 transition group">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center shrink-0">
+                            <BankLogo plan={plan} className="h-5 w-auto object-contain" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900 text-xs">{staff.name}</p>
+                            <p className="text-[11px] text-gray-400">{staff.role}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-semibold text-gray-900 text-xs">{plan.staff.name}</p>
-                          <p className="text-[11px] text-gray-400">{plan.staff.role}</p>
+                        <div className="flex items-center gap-1.5 text-[#FF6B00]">
+                          <Phone className="w-3.5 h-3.5" />
+                          <span className="text-xs font-bold">+91 {staff.phone.replace(/(\d{5})(\d{5})/, "$1 $2")}</span>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[#FF6B00]">
-                        <Phone className="w-3.5 h-3.5" />
-                        <span className="text-xs font-bold">+91 {plan.staff.phone.replace(/(\d{5})(\d{5})/, "$1 $2")}</span>
-                      </div>
-                    </a>
-                  ))}
+                      </a>
+                    );
+                  })}
                 </div>
               </div>
             </div>
