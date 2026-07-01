@@ -579,7 +579,7 @@ export default function JoinPage() {
                 <p className="text-gray-500 text-sm mt-1">{t.form_sub}</p>
               </div>
 
-              <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-3">
+              <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-md border border-gray-200 p-5 space-y-3">
                 {/* Name + Mobile row */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
