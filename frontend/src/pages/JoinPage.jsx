@@ -5,8 +5,10 @@ import { leadApi } from "@/lib/api";
 import {
   MapPin, Phone, ChevronDown, CheckCircle2, TrendingUp,
   Shield, Globe2, Smartphone, ArrowRight, Loader2, BadgeCheck,
-  IndianRupee, Star, Users, X, Gift,
+  IndianRupee, Star, Users, X, Gift, Download,
 } from "lucide-react";
+
+const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.aps.agent&referrer=utm_source%3Dapnafastag%26utm_medium%3Dwhatsapp%26utm_term%3Dfastagclient";
 
 // ── Translations ───────────────────────────────────────────────────────────────
 const T = {
@@ -27,6 +29,7 @@ const T = {
     success_title:"Application Submitted!", success_sub:"Our team will call you within 24 hours. You can also call the bank manager directly:",
     call_now:"Call Now", or_apply:"Call directly:",
     faq_title:"Quick Answers",
+    download_title:"Download the Sathi App", download_sub:"Manage your jobs, track earnings & get support — all in one app.", download_cta:"Get it on Google Play",
   },
   hi: {
     flag:"🇮🇳", name:"हिंदी",
@@ -45,6 +48,7 @@ const T = {
     success_title:"आवेदन प्राप्त हुआ!", success_sub:"24 घंटे में टीम कॉल करेगी। या बैंक मैनेजर को अभी कॉल करें:",
     call_now:"अभी कॉल करें", or_apply:"सीधे कॉल करें:",
     faq_title:"सामान्य प्रश्न",
+    download_title:"सथी ऐप डाउनलोड करें", download_sub:"जॉब मैनेज करें, कमाई ट्रैक करें और सपोर्ट पाएं — एक ही ऐप में।", download_cta:"Google Play पर पाएं",
   },
   mr: {
     flag:"🇮🇳", name:"मराठी",
@@ -63,6 +67,7 @@ const T = {
     success_title:"अर्ज प्राप्त झाला!", success_sub:"24 तासात टीम कॉल करेल. किंवा बँक मॅनेजरला कॉल करा:",
     call_now:"आता कॉल करा", or_apply:"थेट कॉल करा:",
     faq_title:"सामान्य प्रश्न",
+    download_title:"सथी अ‍ॅप डाउनलोड करा", download_sub:"जॉब्स मॅनेज करा, कमाई ट्रॅक करा आणि सपोर्ट मिळवा — एकाच अ‍ॅपमध्ये.", download_cta:"Google Play वर मिळवा",
   },
   ta: {
     flag:"🇮🇳", name:"தமிழ்",
@@ -81,6 +86,7 @@ const T = {
     success_title:"விண்ணப்பம் சமர்ப்பிக்கப்பட்டது!", success_sub:"24 மணி நேரத்தில் தொடர்பு கொள்ளும்:",
     call_now:"இப்போது அழைக்கவும்", or_apply:"நேரடியாக அழைக்கவும்:",
     faq_title:"பொதுவான கேள்விகள்",
+    download_title:"சாதி ஆப்பை பதிவிறக்கவும்", download_sub:"பணிகளை நிர்வகிக்கவும், வருமானத்தை கண்காணிக்கவும், ஆதரவு பெறவும் — ஒரே ஆப்பில்.", download_cta:"Google Play-யில் பெறுங்கள்",
   },
   te: {
     flag:"🇮🇳", name:"తెలుగు",
@@ -99,6 +105,7 @@ const T = {
     success_title:"దరఖాస్తు సమర్పించబడింది!", success_sub:"24 గంటల్లో సంప్రదిస్తాం:",
     call_now:"ఇప్పుడే కాల్ చేయండి", or_apply:"నేరుగా కాల్ చేయండి:",
     faq_title:"సాధారణ ప్రశ్నలు",
+    download_title:"సాధి యాప్ డౌన్‌లోడ్ చేయండి", download_sub:"జాబ్‌లను నిర్వహించండి, ఆదాయాన్ని ట్రాక్ చేయండి & సపోర్ట్ పొందండి — ఒకే యాప్‌లో.", download_cta:"Google Play లో పొందండి",
   },
   kn: {
     flag:"🇮🇳", name:"ಕನ್ನಡ",
@@ -117,6 +124,7 @@ const T = {
     success_title:"ಅರ್ಜಿ ಸಲ್ಲಿಸಲಾಗಿದೆ!", success_sub:"24 ಗಂಟೆಗಳಲ್ಲಿ ಸಂಪರ್ಕಿಸುತ್ತೇವೆ:",
     call_now:"ಈಗ ಕರೆ ಮಾಡಿ", or_apply:"ನೇರ ಕರೆ:",
     faq_title:"ಸಾಮಾನ್ಯ ಪ್ರಶ್ನೆಗಳು",
+    download_title:"ಸಾಥಿ ಆ್ಯಪ್ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ", download_sub:"ಜಾಬ್‌ಗಳನ್ನು ನಿರ್ವಹಿಸಿ, ಗಳಿಕೆ ಟ್ರ್ಯಾಕ್ ಮಾಡಿ ಮತ್ತು ಸಪೋರ್ಟ್ ಪಡೆಯಿರಿ — ಒಂದೇ ಆ್ಯಪ್‌ನಲ್ಲಿ.", download_cta:"Google Play ನಲ್ಲಿ ಪಡೆಯಿರಿ",
   },
   bn: {
     flag:"🇮🇳", name:"বাংলা",
@@ -135,6 +143,7 @@ const T = {
     success_title:"আবেদন জমা হয়েছে!", success_sub:"২৪ ঘণ্টার মধ্যে যোগাযোগ করব:",
     call_now:"এখনই কল করুন", or_apply:"সরাসরি কল করুন:",
     faq_title:"সাধারণ প্রশ্নসমূহ",
+    download_title:"সাথী অ্যাপ ডাউনলোড করুন", download_sub:"জব ম্যানেজ করুন, আয় ট্র্যাক করুন এবং সহায়তা পান — একটি অ্যাপে।", download_cta:"Google Play-তে পান",
   },
   gu: {
     flag:"🇮🇳", name:"ગુજરાતી",
@@ -153,6 +162,7 @@ const T = {
     success_title:"અરજી સ્વીકારી!", success_sub:"24 કલાકમાં સંપર્ક કરીશું:",
     call_now:"અત્યારે કૉલ કરો", or_apply:"સીધો કૉલ:",
     faq_title:"સામાન્ય પ્રશ્નો",
+    download_title:"સાથી એપ ડાઉનલોડ કરો", download_sub:"જોબ મેનેજ કરો, કમાણી ટ્રેક કરો અને સપોર્ટ મેળવો — એક જ એપમાં.", download_cta:"Google Play પર મેળવો",
   },
 };
 
@@ -369,6 +379,25 @@ export default function JoinPage() {
                 </div>
               ))}
             </div>
+
+            {/* GV Partner app download */}
+            <a
+              href={PLAY_STORE_URL}
+              target="_blank" rel="noopener noreferrer"
+              className="mt-5 flex items-center gap-3 bg-white rounded-xl p-3 text-left hover:ring-2 hover:ring-[#FF6B00] transition-all"
+            >
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shrink-0">
+                <Download className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-gray-900 text-sm">{t.download_title}</p>
+                <p className="text-xs text-gray-500 leading-snug">{t.download_sub}</p>
+              </div>
+              <span className="shrink-0 text-[11px] font-bold text-white bg-[#FF6B00] px-2.5 py-1.5 rounded-lg whitespace-nowrap">
+                {t.download_cta}
+              </span>
+            </a>
+
             <Link to="/" className="inline-block mt-5 text-[#FF6B00] hover:underline text-sm">← Back to ApnaFastag</Link>
           </div>
         </div>
