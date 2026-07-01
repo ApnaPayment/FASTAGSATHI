@@ -267,7 +267,7 @@ export default function JoinPage() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setForm((f) => ({ ...f, lat: pos.coords.latitude, lng: pos.coords.longitude })),
-        () => {}, { timeout: 8000 }
+        () => {}, { timeout: 8000, maximumAge: 60000 }
       );
     }
     // Fetch bank data (logos + commission values) from DB
@@ -289,6 +289,17 @@ export default function JoinPage() {
   const scrollToForm   = () => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   const selectBank     = (key) => { setActiveBank(key); setForm((f) => ({ ...f, bank_preference: key })); };
 
+  // Last-chance grab in case the mount-time request hadn't resolved yet (slow GPS fix,
+  // or the user answered the permission prompt late) — short timeout so it never blocks submit for long.
+  const getQuickLocation = () => new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve({});
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve({}),
+      { timeout: 4000, maximumAge: 60000 }
+    );
+  });
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -297,7 +308,8 @@ export default function JoinPage() {
     if (!form.city.trim())                          return setError("Please enter your city.");
     setSubmitting(true);
     try {
-      await leadApi.submitJoin({ ...form, source: "website" });
+      const loc = (form.lat == null || form.lng == null) ? await getQuickLocation() : {};
+      await leadApi.submitJoin({ ...form, ...loc, source: "website" });
       setStep("success");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch {
