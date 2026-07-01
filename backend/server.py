@@ -1248,16 +1248,21 @@ async def admin_login(body: dict):
 
 @admin_router.get("/stats", dependencies=[Depends(_check_admin)])
 async def admin_stats():
-    users_count = await db.users.count_documents({})
-    sathis_count = await db.sathis.count_documents({})
-    jobs_count = await db.jobs.count_documents({})
-    apps_count = await db.sathi_applications.count_documents({})
-    pending_apps = await db.sathi_applications.count_documents({"status": "pending"})
-    pending_jobs = await db.jobs.count_documents({"status": "pending"})
-    active_jobs = await db.jobs.count_documents({"status": {"$in": ["accepted", "in_progress"]}})
-    resolved_jobs = await db.jobs.count_documents({"status": "resolved"})
-    plazas_count = await db.plazas.count_documents({})
-    states_count = await db.states.count_documents({})
+    (
+        users_count, sathis_count, jobs_count, apps_count, pending_apps,
+        pending_jobs, active_jobs, resolved_jobs, plazas_count, states_count,
+    ) = await asyncio.gather(
+        db.users.count_documents({}),
+        db.sathis.count_documents({}),
+        db.jobs.count_documents({}),
+        db.sathi_applications.count_documents({}),
+        db.sathi_applications.count_documents({"status": "pending"}),
+        db.jobs.count_documents({"status": "pending"}),
+        db.jobs.count_documents({"status": {"$in": ["accepted", "in_progress"]}}),
+        db.jobs.count_documents({"status": "resolved"}),
+        db.plazas.count_documents({}),
+        db.states.count_documents({}),
+    )
     return {
         "users": users_count,
         "sathis": sathis_count,
@@ -4274,13 +4279,15 @@ async def admin_reset_netc_banks():
 
 @admin_router.get("/leads/stats", dependencies=[Depends(_check_admin)])
 async def admin_lead_stats():
-    total = await db.sathi_leads.count_documents({})
     today_str = datetime.now(timezone.utc).date().isoformat()
-    new_today  = await db.sathi_leads.count_documents({"created_at": {"$gte": today_str}})
-    contacted  = await db.sathi_leads.count_documents({"status": "contacted"})
-    interested = await db.sathi_leads.count_documents({"status": "interested"})
-    onboarded  = await db.sathi_leads.count_documents({"status": "onboarded"})
-    rejected   = await db.sathi_leads.count_documents({"status": "rejected"})
+    total, new_today, contacted, interested, onboarded, rejected = await asyncio.gather(
+        db.sathi_leads.count_documents({}),
+        db.sathi_leads.count_documents({"created_at": {"$gte": today_str}}),
+        db.sathi_leads.count_documents({"status": "contacted"}),
+        db.sathi_leads.count_documents({"status": "interested"}),
+        db.sathi_leads.count_documents({"status": "onboarded"}),
+        db.sathi_leads.count_documents({"status": "rejected"}),
+    )
     return {
         "total": total, "new_today": new_today,
         "contacted": contacted, "interested": interested,
@@ -4866,6 +4873,10 @@ async def create_indexes():
     await db.netc_banks.create_index([("slug", 1)], unique=True)
     await db.fastag_orders.create_index([("customer_phone", 1), ("created_at", -1)])
     await db.fastag_orders.create_index([("status", 1), ("created_at", -1)])
+    # sathi leads
+    await db.sathi_leads.create_index([("lead_id", 1)], unique=True, sparse=True)
+    await db.sathi_leads.create_index([("status", 1), ("created_at", -1)])
+    await db.sathi_leads.create_index([("mobile", 1)])
     logger.info("MongoDB indexes ensured")
 
 @app.on_event("startup")
