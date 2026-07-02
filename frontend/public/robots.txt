@@ -4,11 +4,17 @@
 User-agent: *
 Allow: /
 
+# Private pages
 Disallow: /admin
-Disallow: /api/
 Disallow: /my-jobs
 Disallow: /dashboard
 Disallow: /login
+
+# Admin API — never crawl
+Disallow: /api/admin
+
+# All other /api/* is public data the React app fetches to render pages.
+# Googlebot must be able to XHR these or it sees blank content (Soft 404).
 
 # ── AI crawlers — explicitly allowed ─────────────────────────────────────────
 

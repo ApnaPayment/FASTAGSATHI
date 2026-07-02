@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import PageHero from "@/components/layout/PageHero";
 import PageCTA from "@/components/layout/PageCTA";
-import SEO, { webAppSchema } from "@/components/seo/SEO";
+import SEO, { webAppSchema, faqSchema } from "@/components/seo/SEO";
 import { PLAZAS } from "@/data/seed";
 import { Calculator, IndianRupee } from "lucide-react";
 import { track } from "@/lib/analytics";
@@ -40,11 +40,15 @@ export default function TollCalculatorPage() {
         description="Estimate total toll charges for any route in India. Pick plazas, choose vehicle class (car / LCV / truck / 3-axle), get instant total."
         path="/tools/toll-calculator"
         keywords="toll calculator india, toll charges, nh48 toll calculator, mumbai pune toll cost, fastag toll calculator"
-        jsonLd={webAppSchema({
-          name: "Toll Calculator",
-          description: "Free trip toll estimator for India's national highways.",
-          url: "https://apnafastag.com/tools/toll-calculator",
-        })}
+        jsonLd={[
+          webAppSchema({ name: "Toll Calculator", description: "Free trip toll estimator for India's national highways.", url: "https://apnafastag.com/tools/toll-calculator" }),
+          faqSchema([
+            { q: "How do I calculate toll charges for my trip in India?", a: "Select the toll plazas on your route, choose your vehicle class (car, LCV, truck, or multi-axle), and the calculator shows your total toll cost instantly." },
+            { q: "Are toll rates the same for all vehicle types?", a: "No. Car/jeep/van rates are lowest. LCVs pay ~1.5x, two-axle trucks ~2x, and multi-axle vehicles up to ~4.5x the car rate at the same plaza." },
+            { q: "Is FASTag mandatory on Indian highways?", a: "Yes. FASTag is mandatory at all NHAI toll plazas since February 2021. Vehicles without FASTag are charged double the toll rate." },
+            { q: "What should I do if I'm overcharged at a toll?", a: "Use ApnaFastag to ping a Sathi at your plaza. They file a dispute with NHAI and your bank on the spot to get a refund." },
+          ]),
+        ]}
       />
       <PageHero
         eyebrow="Free tool"

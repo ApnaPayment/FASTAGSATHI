@@ -21,6 +21,7 @@ export default function HighwayPage() {
   if (!highway)
     return (
       <section className="pt-40 pb-32 text-center">
+        <SEO title="Highway not found · ApnaFastag" description="This highway page does not exist." path={`/highway/${highwaySlug}`} noindex />
         <h1 className="font-display font-black text-4xl">Highway not found</h1>
         <Link to="/coverage" className="mt-6 inline-block text-[#FF6B00] font-bold">
           ← View all coverage

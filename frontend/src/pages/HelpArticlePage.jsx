@@ -56,7 +56,10 @@ export default function HelpArticlePage() {
         setArticle(r.data);
         document.title = `${r.data.meta_title || r.data.title} · ApnaFastag`;
       })
-      .catch(() => setNotFound(true))
+      .catch((err) => {
+        // Only noindex on genuine 404 — network errors shouldn't hide the page
+        if (err?.response?.status === 404) setNotFound(true);
+      })
       .finally(() => setLoading(false));
   }, [slug]);
 
@@ -93,7 +96,7 @@ export default function HelpArticlePage() {
     }),
     breadcrumbSchema([
       { label: "Help Center", url: "/help" },
-      { label: article.category, url: `/help?category=${article.category}` },
+      { label: article.category, url: `/help#${article.category.toLowerCase()}` },
       { label: article.title },
     ]),
     ...(article.faq_pairs && article.faq_pairs.length > 0
