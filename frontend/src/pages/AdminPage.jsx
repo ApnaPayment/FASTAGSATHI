@@ -619,6 +619,13 @@ function LeadsTab() {
   const [view, setView]         = useState("list"); // "list" | "map"
   const [mapLeads, setMapLeads] = useState([]);
   const [mapLoading, setMapLoading] = useState(false);
+  const [mapMode, setMapMode]   = useState("street"); // "street" | "satellite"
+  const mapRef = useRef(null);
+
+  const focusLead = (lead) => {
+    setMapMode("satellite");
+    mapRef.current?.flyTo([lead.lat, lead.lng], 18, { duration: 1 });
+  };
 
   const load = useCallback(() => {
     setLoading(true);
@@ -643,6 +650,7 @@ function LeadsTab() {
   // Map view needs every matching lead (not just the current page) so all pins show at once.
   useEffect(() => {
     if (view !== "map") return;
+    setMapMode("street");
     setMapLoading(true);
     const params = { page: 1, per_page: 1000 };
     if (filter.status) params.status = filter.status;
@@ -777,21 +785,40 @@ function LeadsTab() {
               {pinned.length === 0 ? (
                 <div className="text-center py-12 text-[#6B7280] border border-[#E5E7EB] rounded-xl">No leads with a captured location yet.</div>
               ) : (
-                <div style={{ height: 520, borderRadius: 16, overflow: "hidden", border: "2px solid #0A0A0A" }}>
-                  <MapContainer bounds={bounds} boundsOptions={{ padding: [40, 40] }} style={{ height: "100%", width: "100%" }}>
-                    <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                      url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                      subdomains="abcd"
-                      maxZoom={19}
-                    />
+                <div style={{ position: "relative", height: 520, borderRadius: 16, overflow: "hidden", border: "2px solid #0A0A0A" }}>
+                  {mapMode === "satellite" && (
+                    <button
+                      onClick={() => setMapMode("street")}
+                      style={{ position: "absolute", top: 10, right: 10, zIndex: 1000, background: "#0A0A0A", color: "#fff", padding: "6px 12px", borderRadius: 999, fontWeight: 700, fontSize: 11, border: "none", cursor: "pointer" }}
+                    >
+                      ← Back to Street View
+                    </button>
+                  )}
+                  <MapContainer ref={mapRef} bounds={bounds} boundsOptions={{ padding: [40, 40] }} style={{ height: "100%", width: "100%" }}>
+                    {mapMode === "satellite" ? (
+                      <TileLayer
+                        attribution='Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics'
+                        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                        maxZoom={19}
+                      />
+                    ) : (
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                        subdomains="abcd"
+                        maxZoom={19}
+                      />
+                    )}
                     {pinned.map((lead) => (
-                      <Marker key={lead.lead_id} position={[lead.lat, lead.lng]} icon={leadPinIcon(lead.status)}>
+                      <Marker key={lead.lead_id} position={[lead.lat, lead.lng]} icon={leadPinIcon(lead.status)}
+                        eventHandlers={{ click: () => focusLead(lead) }}>
                         <Popup>
-                          <div style={{ minWidth: 200 }}>
+                          <div style={{ minWidth: 210 }}>
                             <div style={{ fontWeight: 800, fontSize: 14 }}>{lead.name}</div>
                             <div style={{ fontSize: 11, color: "#4B5563", marginTop: 2 }}>{lead.city || "—"} · {LEAD_BANK_LABELS[lead.bank_preference] || lead.bank_preference}</div>
-                            <div style={{ fontSize: 11, marginTop: 4 }}>
+                            <div style={{ fontSize: 12, color: "#0A0A0A", marginTop: 6, fontWeight: 600 }}>📞 +91 {lead.mobile}</div>
+                            {lead.assigned_to && <div style={{ fontSize: 11, color: "#6B7280", marginTop: 2 }}>Assigned: {lead.assigned_to}</div>}
+                            <div style={{ fontSize: 11, marginTop: 6 }}>
                               <span style={{ background: `${LEAD_MAP_COLORS[lead.status] || "#6B7280"}22`, color: LEAD_MAP_COLORS[lead.status] || "#6B7280", padding: "2px 8px", borderRadius: 999, fontWeight: 700 }}>{lead.status}</span>
                             </div>
                             <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
