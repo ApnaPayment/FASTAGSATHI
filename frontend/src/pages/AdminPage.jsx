@@ -11,6 +11,9 @@ import {
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import { BANKS as SEED_BANKS, STATES as SEED_STATES } from "@/data/seed";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 const TABS = ["Dashboard", "Applications", "Leads", "Jobs", "Sathis", "Customers", "Promo Codes", "Settlements", "FASTag Orders", "Plazas", "Sitemap", "Content", "Recharge Banks", "Branding"];
 
@@ -589,6 +592,20 @@ const LEAD_STATUS_COLORS = {
   rejected:   "bg-red-100 text-red-800",
 };
 const LEAD_BANK_LABELS = { sbi: "SBI", idfc: "IDFC First", bajaj: "Bajaj", all: "All Banks" };
+const LEAD_MAP_COLORS = {
+  new:        "#2563EB",
+  contacted:  "#D97706",
+  interested: "#9333EA",
+  onboarded:  "#16A34A",
+  rejected:   "#DC2626",
+};
+const leadPinIcon = (status) => L.divIcon({
+  className: "",
+  html: `<div style="position:relative;width:26px;height:26px;">
+    <div style="position:absolute;inset:0;border-radius:50%;background:${LEAD_MAP_COLORS[status] || "#6B7280"};border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35);"></div>
+  </div>`,
+  iconSize: [26, 26], iconAnchor: [13, 13], popupAnchor: [0, -13],
+});
 
 function LeadsTab() {
   const [leads, setLeads]       = useState([]);
@@ -599,6 +616,9 @@ function LeadsTab() {
   const [editing, setEditing]   = useState(null);  // lead being edited
   const [editForm, setEditForm] = useState({});
   const [saving, setSaving]     = useState(false);
+  const [view, setView]         = useState("list"); // "list" | "map"
+  const [mapLeads, setMapLeads] = useState([]);
+  const [mapLoading, setMapLoading] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -619,6 +639,19 @@ function LeadsTab() {
   }, [filter]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Map view needs every matching lead (not just the current page) so all pins show at once.
+  useEffect(() => {
+    if (view !== "map") return;
+    setMapLoading(true);
+    const params = { page: 1, per_page: 1000 };
+    if (filter.status) params.status = filter.status;
+    if (filter.bank)   params.bank   = filter.bank;
+    if (filter.search) params.search = filter.search;
+    adminApi.leads(params)
+      .then((r) => setMapLeads(r.data.leads || []))
+      .finally(() => setMapLoading(false));
+  }, [view, filter.status, filter.bank, filter.search]);
 
   const openEdit = (lead) => {
     setEditing(lead);
@@ -701,10 +734,84 @@ function LeadsTab() {
         <button onClick={load} className="border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
           Refresh
         </button>
+        <div className="ml-auto flex border border-[#E5E7EB] rounded-lg overflow-hidden">
+          <button
+            onClick={() => setView("list")}
+            className={`px-3 py-2 text-sm font-semibold flex items-center gap-1.5 ${view === "list" ? "bg-[#0A0A0A] text-white" : "bg-white text-[#4B5563] hover:bg-gray-50"}`}
+          >
+            <ClipboardList className="w-3.5 h-3.5" /> List
+          </button>
+          <button
+            onClick={() => setView("map")}
+            className={`px-3 py-2 text-sm font-semibold flex items-center gap-1.5 border-l border-[#E5E7EB] ${view === "map" ? "bg-[#0A0A0A] text-white" : "bg-white text-[#4B5563] hover:bg-gray-50"}`}
+          >
+            <MapPin className="w-3.5 h-3.5" /> Map
+          </button>
+        </div>
       </div>
 
+      {/* Map view */}
+      {view === "map" && (
+        mapLoading ? (
+          <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-[#FF6B00]" /></div>
+        ) : (() => {
+          const pinned = mapLeads.filter((l) => l.lat != null && l.lng != null);
+          const missing = mapLeads.length - pinned.length;
+          const bounds = pinned.length ? pinned.map((l) => [l.lat, l.lng]) : null;
+          return (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-[#6B7280]">
+                  {pinned.length} of {mapLeads.length} lead{mapLeads.length === 1 ? "" : "s"} have a captured location
+                  {missing > 0 && ` — ${missing} without location not shown`}
+                </p>
+                <div className="flex items-center gap-3 text-[10px] text-[#6B7280]">
+                  {LEAD_STATUSES.map((s) => (
+                    <span key={s} className="flex items-center gap-1">
+                      <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: LEAD_MAP_COLORS[s] }} />
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              {pinned.length === 0 ? (
+                <div className="text-center py-12 text-[#6B7280] border border-[#E5E7EB] rounded-xl">No leads with a captured location yet.</div>
+              ) : (
+                <div style={{ height: 520, borderRadius: 16, overflow: "hidden", border: "2px solid #0A0A0A" }}>
+                  <MapContainer bounds={bounds} boundsOptions={{ padding: [40, 40] }} style={{ height: "100%", width: "100%" }}>
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                      url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                      subdomains="abcd"
+                      maxZoom={19}
+                    />
+                    {pinned.map((lead) => (
+                      <Marker key={lead.lead_id} position={[lead.lat, lead.lng]} icon={leadPinIcon(lead.status)}>
+                        <Popup>
+                          <div style={{ minWidth: 200 }}>
+                            <div style={{ fontWeight: 800, fontSize: 14 }}>{lead.name}</div>
+                            <div style={{ fontSize: 11, color: "#4B5563", marginTop: 2 }}>{lead.city || "—"} · {LEAD_BANK_LABELS[lead.bank_preference] || lead.bank_preference}</div>
+                            <div style={{ fontSize: 11, marginTop: 4 }}>
+                              <span style={{ background: `${LEAD_MAP_COLORS[lead.status] || "#6B7280"}22`, color: LEAD_MAP_COLORS[lead.status] || "#6B7280", padding: "2px 8px", borderRadius: 999, fontWeight: 700 }}>{lead.status}</span>
+                            </div>
+                            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                              <a href={`tel:+91${lead.mobile}`} style={{ background: "#FF6B00", color: "#fff", padding: "4px 10px", borderRadius: 999, fontWeight: 700, fontSize: 11, textDecoration: "none" }}>Call</a>
+                              <button onClick={() => openEdit(lead)} style={{ background: "#0A0A0A", color: "#fff", padding: "4px 10px", borderRadius: 999, fontWeight: 700, fontSize: 11, border: "none", cursor: "pointer" }}>Edit</button>
+                            </div>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    ))}
+                  </MapContainer>
+                </div>
+              )}
+            </div>
+          );
+        })()
+      )}
+
       {/* Table */}
-      {loading ? (
+      {view === "list" && (loading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-[#FF6B00]" /></div>
       ) : leads.length === 0 ? (
         <div className="text-center py-12 text-[#6B7280]">No leads found.</div>
@@ -773,10 +880,10 @@ function LeadsTab() {
             </tbody>
           </table>
         </div>
-      )}
+      ))}
 
       {/* Pagination */}
-      {pages > 1 && (
+      {view === "list" && pages > 1 && (
         <div className="flex items-center gap-2 mt-4 justify-end">
           <button disabled={filter.page <= 1} onClick={() => setFilter((f) => ({ ...f, page: f.page - 1 }))} className="px-3 py-1.5 text-sm border border-[#E5E7EB] rounded-lg disabled:opacity-40">Prev</button>
           <span className="text-sm text-[#6B7280]">{filter.page} / {pages}</span>
