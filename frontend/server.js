@@ -86,6 +86,7 @@ function ogTags({ title, description, image, url, type = "website" }) {
   const u = esc(url);
   return `
     <title>${t}</title>
+    <link rel="canonical" href="${u}" />
     <meta name="description" content="${d}" />
     <meta property="og:type"        content="${esc(type)}" />
     <meta property="og:title"       content="${t}" />
@@ -202,10 +203,13 @@ function injectOg(html, ogBlock) {
   // 1. Replace <title>…</title> with ours
   out = out.replace(/<title>[^<]*<\/title>/i, "");
 
-  // 2. Strip ALL existing og: and twitter: meta tags and generic description
+  // 2. Strip ALL existing og: and twitter: meta tags, generic description,
+  //    and the build-time canonical (it points at the homepage on every page —
+  //    leaving it in tells Google every route is a duplicate of "/")
   out = out.replace(/<meta\s[^>]*property="og:[^"]*"[^>]*\/?>/gi, "");
   out = out.replace(/<meta\s[^>]*name="twitter:[^"]*"[^>]*\/?>/gi, "");
   out = out.replace(/<meta\s[^>]*name="description"[^>]*\/?>/gi, "");
+  out = out.replace(/<link\s[^>]*rel="canonical"[^>]*\/?>/gi, "");
 
   // 3. Insert our block right after <head> (case-insensitive)
   out = out.replace(/<head>/i, `<head>\n  ${ogBlock}`);
@@ -319,11 +323,21 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 1b. Redirect old sitemap sub-paths (without /api/) to correct /api/ paths
-  // Google may have cached the wrong URLs from the old static sitemap.xml
-  const sitemapRedirect = pathname.match(/^\/(sitemap-[a-z0-9-]+\.xml)$/);
-  if (sitemapRedirect) {
-    res.writeHead(301, { "Location": `/api/${sitemapRedirect[1]}`, "Cache-Control": "public, max-age=86400" });
+  // 1b. Serve sitemap sub-paths by proxying to the backend directly.
+  // A 301 here made every entry in the sitemap index resolve through a
+  // redirect hop, which Search Console flags and crawlers penalize.
+  const sitemapProxy = pathname.match(/^\/(sitemap-[a-z0-9-]+\.xml)$/);
+  if (sitemapProxy) {
+    req.url = `/api/${sitemapProxy[1]}`;
+    proxyToBackend(req, res);
+    return;
+  }
+
+  // 1c. Normalize trailing slashes — /city/jaipur/ and /city/jaipur both
+  // returned 200 with identical content, creating sitewide duplicate URLs.
+  if (pathname.length > 1 && pathname.endsWith("/")) {
+    const query = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
+    res.writeHead(301, { "Location": pathname.replace(/\/+$/, "") + query, "Cache-Control": "public, max-age=86400" });
     res.end();
     return;
   }

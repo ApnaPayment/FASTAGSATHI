@@ -65,4 +65,3 @@ Allow: /
 
 # ── Sitemaps ──────────────────────────────────────────────────────────────────
 Sitemap: https://apnafastag.com/sitemap.xml
-Sitemap: https://fastagsathi-production.up.railway.app/sitemap.xml
