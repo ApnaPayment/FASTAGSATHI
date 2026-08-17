@@ -49,6 +49,10 @@ const BOT_RE = /whatsapp|facebookexternalhit|twitterbot|telegrambot|linkedinbot|
 const isBot = (ua) => BOT_RE.test(ua || "");
 
 // ── Fetch JSON from backend API ───────────────────────────────────────────────
+// Resolves: parsed JSON on 200, NOT_FOUND on a definitive backend 404, and
+// null on transient failures (timeout, network error, 5xx). Callers must not
+// treat null as "does not exist" — only NOT_FOUND is a safe 404 signal.
+const NOT_FOUND = Symbol("not-found");
 function fetchBackend(apiPath) {
   return new Promise((resolve, reject) => {
     const req = https.request(
@@ -58,6 +62,7 @@ function fetchBackend(apiPath) {
         let body = "";
         res.on("data", (c) => body += c);
         res.on("end", () => {
+          if (res.statusCode === 404) { resolve(NOT_FOUND); return; }
           try { resolve(res.statusCode === 200 ? JSON.parse(body) : null); }
           catch { resolve(null); }
         });
@@ -106,6 +111,7 @@ const DEFAULT_OG_IMAGE = `${SITE}/og-default.png`;
 // ── Build OG tags for a Sathi profile ─────────────────────────────────────────
 async function sathiOgTags(slug) {
   const s = await fetchBackend(`/api/sathis/${slug}`);
+  if (s === NOT_FOUND) return NOT_FOUND;
   if (!s || !s.name) return null;
 
   const stars   = s.rating   ? `⭐ ${s.rating}` : "";
@@ -132,6 +138,7 @@ async function sathiOgTags(slug) {
 // ── Build OG tags for a Highway page ─────────────────────────────────────────
 async function highwayOgTags(slug) {
   const h = await fetchBackend(`/api/highways/${slug}`);
+  if (h === NOT_FOUND) return NOT_FOUND;
   if (!h || !h.name) return null;
   const title = `${h.name} toll plazas, rates & FASTag help · ApnaFastag`;
   const description = `${h.fullName || h.name}: ${h.plazaCount || "all"} toll plazas, live rates, FASTag dispute & Sathi help across ${(h.states || []).join(", ")}.`.slice(0, 200);
@@ -141,6 +148,7 @@ async function highwayOgTags(slug) {
 // ── Build OG tags for a Bank page ─────────────────────────────────────────────
 async function bankOgTags(slug) {
   const b = await fetchBackend(`/api/banks/${slug}`);
+  if (b === NOT_FOUND) return NOT_FOUND;
   if (!b || !b.name) return null;
   const title = `${b.name} FASTag — balance check, helpline & dispute help · ApnaFastag`;
   const description = `${b.name} FASTag balance check, customer care helpline, dispute filing, blacklist fix and recharge guide. Verified Sathis available 24×7.`.slice(0, 200);
@@ -150,6 +158,7 @@ async function bankOgTags(slug) {
 // ── Build OG tags for a Plaza/Toll page ──────────────────────────────────────
 async function plazaOgTags(slug) {
   const p = await fetchBackend(`/api/plazas/${slug}`);
+  if (p === NOT_FOUND) return NOT_FOUND;
   if (!p || !p.name) return null;
 
   const title = `${p.name} (${p.highway || ""}) toll rates 2026 — FASTag help · ApnaFastag`.trim();
@@ -160,6 +169,7 @@ async function plazaOgTags(slug) {
 // ── Build OG tags for a State page ───────────────────────────────────────────
 async function stateOgTags(slug) {
   const s = await fetchBackend(`/api/states/${slug}`);
+  if (s === NOT_FOUND) return NOT_FOUND;
   if (!s || !s.name) return null;
 
   const title = `${s.name} toll plazas, FASTag help & Sathis · ApnaFastag`;
@@ -170,6 +180,7 @@ async function stateOgTags(slug) {
 // ── Build OG tags for a City page ─────────────────────────────────────────────
 async function cityOgTags(slug) {
   const c = await fetchBackend(`/api/cities/${slug}`);
+  if (c === NOT_FOUND) return NOT_FOUND;
   if (!c || !c.name) return null;
 
   const stateName = c.state ? c.state.charAt(0).toUpperCase() + c.state.slice(1) : "";
@@ -186,6 +197,7 @@ async function cityOgTags(slug) {
 // ── Build OG tags for a Help article ──────────────────────────────────────────
 async function helpOgTags(slug) {
   const a = await fetchBackend(`/api/help/${slug}`);
+  if (a === NOT_FOUND) return null; // help pages have prerendered fallbacks — never hard-404 them
   if (!a || !a.title) return null;
 
   const title       = `${a.title} — ApnaFastag Help`;
@@ -219,23 +231,36 @@ function injectOg(html, ogBlock) {
 
 // ── Serve index.html with optional OG injection ───────────────────────────────
 async function serveWithOg(req, res, ogBuilder) {
+  let og = null;
+  try {
+    og = await ogBuilder();
+  } catch (e) {
+    console.error("[og injection error]", e.message);
+  }
+
+  // Backend says the slug definitively doesn't exist → real 404 status.
+  // Previously this served index.html with 200, which Search Console
+  // flags as "Soft 404" and wastes crawl budget on dead URLs.
+  if (og === NOT_FOUND) {
+    res.writeHead(404, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(`<!doctype html><html><head><meta name="robots" content="noindex"><title>404 — Page not found · ApnaFastag</title></head><body><h1>Page not found</h1><p><a href="${SITE}/">Go to ApnaFastag</a></p></body></html>`);
+    return;
+  }
+
+  // No OG data (transient backend failure, or content served from a
+  // prerendered file) → fall through to the static handler so bots get
+  // the per-route prerendered head instead of raw index.html whose meta
+  // belongs to the homepage.
+  if (!og) { serveStatic(req, res); return; }
+
   const indexPath = path.join(BUILD_DIR, "index.html");
-  fs.readFile(indexPath, "utf8", async (err, html) => {
-    if (err) { res.writeHead(404); res.end("Not found"); return; }
-
-    let finalHtml = html;
-    try {
-      const og = await ogBuilder();
-      if (og) finalHtml = injectOg(html, og);
-    } catch (e) {
-      console.error("[og injection error]", e.message);
-    }
-
+  fs.readFile(indexPath, "utf8", (err, html) => {
+    if (err) { serveStatic(req, res); return; }
     res.writeHead(200, {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "public, max-age=0, must-revalidate",
     });
-    res.end(finalHtml);
+    res.end(injectOg(html, og));
   });
 }
 
