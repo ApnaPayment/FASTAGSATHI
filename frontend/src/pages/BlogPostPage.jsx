@@ -12,7 +12,7 @@ export default function BlogPostPage() {
   const post = BLOG_POSTS.find((p) => p.slug === slug);
   useEffect(() => { if (post) { track("blog_post_view", { slug }); document.title = `${post.title} · ApnaFastag`; } }, [post, slug]);
 
-  if (!post) return <section className="pt-40 pb-32 text-center"><h1 className="font-display font-black text-4xl">Post not found</h1><Link to="/blog" className="text-[#FF6B00] font-bold mt-4 inline-block">All posts →</Link></section>;
+  if (!post) return <section className="pt-40 pb-32 text-center"><SEO title="Post not found · ApnaFastag" description="This blog post does not exist." path={`/blog/${slug}`} noindex /><h1 className="font-display font-black text-4xl">Post not found</h1><Link to="/blog" className="text-[#FF6B00] font-bold mt-4 inline-block">All posts →</Link></section>;
 
   return (
     <>

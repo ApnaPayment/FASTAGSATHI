@@ -11,10 +11,13 @@ import {
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import { BANKS as SEED_BANKS, STATES as SEED_STATES } from "@/data/seed";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
-const TABS = ["Dashboard", "Applications", "Jobs", "Sathis", "Customers", "Promo Codes", "Settlements", "FASTag Orders", "Plazas", "Sitemap", "Content", "Recharge Banks", "Branding"];
+const TABS = ["Dashboard", "Applications", "Leads", "Jobs", "Sathis", "Customers", "Promo Codes", "Settlements", "FASTag Orders", "Plazas", "Sitemap", "Content", "Recharge Banks", "Branding"];
 
-const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+const BACKEND = "";
 const fullUrl = (url) => { if (!url) return ""; if (url.startsWith("http") || url.startsWith("data:")) return url; if (BACKEND.includes("localhost") && !window.location.hostname.includes("localhost")) return ""; return `${BACKEND}${url}`; };
 
 const STATUS_COLORS = {
@@ -182,6 +185,7 @@ function Dashboard({ onLogout }) {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {tab === "Dashboard"    && <StatsTab />}
         {tab === "Applications" && <ApplicationsTab />}
+        {tab === "Leads"        && <LeadsTab />}
         {tab === "Jobs"         && <JobsTab />}
         {tab === "Sathis"       && <SathisTab />}
         {tab === "Customers"    && <CustomersTab />}
@@ -572,6 +576,425 @@ function ApplicationsTab() {
           onClose={() => setSelected(null)}
           onRefresh={() => { load(); setSelected(null); }}
         />
+      )}
+    </div>
+  );
+}
+
+/* ─── Leads ───────────────────────────────────────────────────────────────── */
+
+const LEAD_STATUSES = ["new", "contacted", "interested", "onboarded", "rejected"];
+const LEAD_STATUS_COLORS = {
+  new:        "bg-blue-100 text-blue-800",
+  contacted:  "bg-yellow-100 text-yellow-800",
+  interested: "bg-purple-100 text-purple-800",
+  onboarded:  "bg-green-100 text-green-800",
+  rejected:   "bg-red-100 text-red-800",
+};
+const LEAD_BANK_LABELS = { sbi: "SBI", idfc: "IDFC First", bajaj: "Bajaj", all: "All Banks" };
+const LEAD_MAP_COLORS = {
+  new:        "#2563EB",
+  contacted:  "#D97706",
+  interested: "#9333EA",
+  onboarded:  "#16A34A",
+  rejected:   "#DC2626",
+};
+const leadPinIcon = (status) => L.divIcon({
+  className: "",
+  html: `<div style="position:relative;width:26px;height:26px;">
+    <div style="position:absolute;inset:0;border-radius:50%;background:${LEAD_MAP_COLORS[status] || "#6B7280"};border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35);"></div>
+  </div>`,
+  iconSize: [26, 26], iconAnchor: [13, 13], popupAnchor: [0, -13],
+});
+
+function LeadsTab() {
+  const [leads, setLeads]       = useState([]);
+  const [stats, setStats]       = useState({});
+  const [total, setTotal]       = useState(0);
+  const [loading, setLoading]   = useState(true);
+  const [filter, setFilter]     = useState({ status: "", bank: "", search: "", page: 1 });
+  const [editing, setEditing]   = useState(null);  // lead being edited
+  const [editForm, setEditForm] = useState({});
+  const [saving, setSaving]     = useState(false);
+  const [view, setView]         = useState("list"); // "list" | "map"
+  const [mapLeads, setMapLeads] = useState([]);
+  const [mapLoading, setMapLoading] = useState(false);
+  const [mapMode, setMapMode]   = useState("street"); // "street" | "satellite"
+  const mapRef = useRef(null);
+
+  const focusLead = (lead) => {
+    setMapMode("satellite");
+    mapRef.current?.flyTo([lead.lat, lead.lng], 18, { duration: 1 });
+  };
+
+  const load = useCallback(() => {
+    setLoading(true);
+    const params = { page: filter.page, per_page: 25 };
+    if (filter.status) params.status = filter.status;
+    if (filter.bank)   params.bank   = filter.bank;
+    if (filter.search) params.search = filter.search;
+    Promise.all([
+      adminApi.leads(params),
+      adminApi.leadStats(),
+    ])
+      .then(([r, s]) => {
+        setLeads(r.data.leads || []);
+        setTotal(r.data.total || 0);
+        setStats(s.data || {});
+      })
+      .finally(() => setLoading(false));
+  }, [filter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Map view needs every matching lead (not just the current page) so all pins show at once.
+  useEffect(() => {
+    if (view !== "map") return;
+    setMapMode("street");
+    setMapLoading(true);
+    const params = { page: 1, per_page: 1000 };
+    if (filter.status) params.status = filter.status;
+    if (filter.bank)   params.bank   = filter.bank;
+    if (filter.search) params.search = filter.search;
+    adminApi.leads(params)
+      .then((r) => setMapLeads(r.data.leads || []))
+      .finally(() => setMapLoading(false));
+  }, [view, filter.status, filter.bank, filter.search]);
+
+  const openEdit = (lead) => {
+    setEditing(lead);
+    setEditForm({
+      status:         lead.status || "new",
+      assigned_to:    lead.assigned_to || "",
+      follow_up_date: lead.follow_up_date || "",
+      notes:          lead.notes || "",
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    setSaving(true);
+    try {
+      await adminApi.updateLead(editing.lead_id, editForm);
+      setEditing(null);
+      load();
+    } catch { /* ignore */ }
+    finally { setSaving(false); }
+  };
+
+  const quickStatus = async (lead, status) => {
+    try {
+      await adminApi.updateLead(lead.lead_id, { status });
+      setLeads((ls) => ls.map((l) => l.lead_id === lead.lead_id ? { ...l, status } : l));
+    } catch { /* ignore */ }
+  };
+
+  const pages = Math.max(1, Math.ceil(total / 25));
+
+  return (
+    <div>
+      <h2 className="text-2xl font-black text-[#0A0A0A] mb-6">
+        Sathi Leads <span className="text-[#9CA3AF] font-normal text-lg">({total.toLocaleString()})</span>
+      </h2>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-6">
+        {[
+          { label: "Total",       val: stats.total      || 0, color: "text-gray-900" },
+          { label: "New Today",   val: stats.new_today  || 0, color: "text-blue-600" },
+          { label: "Contacted",   val: stats.contacted  || 0, color: "text-yellow-600" },
+          { label: "Interested",  val: stats.interested || 0, color: "text-purple-600" },
+          { label: "Onboarded",   val: stats.onboarded  || 0, color: "text-green-600" },
+          { label: "Rejected",    val: stats.rejected   || 0, color: "text-red-500" },
+        ].map(({ label, val, color }) => (
+          <div key={label} className="bg-white border border-[#E5E7EB] rounded-xl p-3 text-center">
+            <p className={`text-2xl font-black ${color}`}>{val}</p>
+            <p className="text-xs text-[#6B7280] mt-0.5">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 mb-4">
+        <input
+          type="text"
+          placeholder="Search name / phone / city…"
+          value={filter.search}
+          onChange={(e) => setFilter((f) => ({ ...f, search: e.target.value, page: 1 }))}
+          className="border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/30"
+        />
+        <select
+          value={filter.status}
+          onChange={(e) => setFilter((f) => ({ ...f, status: e.target.value, page: 1 }))}
+          className="border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm bg-white focus:outline-none"
+        >
+          <option value="">All Statuses</option>
+          {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+        </select>
+        <select
+          value={filter.bank}
+          onChange={(e) => setFilter((f) => ({ ...f, bank: e.target.value, page: 1 }))}
+          className="border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm bg-white focus:outline-none"
+        >
+          <option value="">All Banks</option>
+          {Object.entries(LEAD_BANK_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <button onClick={load} className="border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
+          Refresh
+        </button>
+        <div className="ml-auto flex border border-[#E5E7EB] rounded-lg overflow-hidden">
+          <button
+            onClick={() => setView("list")}
+            className={`px-3 py-2 text-sm font-semibold flex items-center gap-1.5 ${view === "list" ? "bg-[#0A0A0A] text-white" : "bg-white text-[#4B5563] hover:bg-gray-50"}`}
+          >
+            <ClipboardList className="w-3.5 h-3.5" /> List
+          </button>
+          <button
+            onClick={() => setView("map")}
+            className={`px-3 py-2 text-sm font-semibold flex items-center gap-1.5 border-l border-[#E5E7EB] ${view === "map" ? "bg-[#0A0A0A] text-white" : "bg-white text-[#4B5563] hover:bg-gray-50"}`}
+          >
+            <MapPin className="w-3.5 h-3.5" /> Map
+          </button>
+        </div>
+      </div>
+
+      {/* Map view */}
+      {view === "map" && (
+        mapLoading ? (
+          <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-[#FF6B00]" /></div>
+        ) : (() => {
+          const pinned = mapLeads.filter((l) => l.lat != null && l.lng != null);
+          const missing = mapLeads.length - pinned.length;
+          const bounds = pinned.length ? pinned.map((l) => [l.lat, l.lng]) : null;
+          return (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-[#6B7280]">
+                  {pinned.length} of {mapLeads.length} lead{mapLeads.length === 1 ? "" : "s"} have a captured location
+                  {missing > 0 && ` — ${missing} without location not shown`}
+                </p>
+                <div className="flex items-center gap-3 text-[10px] text-[#6B7280]">
+                  {LEAD_STATUSES.map((s) => (
+                    <span key={s} className="flex items-center gap-1">
+                      <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: LEAD_MAP_COLORS[s] }} />
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              {pinned.length === 0 ? (
+                <div className="text-center py-12 text-[#6B7280] border border-[#E5E7EB] rounded-xl">No leads with a captured location yet.</div>
+              ) : (
+                <div style={{ position: "relative", height: 520, borderRadius: 16, overflow: "hidden", border: "2px solid #0A0A0A" }}>
+                  {mapMode === "satellite" && (
+                    <button
+                      onClick={() => setMapMode("street")}
+                      style={{ position: "absolute", top: 10, right: 10, zIndex: 1000, background: "#0A0A0A", color: "#fff", padding: "6px 12px", borderRadius: 999, fontWeight: 700, fontSize: 11, border: "none", cursor: "pointer" }}
+                    >
+                      ← Back to Street View
+                    </button>
+                  )}
+                  <MapContainer ref={mapRef} bounds={bounds} boundsOptions={{ padding: [40, 40] }} style={{ height: "100%", width: "100%" }}>
+                    {mapMode === "satellite" ? (
+                      <TileLayer
+                        attribution='Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics'
+                        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                        maxZoom={19}
+                      />
+                    ) : (
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                        subdomains="abcd"
+                        maxZoom={19}
+                      />
+                    )}
+                    {pinned.map((lead) => (
+                      <Marker key={lead.lead_id} position={[lead.lat, lead.lng]} icon={leadPinIcon(lead.status)}
+                        eventHandlers={{ click: () => focusLead(lead) }}>
+                        <Popup>
+                          <div style={{ minWidth: 210 }}>
+                            <div style={{ fontWeight: 800, fontSize: 14 }}>{lead.name}</div>
+                            <div style={{ fontSize: 11, color: "#4B5563", marginTop: 2 }}>{lead.city || "—"} · {LEAD_BANK_LABELS[lead.bank_preference] || lead.bank_preference}</div>
+                            <div style={{ fontSize: 12, color: "#0A0A0A", marginTop: 6, fontWeight: 600 }}>📞 +91 {lead.mobile}</div>
+                            {lead.assigned_to && <div style={{ fontSize: 11, color: "#6B7280", marginTop: 2 }}>Assigned: {lead.assigned_to}</div>}
+                            <div style={{ fontSize: 11, marginTop: 6 }}>
+                              <span style={{ background: `${LEAD_MAP_COLORS[lead.status] || "#6B7280"}22`, color: LEAD_MAP_COLORS[lead.status] || "#6B7280", padding: "2px 8px", borderRadius: 999, fontWeight: 700 }}>{lead.status}</span>
+                            </div>
+                            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                              <a href={`tel:+91${lead.mobile}`} style={{ background: "#FF6B00", color: "#fff", padding: "4px 10px", borderRadius: 999, fontWeight: 700, fontSize: 11, textDecoration: "none" }}>Call</a>
+                              <button onClick={() => openEdit(lead)} style={{ background: "#0A0A0A", color: "#fff", padding: "4px 10px", borderRadius: 999, fontWeight: 700, fontSize: 11, border: "none", cursor: "pointer" }}>Edit</button>
+                            </div>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    ))}
+                  </MapContainer>
+                </div>
+              )}
+            </div>
+          );
+        })()
+      )}
+
+      {/* Table */}
+      {view === "list" && (loading ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-[#FF6B00]" /></div>
+      ) : leads.length === 0 ? (
+        <div className="text-center py-12 text-[#6B7280]">No leads found.</div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-[#E5E7EB]">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-[#E5E7EB]">
+                {["Lead ID", "Name", "Mobile", "City", "Bank", "Experience", "Date", "Status", "Assigned", "Actions"].map((h) => (
+                  <th key={h} className="text-left px-4 py-3 font-semibold text-[#374151] whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#E5E7EB]">
+              {leads.map((lead) => (
+                <tr key={lead.lead_id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 font-mono text-xs text-[#6B7280]">{lead.lead_id}</td>
+                  <td className="px-4 py-3 font-medium text-[#0A0A0A] whitespace-nowrap">{lead.name}</td>
+                  <td className="px-4 py-3">
+                    <a href={`tel:+91${lead.mobile}`} className="text-[#FF6B00] hover:underline font-medium">
+                      {lead.mobile}
+                    </a>
+                  </td>
+                  <td className="px-4 py-3 text-[#374151]">
+                    <div className="flex items-center gap-1.5">
+                      <span>{lead.city || "—"}</span>
+                      {lead.lat != null && lead.lng != null && (
+                        <a
+                          href={`https://www.google.com/maps?q=${lead.lat},${lead.lng}`}
+                          target="_blank" rel="noopener noreferrer"
+                          title="View captured location on map"
+                          className="text-[#FF6B00] hover:text-orange-600"
+                        >
+                          <MapPin className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="font-semibold text-[#374151]">{LEAD_BANK_LABELS[lead.bank_preference] || lead.bank_preference}</span>
+                  </td>
+                  <td className="px-4 py-3 text-[#6B7280] text-xs">{lead.experience}</td>
+                  <td className="px-4 py-3 text-[#6B7280] text-xs whitespace-nowrap">
+                    {lead.created_at ? lead.created_at.slice(0, 10) : "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <select
+                      value={lead.status || "new"}
+                      onChange={(e) => quickStatus(lead, e.target.value)}
+                      className={`text-xs font-semibold px-2 py-1 rounded-full border-0 focus:outline-none cursor-pointer ${LEAD_STATUS_COLORS[lead.status] || "bg-gray-100 text-gray-700"}`}
+                    >
+                      {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </td>
+                  <td className="px-4 py-3 text-[#6B7280] text-xs">{lead.assigned_to || "—"}</td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => openEdit(lead)}
+                      className="text-xs bg-[#FF6B00] text-white px-3 py-1.5 rounded-lg hover:bg-orange-600 transition"
+                    >
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+
+      {/* Pagination */}
+      {view === "list" && pages > 1 && (
+        <div className="flex items-center gap-2 mt-4 justify-end">
+          <button disabled={filter.page <= 1} onClick={() => setFilter((f) => ({ ...f, page: f.page - 1 }))} className="px-3 py-1.5 text-sm border border-[#E5E7EB] rounded-lg disabled:opacity-40">Prev</button>
+          <span className="text-sm text-[#6B7280]">{filter.page} / {pages}</span>
+          <button disabled={filter.page >= pages} onClick={() => setFilter((f) => ({ ...f, page: f.page + 1 }))} className="px-3 py-1.5 text-sm border border-[#E5E7EB] rounded-lg disabled:opacity-40">Next</button>
+        </div>
+      )}
+
+      {/* Edit modal */}
+      {editing && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-black text-[#0A0A0A]">Edit Lead — {editing.lead_id}</h3>
+              <button onClick={() => setEditing(null)} className="text-[#6B7280] hover:text-[#0A0A0A]">✕</button>
+            </div>
+            <div className="mb-2 text-sm text-[#374151]">
+              <strong>{editing.name}</strong> · {editing.mobile} · {editing.city}
+            </div>
+
+            {editing.lat != null && editing.lng != null ? (
+              <a
+                href={`https://www.google.com/maps?q=${editing.lat},${editing.lng}`}
+                target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#FF6B00] hover:underline mb-2"
+              >
+                <MapPin className="w-3.5 h-3.5" />
+                View captured location ({editing.lat.toFixed(4)}, {editing.lng.toFixed(4)})
+              </a>
+            ) : (
+              <p className="text-xs text-[#9CA3AF] mb-2">No location captured for this lead.</p>
+            )}
+
+            <div className="space-y-3 mt-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#374151] mb-1">Status</label>
+                <select
+                  value={editForm.status}
+                  onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
+                  className="w-full border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/30"
+                >
+                  {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#374151] mb-1">Assigned To</label>
+                <input
+                  type="text"
+                  value={editForm.assigned_to}
+                  onChange={(e) => setEditForm((f) => ({ ...f, assigned_to: e.target.value }))}
+                  placeholder="Staff name"
+                  className="w-full border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/30"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#374151] mb-1">Follow-up Date</label>
+                <input
+                  type="date"
+                  value={editForm.follow_up_date}
+                  onChange={(e) => setEditForm((f) => ({ ...f, follow_up_date: e.target.value }))}
+                  className="w-full border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/30"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#374151] mb-1">Notes</label>
+                <textarea
+                  rows={3}
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+                  placeholder="Call outcome, next steps…"
+                  className="w-full border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/30 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setEditing(null)} className="flex-1 border border-[#E5E7EB] rounded-xl py-2.5 text-sm font-semibold hover:bg-gray-50">
+                Cancel
+              </button>
+              <button onClick={saveEdit} disabled={saving} className="flex-1 bg-[#FF6B00] hover:bg-orange-600 text-white rounded-xl py-2.5 text-sm font-bold disabled:opacity-60">
+                {saving ? "Saving…" : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -2396,7 +2819,7 @@ function ContentTab() {
 
 const SITEMAP_SUB_TABS = ["Overview", "States", "Highways", "Cities", "Banks"];
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
+const BACKEND_URL = "";
 
 /** Generic reusable import modal for JSON/CSV */
 function ImportModal({ title, templateNote, onImport, onClose, importing, result }) {
@@ -2652,6 +3075,10 @@ function BanksLogoTab() {
   const [success, setSuccess]     = useState("");
   const fileInputRef = useRef(null);
   const [pendingSlug, setPendingSlug] = useState(null);
+  // Commission editing: { [slug]: { commission_car, commission_comm, saving } }
+  const [commEdits, setCommEdits] = useState({});
+  // Staff contact editing: { [slug]: { staff_name, staff_phone, staff_role, saving } }
+  const [staffEdits, setStaffEdits] = useState({});
 
   // Merge seed data with DB data (DB logo takes precedence)
   const load = useCallback(async () => {
@@ -2713,6 +3140,53 @@ function BanksLogoTab() {
     }
   };
 
+  const setCommField = (slug, field, val) =>
+    setCommEdits((prev) => ({ ...prev, [slug]: { ...prev[slug], [field]: val } }));
+
+  const saveCommission = async (bank) => {
+    const edits = commEdits[bank.slug] || {};
+    const payload = {};
+    const car  = (edits.commission_car  ?? bank.commission_car  ?? "").trim();
+    const comm = (edits.commission_comm ?? bank.commission_comm ?? "").trim();
+    if (car)  payload.commission_car  = car;
+    if (comm) payload.commission_comm = comm;
+    if (!Object.keys(payload).length) return;
+    setCommEdits((prev) => ({ ...prev, [bank.slug]: { ...prev[bank.slug], saving: true } }));
+    try {
+      await adminApi.updateBank(bank.slug, payload);
+      setSuccess(`Commission updated for ${bank.slug}`);
+      await load();
+      setCommEdits((prev) => { const n = { ...prev }; delete n[bank.slug]; return n; });
+    } catch {
+      setError("Failed to save commission");
+    } finally {
+      setCommEdits((prev) => ({ ...prev, [bank.slug]: { ...prev[bank.slug], saving: false } }));
+    }
+  };
+
+  const setStaffField = (slug, field, val) =>
+    setStaffEdits((prev) => ({ ...prev, [slug]: { ...prev[slug], [field]: val } }));
+
+  const saveStaff = async (bank) => {
+    const edits = staffEdits[bank.slug] || {};
+    const payload = {
+      staff_name:  (edits.staff_name  ?? bank.staff_name  ?? "").trim(),
+      staff_phone: (edits.staff_phone ?? bank.staff_phone ?? "").trim(),
+      staff_role:  (edits.staff_role  ?? bank.staff_role  ?? "").trim(),
+    };
+    setStaffEdits((prev) => ({ ...prev, [bank.slug]: { ...prev[bank.slug], saving: true } }));
+    try {
+      await adminApi.updateBank(bank.slug, payload);
+      setSuccess(`Contact updated for ${bank.slug}`);
+      await load();
+      setStaffEdits((prev) => { const n = { ...prev }; delete n[bank.slug]; return n; });
+    } catch {
+      setError("Failed to save contact");
+    } finally {
+      setStaffEdits((prev) => ({ ...prev, [bank.slug]: { ...prev[bank.slug], saving: false } }));
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -2720,7 +3194,7 @@ function BanksLogoTab() {
           <h2 className="text-xl font-bold text-[#0A0A0A] flex items-center gap-2">
             <Landmark className="w-5 h-5 text-[#FF6B00]" /> Bank Logos
           </h2>
-          <p className="text-sm text-[#6B7280] mt-1">Upload PNG, SVG, or JPG logos (max 1 MB each). Logos appear on the homepage trust section and bank pages.</p>
+          <p className="text-sm text-[#6B7280] mt-1">Upload logos, set commission values, and manage the Sathi partner contact per bank — all shown on the homepage, bank pages, and the /join application page.</p>
         </div>
         <button onClick={load} className="p-2 rounded-lg border border-[#E5E7EB] hover:bg-[#F9FAFB] transition-colors" title="Refresh">
           <RefreshCw className={`w-4 h-4 text-[#6B7280] ${loading ? "animate-spin" : ""}`} />
@@ -2782,11 +3256,214 @@ function BanksLogoTab() {
                     </button>
                   )}
                 </div>
+
+                {/* Commission edit */}
+                {(() => {
+                  const edits = commEdits[bank.slug] || {};
+                  const saving = edits.saving;
+                  return (
+                    <div className="w-full border-t border-[#E5E7EB] pt-3 mt-1 space-y-1.5">
+                      <p className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">Commission</p>
+                      <input
+                        type="text"
+                        placeholder={`Car/Jeep (${bank.commission_car || "e.g. Up to ₹200 instant"})`}
+                        value={edits.commission_car ?? (bank.commission_car || "")}
+                        onChange={(e) => setCommField(bank.slug, "commission_car", e.target.value)}
+                        className="w-full border border-[#E5E7EB] rounded-lg px-2 py-1.5 text-[11px] text-[#0A0A0A] focus:outline-none focus:ring-1 focus:ring-[#FF6B00]"
+                      />
+                      <input
+                        type="text"
+                        placeholder={`Commercial (${bank.commission_comm || "e.g. Up to ₹500 instant"})`}
+                        value={edits.commission_comm ?? (bank.commission_comm || "")}
+                        onChange={(e) => setCommField(bank.slug, "commission_comm", e.target.value)}
+                        className="w-full border border-[#E5E7EB] rounded-lg px-2 py-1.5 text-[11px] text-[#0A0A0A] focus:outline-none focus:ring-1 focus:ring-[#FF6B00]"
+                      />
+                      <button
+                        onClick={() => saveCommission(bank)}
+                        disabled={saving}
+                        className="w-full flex items-center justify-center gap-1 bg-[#0A0A0A] text-white text-[11px] font-bold px-2 py-1.5 rounded-lg hover:bg-[#1a1a1a] disabled:opacity-50 transition-colors"
+                      >
+                        {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                        {saving ? "Saving…" : "Save Commission"}
+                      </button>
+                    </div>
+                  );
+                })()}
+
+                {/* Staff contact edit */}
+                {(() => {
+                  const edits = staffEdits[bank.slug] || {};
+                  const saving = edits.saving;
+                  return (
+                    <div className="w-full border-t border-[#E5E7EB] pt-3 mt-1 space-y-1.5">
+                      <p className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">Sathi Contact</p>
+                      <input
+                        type="text"
+                        placeholder="Staff name"
+                        value={edits.staff_name ?? (bank.staff_name || "")}
+                        onChange={(e) => setStaffField(bank.slug, "staff_name", e.target.value)}
+                        className="w-full border border-[#E5E7EB] rounded-lg px-2 py-1.5 text-[11px] text-[#0A0A0A] focus:outline-none focus:ring-1 focus:ring-[#FF6B00]"
+                      />
+                      <input
+                        type="tel"
+                        placeholder="10-digit phone"
+                        value={edits.staff_phone ?? (bank.staff_phone || "")}
+                        onChange={(e) => setStaffField(bank.slug, "staff_phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                        className="w-full border border-[#E5E7EB] rounded-lg px-2 py-1.5 text-[11px] text-[#0A0A0A] focus:outline-none focus:ring-1 focus:ring-[#FF6B00]"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Role (e.g. Partner Manager)"
+                        value={edits.staff_role ?? (bank.staff_role || "")}
+                        onChange={(e) => setStaffField(bank.slug, "staff_role", e.target.value)}
+                        className="w-full border border-[#E5E7EB] rounded-lg px-2 py-1.5 text-[11px] text-[#0A0A0A] focus:outline-none focus:ring-1 focus:ring-[#FF6B00]"
+                      />
+                      <button
+                        onClick={() => saveStaff(bank)}
+                        disabled={saving}
+                        className="w-full flex items-center justify-center gap-1 bg-[#0A0A0A] text-white text-[11px] font-bold px-2 py-1.5 rounded-lg hover:bg-[#1a1a1a] disabled:opacity-50 transition-colors"
+                      >
+                        {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                        {saving ? "Saving…" : "Save Contact"}
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Cities Admin Section (wraps GenericDataTable + India seed buttons) ──────
+
+function CitiesAdminSection() {
+  const [seeding, setSeeding]       = useState(false);
+  const [seedResult, setSeedResult] = useState(null);
+  const [batching, setBatching]     = useState(false);
+  const [batchResult, setBatchResult] = useState(null);
+  const [genSlug, setGenSlug]       = useState("");
+  const [genning, setGenning]       = useState(false);
+  const [genResult, setGenResult]   = useState(null);
+
+  async function handleSeedIndia() {
+    if (!window.confirm("Seed ~250 major Indian cities? This is idempotent — safe to re-run.")) return;
+    setSeeding(true); setSeedResult(null);
+    try {
+      const r = await adminApi.seedIndiaCities();
+      setSeedResult({ ok: true, msg: `✅ ${r.data.inserted} inserted, ${r.data.updated} updated` });
+    } catch (e) {
+      setSeedResult({ ok: false, msg: `❌ ${e.response?.data?.detail || e.message}` });
+    } finally { setSeeding(false); }
+  }
+
+  async function handleBatchGenerate() {
+    if (!window.confirm("Generate AI content for all cities missing it (tiers 1–3)? This calls Gemini — may take several minutes.")) return;
+    setBatching(true); setBatchResult(null);
+    try {
+      const r = await adminApi.batchGenerateCityContent({ tier: [1, 2, 3], limit: 100 });
+      setBatchResult({ ok: true, msg: `✅ Generated: ${r.data.generated}, Skipped: ${r.data.skipped}` });
+    } catch (e) {
+      setBatchResult({ ok: false, msg: `❌ ${e.response?.data?.detail || e.message}` });
+    } finally { setBatching(false); }
+  }
+
+  async function handleGenSingle() {
+    if (!genSlug.trim()) return;
+    setGenning(true); setGenResult(null);
+    try {
+      const r = await adminApi.generateCityContent(genSlug.trim());
+      setGenResult({ ok: true, msg: `✅ Content generated for ${r.data.slug}` });
+    } catch (e) {
+      setGenResult({ ok: false, msg: `❌ ${e.response?.data?.detail || e.message}` });
+    } finally { setGenning(false); }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Action bar */}
+      <div className="bg-[#F8F9FA] border-2 border-[#0A0A0A] rounded-2xl p-5 space-y-4">
+        <h3 className="font-bold text-[#0A0A0A] text-sm uppercase tracking-widest">India City SEO Tools</h3>
+
+        <div className="flex flex-wrap gap-3 items-center">
+          <button
+            onClick={handleSeedIndia}
+            disabled={seeding}
+            className="flex items-center gap-2 bg-[#0A0A0A] text-white font-bold text-sm px-4 py-2.5 rounded-xl hover:bg-[#1a1a1a] disabled:opacity-50 transition-colors"
+          >
+            {seeding ? "⏳ Seeding…" : "🌱 Seed India Cities"}
+          </button>
+          <button
+            onClick={handleBatchGenerate}
+            disabled={batching}
+            className="flex items-center gap-2 bg-[#FF6B00] text-white font-bold text-sm px-4 py-2.5 rounded-xl hover:bg-[#e55f00] disabled:opacity-50 transition-colors"
+          >
+            {batching ? "⏳ Generating…" : "🤖 Batch Generate Content (Tier 1–3)"}
+          </button>
+        </div>
+
+        {seedResult && (
+          <p className={`text-sm font-semibold ${seedResult.ok ? "text-green-700" : "text-red-600"}`}>{seedResult.msg}</p>
+        )}
+        {batchResult && (
+          <p className={`text-sm font-semibold ${batchResult.ok ? "text-green-700" : "text-red-600"}`}>{batchResult.msg}</p>
+        )}
+
+        {/* Per-city generate */}
+        <div className="border-t border-[#E5E7EB] pt-3">
+          <p className="text-xs text-[#6B7280] mb-2 font-medium">Generate content for a single city (by slug):</p>
+          <div className="flex gap-2">
+            <input
+              value={genSlug}
+              onChange={e => setGenSlug(e.target.value)}
+              placeholder="e.g. jaipur"
+              className="flex-1 border-2 border-[#E5E7EB] rounded-lg px-3 py-2 text-sm focus:border-[#FF6B00] outline-none font-mono"
+            />
+            <button
+              onClick={handleGenSingle}
+              disabled={genning || !genSlug.trim()}
+              className="bg-[#6366F1] text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-[#4F46E5] disabled:opacity-50 transition-colors whitespace-nowrap"
+            >
+              {genning ? "⏳" : "⚡ Generate"}
+            </button>
+          </div>
+          {genResult && (
+            <p className={`text-sm font-semibold mt-2 ${genResult.ok ? "text-green-700" : "text-red-600"}`}>{genResult.msg}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Main table */}
+      <GenericDataTable
+        label="City"
+        icon={Building2}
+        fetchFn={(p) => adminApi.cities(p)}
+        createFn={(d) => adminApi.createCity(d)}
+        updateFn={(slug, d) => adminApi.updateCity(slug, d)}
+        deleteFn={(slug) => adminApi.deleteCity(slug)}
+        importFn={(list) => adminApi.importCities(list)}
+        columns={[
+          { key: "name",         label: "City" },
+          { key: "state",        label: "State" },
+          { key: "tier",         label: "Tier", render: (r) => r.tier ? <span className="inline-block bg-[#FF6B00]/10 text-[#FF6B00] text-xs font-bold px-2 py-0.5 rounded-full">T{r.tier}</span> : "—" },
+          { key: "plazaCount",   label: "Plazas" },
+          { key: "sathiCount",   label: "Sathis" },
+          { key: "content_body", label: "Content", render: (r) => r.content_body ? <span className="text-green-600 font-bold">✅</span> : <span className="text-[#9CA3AF]">⏳</span> },
+          { key: "slug",         label: "Slug", render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.slug}</span> },
+        ]}
+        formFields={[
+          { key: "name",       label: "City Name",    required: true,  placeholder: "Mumbai" },
+          { key: "slug",       label: "Slug",         required: true,  placeholder: "mumbai", disabled: true },
+          { key: "state",      label: "State",        required: true,  placeholder: "maharashtra" },
+          { key: "tier",       label: "Tier (1-4)",   type: "number",  placeholder: "3" },
+          { key: "plazaCount", label: "Plaza Count",  type: "number",  placeholder: "8" },
+          { key: "sathiCount", label: "Sathi Count",  type: "number",  placeholder: "42" },
+        ]}
+        templateNote='JSON array: [{"slug":"mumbai","name":"Mumbai","state":"maharashtra","tier":1,"plazaCount":8,"sathiCount":42}]'
+      />
     </div>
   );
 }
@@ -2988,32 +3665,7 @@ function SitemapTab() {
       )}
 
       {/* ── Cities ── */}
-      {subTab === "Cities" && (
-        <GenericDataTable
-          label="City"
-          icon={Building2}
-          fetchFn={(p) => adminApi.cities(p)}
-          createFn={(d) => adminApi.createCity(d)}
-          updateFn={(slug, d) => adminApi.updateCity(slug, d)}
-          deleteFn={(slug) => adminApi.deleteCity(slug)}
-          importFn={(list) => adminApi.importCities(list)}
-          columns={[
-            { key: "name",       label: "City" },
-            { key: "state",      label: "State" },
-            { key: "plazaCount", label: "Plazas" },
-            { key: "sathiCount", label: "Sathis" },
-            { key: "slug",       label: "Slug", render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.slug}</span> },
-          ]}
-          formFields={[
-            { key: "name",       label: "City Name",    required: true,  placeholder: "Mumbai" },
-            { key: "slug",       label: "Slug",         required: true,  placeholder: "mumbai", disabled: true },
-            { key: "state",      label: "State",        required: true,  placeholder: "Maharashtra" },
-            { key: "plazaCount", label: "Plaza Count",  type: "number",  placeholder: "8" },
-            { key: "sathiCount", label: "Sathi Count",  type: "number",  placeholder: "42" },
-          ]}
-          templateNote='JSON array: [{"slug":"mumbai","name":"Mumbai","state":"Maharashtra","plazaCount":8,"sathiCount":42}]'
-        />
-      )}
+      {subTab === "Cities" && <CitiesAdminSection />}
 
       {/* ── Banks ── */}
       {subTab === "Banks" && <BanksLogoTab />}

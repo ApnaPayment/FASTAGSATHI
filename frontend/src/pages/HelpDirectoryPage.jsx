@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import SEO, { breadcrumbSchema } from "@/components/seo/SEO";
 import PageHero from "@/components/layout/PageHero";
 import { helpApi } from "@/lib/api";
@@ -25,12 +25,17 @@ const CAT_COLORS = {
 };
 
 export default function HelpDirectoryPage() {
+  const [searchParams] = useSearchParams();
+  const urlCategory = searchParams.get("category") || "";
+  const urlSearch   = searchParams.get("search") || "";
+  const isFiltered  = !!(urlCategory || urlSearch);
+
   const [articles, setArticles] = useState([]);
   const [total, setTotal]       = useState(0);
   const [loading, setLoading]   = useState(true);
-  const [search, setSearch]     = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [category, setCategory] = useState("All");
+  const [search, setSearch]     = useState(urlSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(urlSearch);
+  const [category, setCategory] = useState(urlCategory || "All");
   const [page, setPage]         = useState(1);
   const LIMIT = 20;
 
@@ -70,6 +75,7 @@ export default function HelpDirectoryPage() {
         path="/help"
         keywords="FASTag help, FASTag dispute guide, FASTag balance check, FASTag KYC, FASTag blacklist fix, toll plaza help India"
         jsonLd={breadcrumbSchema([{ label: "Help Center", url: "/help" }])}
+        noindex={isFiltered}
       />
 
       <PageHero

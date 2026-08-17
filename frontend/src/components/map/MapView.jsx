@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Circle } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+const BACKEND = "";
 const fullUrl = (url) => { if (!url) return ""; if (url.startsWith("http") || url.startsWith("data:")) return url; if (BACKEND.includes("localhost") && !window.location.hostname.includes("localhost")) return ""; return `${BACKEND}${url}`; };
 
 const sathiIcon = (sathi) => {
@@ -63,8 +63,10 @@ export default function MapView({ center, sathis = [], plazas = [], userPos, rad
     <div data-testid="map-view" style={{ height, width: "100%", borderRadius: 24, overflow: "hidden", border: "2px solid #0A0A0A", pointerEvents: isStatic ? "none" : "auto" }}>
       <MapContainer center={[center.lat, center.lng]} zoom={12} style={{ height: "100%", width: "100%" }} scrollWheelZoom={!isStatic} dragging={!isStatic} zoomControl={!isStatic} doubleClickZoom={!isStatic} touchZoom={!isStatic} keyboard={!isStatic}>
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          subdomains="abcd"
+          maxZoom={19}
         />
 
         {userPos && (

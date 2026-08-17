@@ -49,6 +49,10 @@ const BOT_RE = /whatsapp|facebookexternalhit|twitterbot|telegrambot|linkedinbot|
 const isBot = (ua) => BOT_RE.test(ua || "");
 
 // ── Fetch JSON from backend API ───────────────────────────────────────────────
+// Resolves: parsed JSON on 200, NOT_FOUND on a definitive backend 404, and
+// null on transient failures (timeout, network error, 5xx). Callers must not
+// treat null as "does not exist" — only NOT_FOUND is a safe 404 signal.
+const NOT_FOUND = Symbol("not-found");
 function fetchBackend(apiPath) {
   return new Promise((resolve, reject) => {
     const req = https.request(
@@ -58,6 +62,7 @@ function fetchBackend(apiPath) {
         let body = "";
         res.on("data", (c) => body += c);
         res.on("end", () => {
+          if (res.statusCode === 404) { resolve(NOT_FOUND); return; }
           try { resolve(res.statusCode === 200 ? JSON.parse(body) : null); }
           catch { resolve(null); }
         });
@@ -86,6 +91,7 @@ function ogTags({ title, description, image, url, type = "website" }) {
   const u = esc(url);
   return `
     <title>${t}</title>
+    <link rel="canonical" href="${u}" />
     <meta name="description" content="${d}" />
     <meta property="og:type"        content="${esc(type)}" />
     <meta property="og:title"       content="${t}" />
@@ -105,6 +111,7 @@ const DEFAULT_OG_IMAGE = `${SITE}/og-default.png`;
 // ── Build OG tags for a Sathi profile ─────────────────────────────────────────
 async function sathiOgTags(slug) {
   const s = await fetchBackend(`/api/sathis/${slug}`);
+  if (s === NOT_FOUND) return NOT_FOUND;
   if (!s || !s.name) return null;
 
   const stars   = s.rating   ? `⭐ ${s.rating}` : "";
@@ -128,9 +135,69 @@ async function sathiOgTags(slug) {
   return ogTags({ title, description, image, url, type: "profile" });
 }
 
+// ── Build OG tags for a Highway page ─────────────────────────────────────────
+async function highwayOgTags(slug) {
+  const h = await fetchBackend(`/api/highways/${slug}`);
+  if (h === NOT_FOUND) return NOT_FOUND;
+  if (!h || !h.name) return null;
+  const title = `${h.name} toll plazas, rates & FASTag help · ApnaFastag`;
+  const description = `${h.fullName || h.name}: ${h.plazaCount || "all"} toll plazas, live rates, FASTag dispute & Sathi help across ${(h.states || []).join(", ")}.`.slice(0, 200);
+  return ogTags({ title, description, image: DEFAULT_OG_IMAGE, url: `${SITE}/highway/${slug}` });
+}
+
+// ── Build OG tags for a Bank page ─────────────────────────────────────────────
+async function bankOgTags(slug) {
+  const b = await fetchBackend(`/api/banks/${slug}`);
+  if (b === NOT_FOUND) return NOT_FOUND;
+  if (!b || !b.name) return null;
+  const title = `${b.name} FASTag — balance check, helpline & dispute help · ApnaFastag`;
+  const description = `${b.name} FASTag balance check, customer care helpline, dispute filing, blacklist fix and recharge guide. Verified Sathis available 24×7.`.slice(0, 200);
+  return ogTags({ title, description, image: DEFAULT_OG_IMAGE, url: `${SITE}/bank/${slug}` });
+}
+
+// ── Build OG tags for a Plaza/Toll page ──────────────────────────────────────
+async function plazaOgTags(slug) {
+  const p = await fetchBackend(`/api/plazas/${slug}`);
+  if (p === NOT_FOUND) return NOT_FOUND;
+  if (!p || !p.name) return null;
+
+  const title = `${p.name} (${p.highway || ""}) toll rates 2026 — FASTag help · ApnaFastag`.trim();
+  const description = `${p.name} on ${p.highway || "highway"} at ${p.city || ""}: toll rates (car ₹${p.carRate || "—"}, truck ₹${p.truckRate || "—"}), FASTag disputes & verified Sathis on-spot.`.trim();
+  return ogTags({ title, description, image: DEFAULT_OG_IMAGE, url: `${SITE}/toll/${slug}` });
+}
+
+// ── Build OG tags for a State page ───────────────────────────────────────────
+async function stateOgTags(slug) {
+  const s = await fetchBackend(`/api/states/${slug}`);
+  if (s === NOT_FOUND) return NOT_FOUND;
+  if (!s || !s.name) return null;
+
+  const title = `${s.name} toll plazas, FASTag help & Sathis · ApnaFastag`;
+  const description = `FASTag help across ${s.plazaCount || "all"} toll plazas in ${s.name}. ${s.sathiCount || ""} verified Sathis resolve disputes, blacklists & KYC on-spot.`.trim();
+  return ogTags({ title, description, image: DEFAULT_OG_IMAGE, url: `${SITE}/state/${slug}` });
+}
+
+// ── Build OG tags for a City page ─────────────────────────────────────────────
+async function cityOgTags(slug) {
+  const c = await fetchBackend(`/api/cities/${slug}`);
+  if (c === NOT_FOUND) return NOT_FOUND;
+  if (!c || !c.name) return null;
+
+  const stateName = c.state ? c.state.charAt(0).toUpperCase() + c.state.slice(1) : "";
+  const sathis    = c.sathiCount  ? `${c.sathiCount} Sathis` : "Expanding soon";
+  const plazas    = c.plazaCount  ? `, ${c.plazaCount} toll plazas` : "";
+  const title     = `FASTag help in ${c.name} — ${sathis}${plazas}`;
+  const description = (c.meta_description ||
+    `Resolve FASTag disputes, blacklisting and KYC issues in ${c.name}${stateName ? `, ${stateName}` : ""}. Verified Sathis available 24×7.`
+  ).slice(0, 200);
+
+  return ogTags({ title, description, image: DEFAULT_OG_IMAGE, url: `${SITE}/city/${slug}` });
+}
+
 // ── Build OG tags for a Help article ──────────────────────────────────────────
 async function helpOgTags(slug) {
   const a = await fetchBackend(`/api/help/${slug}`);
+  if (a === NOT_FOUND) return null; // help pages have prerendered fallbacks — never hard-404 them
   if (!a || !a.title) return null;
 
   const title       = `${a.title} — ApnaFastag Help`;
@@ -148,10 +215,13 @@ function injectOg(html, ogBlock) {
   // 1. Replace <title>…</title> with ours
   out = out.replace(/<title>[^<]*<\/title>/i, "");
 
-  // 2. Strip ALL existing og: and twitter: meta tags and generic description
+  // 2. Strip ALL existing og: and twitter: meta tags, generic description,
+  //    and the build-time canonical (it points at the homepage on every page —
+  //    leaving it in tells Google every route is a duplicate of "/")
   out = out.replace(/<meta\s[^>]*property="og:[^"]*"[^>]*\/?>/gi, "");
   out = out.replace(/<meta\s[^>]*name="twitter:[^"]*"[^>]*\/?>/gi, "");
   out = out.replace(/<meta\s[^>]*name="description"[^>]*\/?>/gi, "");
+  out = out.replace(/<link\s[^>]*rel="canonical"[^>]*\/?>/gi, "");
 
   // 3. Insert our block right after <head> (case-insensitive)
   out = out.replace(/<head>/i, `<head>\n  ${ogBlock}`);
@@ -161,23 +231,36 @@ function injectOg(html, ogBlock) {
 
 // ── Serve index.html with optional OG injection ───────────────────────────────
 async function serveWithOg(req, res, ogBuilder) {
+  let og = null;
+  try {
+    og = await ogBuilder();
+  } catch (e) {
+    console.error("[og injection error]", e.message);
+  }
+
+  // Backend says the slug definitively doesn't exist → real 404 status.
+  // Previously this served index.html with 200, which Search Console
+  // flags as "Soft 404" and wastes crawl budget on dead URLs.
+  if (og === NOT_FOUND) {
+    res.writeHead(404, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(`<!doctype html><html><head><meta name="robots" content="noindex"><title>404 — Page not found · ApnaFastag</title></head><body><h1>Page not found</h1><p><a href="${SITE}/">Go to ApnaFastag</a></p></body></html>`);
+    return;
+  }
+
+  // No OG data (transient backend failure, or content served from a
+  // prerendered file) → fall through to the static handler so bots get
+  // the per-route prerendered head instead of raw index.html whose meta
+  // belongs to the homepage.
+  if (!og) { serveStatic(req, res); return; }
+
   const indexPath = path.join(BUILD_DIR, "index.html");
-  fs.readFile(indexPath, "utf8", async (err, html) => {
-    if (err) { res.writeHead(404); res.end("Not found"); return; }
-
-    let finalHtml = html;
-    try {
-      const og = await ogBuilder();
-      if (og) finalHtml = injectOg(html, og);
-    } catch (e) {
-      console.error("[og injection error]", e.message);
-    }
-
+  fs.readFile(indexPath, "utf8", (err, html) => {
+    if (err) { serveStatic(req, res); return; }
     res.writeHead(200, {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "public, max-age=0, must-revalidate",
     });
-    res.end(finalHtml);
+    res.end(injectOg(html, og));
   });
 }
 
@@ -185,6 +268,10 @@ async function serveWithOg(req, res, ogBuilder) {
 function proxyToBackend(req, res) {
   const headers = { host: BACKEND };
   for (const [k, v] of Object.entries(req.headers)) {
+    // Skip host — we already set it to BACKEND above; forwarding the original
+    // "apnafastag.com" host would cause Railway to route the request back to
+    // the frontend service, creating an infinite loop → 502/503 timeouts.
+    if (k.toLowerCase() === "host") continue;
     if (!HOP_BY_HOP.has(k.toLowerCase()) && k.toLowerCase() !== "accept-encoding") {
       headers[k] = v;
     }
@@ -261,6 +348,25 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // 1b. Serve sitemap sub-paths by proxying to the backend directly.
+  // A 301 here made every entry in the sitemap index resolve through a
+  // redirect hop, which Search Console flags and crawlers penalize.
+  const sitemapProxy = pathname.match(/^\/(sitemap-[a-z0-9-]+\.xml)$/);
+  if (sitemapProxy) {
+    req.url = `/api/${sitemapProxy[1]}`;
+    proxyToBackend(req, res);
+    return;
+  }
+
+  // 1c. Normalize trailing slashes — /city/jaipur/ and /city/jaipur both
+  // returned 200 with identical content, creating sitewide duplicate URLs.
+  if (pathname.length > 1 && pathname.endsWith("/")) {
+    const query = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
+    res.writeHead(301, { "Location": pathname.replace(/\/+$/, "") + query, "Cache-Control": "public, max-age=86400" });
+    res.end();
+    return;
+  }
+
   // 2. Bot OG injection for Sathi profiles: /sathi/:slug
   const sathiMatch = pathname.match(/^\/sathi\/([^/]+)\/?$/);
   if (sathiMatch && isBot(ua)) {
@@ -279,7 +385,81 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 4. Normal static serving (browsers, etc.)
+  // 4. Bot OG injection for Highway pages: /highway/:slug
+  const highwayMatch = pathname.match(/^\/highway\/([^/]+)\/?$/);
+  if (highwayMatch && isBot(ua)) {
+    const slug = highwayMatch[1];
+    console.log(`[og] bot=${ua.slice(0,40)} → /highway/${slug}`);
+    await serveWithOg(req, res, () => highwayOgTags(slug));
+    return;
+  }
+
+  // 4b. Bot OG injection for Bank pages: /bank/:slug
+  const bankMatch = pathname.match(/^\/bank\/([^/]+)\/?$/);
+  if (bankMatch && isBot(ua)) {
+    const slug = bankMatch[1];
+    console.log(`[og] bot=${ua.slice(0,40)} → /bank/${slug}`);
+    await serveWithOg(req, res, () => bankOgTags(slug));
+    return;
+  }
+
+  // 4c. Bot OG injection for Plaza/Toll pages: /toll/:slug
+  const tollMatch = pathname.match(/^\/toll\/([^/]+)\/?$/);
+  if (tollMatch && isBot(ua)) {
+    const slug = tollMatch[1];
+    console.log(`[og] bot=${ua.slice(0,40)} → /toll/${slug}`);
+    await serveWithOg(req, res, () => plazaOgTags(slug));
+    return;
+  }
+
+  // 5. Bot OG injection for State pages: /state/:slug
+  const stateMatch = pathname.match(/^\/state\/([^/]+)\/?$/);
+  if (stateMatch && isBot(ua)) {
+    const slug = stateMatch[1];
+    console.log(`[og] bot=${ua.slice(0,40)} → /state/${slug}`);
+    await serveWithOg(req, res, () => stateOgTags(slug));
+    return;
+  }
+
+  // 6. Bot OG injection for City pages: /city/:slug
+  const cityMatch = pathname.match(/^\/city\/([^/]+)\/?$/);
+  if (cityMatch && isBot(ua)) {
+    const slug = cityMatch[1];
+    console.log(`[og] bot=${ua.slice(0,40)} → /city/${slug}`);
+    await serveWithOg(req, res, () => cityOgTags(slug));
+    return;
+  }
+
+  // 7. Static OG injection for /mlff and /fastag-e-notice (bots)
+  if (pathname === "/mlff" && isBot(ua)) {
+    await serveWithOg(req, res, () => ogTags({
+      title: "MLFF India — Multi-Lane Free Flow Tolling Explained 2025 · ApnaFastag",
+      description: "MLFF lets vehicles pass toll plazas at full speed — no stopping, no queues. Learn how GNSS and ANPR gantries work, pilot locations, and what it means for your FASTag wallet.",
+      image: DEFAULT_OG_IMAGE,
+      url: `${SITE}/mlff`,
+    }));
+    return;
+  }
+  if (pathname === "/fastag-e-notice" && isBot(ua)) {
+    await serveWithOg(req, res, () => ogTags({
+      title: "FASTag e-Notice — Pay, Dispute & Avoid Penalties 2025 · ApnaFastag",
+      description: "Received a FASTag e-Notice? Learn why NHAI issues them, how the 2× penalty works, and how to pay or dispute in minutes — not weeks.",
+      image: DEFAULT_OG_IMAGE,
+      url: `${SITE}/fastag-e-notice`,
+    }));
+    return;
+  }
+  if (pathname === "/join" && isBot(ua)) {
+    await serveWithOg(req, res, () => ogTags({
+      title: "Become a FASTag Sathi — Earn ₹15,000–₹50,000/Month · ApnaFastag",
+      description: "Join India's fastest-growing FASTag partner network. Issue & recharge FASTag for SBI, IDFC First Bank and Bajaj Finance. Zero investment. Apply free in 2 minutes.",
+      image: DEFAULT_OG_IMAGE,
+      url: `${SITE}/join`,
+    }));
+    return;
+  }
+
+  // 8. Normal static serving (browsers, etc.)
   serveStatic(req, res);
 });
 
@@ -287,5 +467,5 @@ server.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`   Static files → ${BUILD_DIR}`);
   console.log(`   /api/*       → https://${BACKEND}`);
-  console.log(`   OG injection → /sathi/:slug, /help/:slug (bots only)`);
+  console.log(`   OG injection → /sathi /help /highway /bank /toll /state /city (bots only)`);
 });

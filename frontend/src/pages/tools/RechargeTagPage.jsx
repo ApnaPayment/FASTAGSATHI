@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import PageCTA from "@/components/layout/PageCTA";
-import SEO, { webAppSchema } from "@/components/seo/SEO";
+import SEO, { webAppSchema, faqSchema } from "@/components/seo/SEO";
 import { track } from "@/lib/analytics";
 import { toolsApi } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
@@ -109,11 +109,15 @@ export default function RechargeTagPage() {
         description="Recharge your FASTag using any UPI app in seconds. Enter your vehicle number, pick an amount, and pay via NETC UPI. Works for all NHAI-linked banks."
         path="/tools/fastag-recharge"
         keywords="fastag recharge online, fastag recharge upi, fastag balance add, netc fastag recharge"
-        jsonLd={webAppSchema({
-          name: "FASTag Recharge via UPI",
-          description: "Recharge any FASTag wallet using NETC UPI payment method.",
-          url: "https://apnafastag.com/tools/fastag-recharge",
-        })}
+        jsonLd={[
+          webAppSchema({ name: "FASTag Recharge via UPI", description: "Recharge any FASTag wallet using NETC UPI payment method.", url: "https://apnafastag.com/tools/fastag-recharge" }),
+          faqSchema([
+            { q: "How do I recharge my FASTag online?", a: "Enter your vehicle number, check your linked FASTag tag info, enter the amount, and pay via any UPI app. Balance reflects within 2–4 hours." },
+            { q: "Which UPI apps work for FASTag recharge?", a: "All NETC-enabled UPI apps: PhonePe, Google Pay, Paytm, BHIM, and your bank's UPI app. Just scan the QR or enter your FASTag VPA." },
+            { q: "My FASTag recharge was deducted but balance didn't update. What should I do?", a: "Wait up to 4 hours for the balance to reflect. If it still hasn't updated, ping a Sathi at your nearest toll — recharge failures are resolved on-spot." },
+            { q: "What is the minimum FASTag recharge amount?", a: "Most banks require a minimum ₹100 recharge. The minimum balance threshold to pass a toll (without blacklisting) varies by bank — usually ₹150–₹200." },
+          ]),
+        ]}
       />
 
       <section className="pt-28 pb-10 bg-[#F8F9FA]">

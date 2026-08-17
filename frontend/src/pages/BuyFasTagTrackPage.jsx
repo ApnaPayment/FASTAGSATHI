@@ -112,7 +112,7 @@ export default function BuyFasTagTrackPage() {
     <>
       <SEO
         title="Track FASTag Order | ApnaFastag"
-        description="Track your FASTag purchase order status. See delivery and activation updates in real time."
+        description="Track your FASTag order status in real time — see when your Sathi is assigned, en route, and when your tag is delivered and activated at your door."
         path="/buy-fastag/track"
       />
 

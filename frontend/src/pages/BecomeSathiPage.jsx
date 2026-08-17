@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import PageHero from "@/components/layout/PageHero";
 import PageCTA from "@/components/layout/PageCTA";
-import SEO from "@/components/seo/SEO";
+import SEO, { howToSchema } from "@/components/seo/SEO";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BadgeCheck, IndianRupee, Clock, Award, Shield,
@@ -56,6 +56,41 @@ export default function BecomeSathiPage() {
         description="Already at the toll? Get paid to help. Zero joining fee, flexible hours, ₹25k–₹60k monthly earnings. Apply in 10 minutes, go live in 21 days."
         path="/become-a-sathi"
         keywords="fastag sathi, toll plaza job, gig work india, fastag helper earning, sathi onboarding"
+        jsonLd={[
+          {
+            "@context": "https://schema.org",
+            "@type": "JobPosting",
+            title: "FASTag Sathi — Toll Plaza Service Agent",
+            description: "Earn ₹25k–₹60k/month helping motorists at toll plazas. Resolve FASTag disputes, blacklisting, KYC issues, and recharges. Zero joining fee. Flexible hours. Work near your home plaza.",
+            datePosted: "2025-01-01",
+            validThrough: "2027-12-31",
+            employmentType: "CONTRACTOR",
+            hiringOrganization: {
+              "@type": "Organization",
+              name: "ApnaFastag",
+              sameAs: "https://apnafastag.com",
+              logo: "https://apnafastag.com/logo.png",
+            },
+            jobLocation: {
+              "@type": "Place",
+              address: { "@type": "PostalAddress", addressCountry: "IN" },
+            },
+            baseSalary: {
+              "@type": "MonetaryAmount",
+              currency: "INR",
+              value: { "@type": "QuantitativeValue", minValue: 25000, maxValue: 60000, unitText: "MONTH" },
+            },
+            responsibilities: "Resolve FASTag disputes, mischarges, KYC issues, and blacklisting at toll plazas. Recharge FASTag wallets. Assist motorists stuck at toll lanes.",
+            qualifications: "Must be located near an NHAI toll plaza. Basic smartphone usage. Speak local language. No prior experience required — full training provided.",
+            industry: "Transportation / Fintech",
+            occupationalCategory: "41-2099.00",
+          },
+          howToSchema({
+            name: "How to become a Sathi on ApnaFastag",
+            description: "Apply to become a verified FASTag service agent (Sathi) and earn ₹25k–₹60k/month at toll plazas.",
+            steps: STEPS.map((s) => ({ name: s.t, text: s.b })),
+          }),
+        ]}
       />
       <PageHero
         variant="dark"

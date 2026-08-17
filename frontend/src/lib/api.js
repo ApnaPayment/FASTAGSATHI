@@ -1,6 +1,9 @@
 import axios from "axios";
 
-const BASE = process.env.REACT_APP_BACKEND_URL || "";
+// Always use relative URLs so /api/* goes through the server.js proxy.
+// For local dev, set "proxy": "http://localhost:8000" in package.json
+// (CRA forwards /api/* to the local backend automatically).
+const BASE = "";
 
 const api = axios.create({ baseURL: BASE });
 
@@ -46,6 +49,11 @@ export const plazaApi = {
   list: () => api.get("/api/plazas"),
   byState: (slug) => api.get("/api/plazas", { params: { state: slug } }),
   get: (slug) => api.get(`/api/plazas/${slug}`),
+};
+
+export const citiesApi = {
+  list: (params) => api.get("/api/cities", { params }),
+  get:  (slug)   => api.get(`/api/cities/${slug}`),
 };
 
 export const stateApi = {
@@ -105,6 +113,10 @@ export const applicationApi = {
   check: (phone) => api.get(`/api/sathi-applications/check/${phone}`),
 };
 
+export const leadApi = {
+  submitJoin: (data) => api.post("/api/leads/sathi", data),
+};
+
 const ADMIN_KEY = "apnafastag.admin";
 export const getAdminSecret = () => localStorage.getItem(ADMIN_KEY);
 export const setAdminSecret = (s) => localStorage.setItem(ADMIN_KEY, s);
@@ -147,11 +159,14 @@ export const adminApi = {
   deleteHighway:   (slug)   => api.delete(`/api/admin/highways/${slug}`, { headers: adminHeaders() }),
   importHighways:  (list)   => api.post("/api/admin/highways/import", list, { headers: adminHeaders() }),
   // City management
-  cities:       (params) => api.get("/api/admin/cities", { params, headers: adminHeaders() }),
-  createCity:   (data)   => api.post("/api/admin/cities", data, { headers: adminHeaders() }),
-  updateCity:   (slug, d)=> api.patch(`/api/admin/cities/${slug}`, d, { headers: adminHeaders() }),
-  deleteCity:   (slug)   => api.delete(`/api/admin/cities/${slug}`, { headers: adminHeaders() }),
-  importCities: (list)   => api.post("/api/admin/cities/import", list, { headers: adminHeaders() }),
+  cities:                (params) => api.get("/api/admin/cities", { params, headers: adminHeaders() }),
+  createCity:            (data)   => api.post("/api/admin/cities", data, { headers: adminHeaders() }),
+  updateCity:            (slug, d)=> api.patch(`/api/admin/cities/${slug}`, d, { headers: adminHeaders() }),
+  deleteCity:            (slug)   => api.delete(`/api/admin/cities/${slug}`, { headers: adminHeaders() }),
+  importCities:          (list)   => api.post("/api/admin/cities/import", list, { headers: adminHeaders() }),
+  seedIndiaCities:       ()       => api.post("/api/admin/cities/batch-seed-india", {}, { headers: adminHeaders() }),
+  generateCityContent:   (slug)   => api.post(`/api/admin/cities/${slug}/generate-content`, {}, { headers: adminHeaders() }),
+  batchGenerateCityContent: (data) => api.post("/api/admin/cities/batch-generate-content", data, { headers: adminHeaders() }),
   // Bank management
   banks:           (params)      => api.get("/api/admin/banks", { params, headers: adminHeaders() }),
   createBank:      (data)        => api.post("/api/admin/banks", data, { headers: adminHeaders() }),
@@ -195,6 +210,10 @@ export const adminApi = {
   updateFastagOrder:  (id, d)  => api.patch(`/api/admin/fastag-orders/${id}`, d, { headers: adminHeaders() }),
   fastagPrices:       ()       => api.get("/api/admin/fastag-prices", { headers: adminHeaders() }),
   updateFastagPrice:  (slug,d) => api.patch(`/api/admin/fastag-prices/${slug}`, d, { headers: adminHeaders() }),
+  // Sathi leads
+  leads:       (params) => api.get("/api/admin/leads",         { params, headers: adminHeaders() }),
+  leadStats:   ()       => api.get("/api/admin/leads/stats",   { headers: adminHeaders() }),
+  updateLead:  (id, d)  => api.patch(`/api/admin/leads/${id}`, d, { headers: adminHeaders() }),
   // NETC / Recharge banks
   netcBanks:        ()        => api.get("/api/admin/netc-banks",          { headers: adminHeaders() }),
   createNetcBank:   (data)    => api.post("/api/admin/netc-banks",         data, { headers: adminHeaders() }),

@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
 import PageHero from "@/components/layout/PageHero";
 import PageCTA from "@/components/layout/PageCTA";
-import SEO from "@/components/seo/SEO";
+import SEO, { howToSchema, faqSchema } from "@/components/seo/SEO";
 import { AlertCircle, Radar, CheckCircle2, MapPin, Phone, FileText, BadgeCheck } from "lucide-react";
 import { track } from "@/lib/analytics";
 
@@ -36,6 +36,19 @@ export default function HowItWorksPage() {
         description="Three steps: spot the issue, ping a verified Sathi, get resolved on the spot. The full playbook for FASTag rescue at any toll plaza in India."
         path="/how-it-works"
         keywords="how apnafastag works, fastag help, toll plaza rescue, fastag dispute process"
+        jsonLd={[
+          howToSchema({
+            name: "How to resolve a FASTag issue at a toll plaza",
+            description: "Get your FASTag problem resolved on-spot by a verified Sathi in under 8 minutes.",
+            steps: FULL_STEPS.map(s => ({ name: s.title, text: s.body })),
+          }),
+          faqSchema([
+            { q: "How long does it take to resolve a FASTag issue?", a: "The average resolution time is under 8 minutes. A Sathi accepts your request within 90 seconds and resolves most issues on the spot." },
+            { q: "How does a Sathi reach me at a toll plaza?", a: "Sathis are stationed at or near major toll plazas. Once you ping, the nearest Sathi accepts and walks over or drives to your lane within 90 seconds." },
+            { q: "What issues can a Sathi resolve?", a: "Mischarges, double deductions, blacklisted tags, KYC pending, recharge failures, RC mismatch, and FASTag not scanning — covering 92% of all toll problems." },
+            { q: "Do I pay even if my issue isn't resolved?", a: "No. ApnaFastag operates on a success-only fee model. You pay ₹49–₹199 only after your issue is confirmed resolved." },
+          ]),
+        ]}
       />
       <PageHero
         eyebrow="The full playbook"
