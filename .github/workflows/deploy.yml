@@ -1,0 +1,40 @@
+# Auto-deploy to the AWS EC2 host on every push to main.
+#
+# Inert until activated: the job only runs when the repository variable
+# DEPLOY_ENABLED is set to "true" (Settings → Secrets and variables →
+# Actions → Variables). Until then pushes show a skipped job, not a failure,
+# so this can live on main while production still runs on Railway.
+#
+# Required once activated:
+#   secret  EC2_SSH_KEY — contents of the .pem private key
+#   secret  EC2_HOST    — the Elastic IP
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 20m
+          script: |
+            set -e
+            cd app
+            git fetch origin main
+            git reset --hard origin/main
+            cd deploy
+            docker compose up -d --build
+            docker image prune -f
