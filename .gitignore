@@ -43,3 +43,5 @@ Thumbs.db
 
 # ── Railway / deployment ───────────────────────────────────
 .railway/
+deploy/.env
+!deploy/.env.example

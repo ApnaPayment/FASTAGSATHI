@@ -16,7 +16,12 @@ const fs    = require("fs");
 const path  = require("path");
 
 const PORT      = process.env.PORT || 3000;
-const BACKEND   = "fastagsathi-production.up.railway.app";
+// Backend origin — env-configurable so the same image runs on Railway, AWS,
+// or locally. Defaults preserve the original Railway production behavior.
+const BACKEND        = process.env.BACKEND_HOST   || "fastagsathi-production.up.railway.app";
+const BACKEND_PORT   = parseInt(process.env.BACKEND_PORT || "443", 10);
+const BACKEND_SCHEME = process.env.BACKEND_SCHEME || "https";   // "http" for same-host containers
+const backendLib     = BACKEND_SCHEME === "http" ? http : https;
 const SITE      = "https://apnafastag.com";
 const BUILD_DIR = path.join(__dirname, "build");
 
@@ -55,8 +60,8 @@ const isBot = (ua) => BOT_RE.test(ua || "");
 const NOT_FOUND = Symbol("not-found");
 function fetchBackend(apiPath) {
   return new Promise((resolve, reject) => {
-    const req = https.request(
-      { hostname: BACKEND, port: 443, path: apiPath, method: "GET",
+    const req = backendLib.request(
+      { hostname: BACKEND, port: BACKEND_PORT, path: apiPath, method: "GET",
         headers: { "accept": "application/json" }, timeout: 5000 },
       (res) => {
         let body = "";
@@ -278,11 +283,11 @@ function proxyToBackend(req, res) {
   }
 
   const options = {
-    hostname: BACKEND, port: 443, path: req.url, method: req.method,
+    hostname: BACKEND, port: BACKEND_PORT, path: req.url, method: req.method,
     headers, timeout: 30000,
   };
 
-  const proxyReq = https.request(options, (proxyRes) => {
+  const proxyReq = backendLib.request(options, (proxyRes) => {
     const fwdHeaders = {};
     for (const [k, v] of Object.entries(proxyRes.headers)) {
       if (!HOP_BY_HOP.has(k.toLowerCase())) fwdHeaders[k] = v;
@@ -344,6 +349,12 @@ const server = http.createServer(async (req, res) => {
 
   // 1. API proxy
   if (pathname.startsWith("/api/")) {
+    proxyToBackend(req, res);
+    return;
+  }
+
+  // 1a. Uploaded assets (sathi avatars, gallery) live on the backend's disk
+  if (pathname.startsWith("/uploads/")) {
     proxyToBackend(req, res);
     return;
   }
@@ -466,6 +477,6 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`   Static files → ${BUILD_DIR}`);
-  console.log(`   /api/*       → https://${BACKEND}`);
+  console.log(`   /api/*       → ${BACKEND_SCHEME}://${BACKEND}:${BACKEND_PORT}`);
   console.log(`   OG injection → /sathi /help /highway /bank /toll /state /city (bots only)`);
 });

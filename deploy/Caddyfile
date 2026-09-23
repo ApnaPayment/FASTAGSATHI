@@ -1,0 +1,11 @@
+# Caddy terminates TLS (automatic Let's Encrypt) and forwards everything to
+# the frontend, which handles static files, bot meta injection, and proxies
+# /api + /uploads to the backend container itself.
+apnafastag.com {
+	reverse_proxy frontend:8080
+}
+
+# www is redirected to the apex at the edge
+www.apnafastag.com {
+	redir https://apnafastag.com{uri} permanent
+}
