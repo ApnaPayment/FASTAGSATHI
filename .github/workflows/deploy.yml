@@ -82,8 +82,16 @@ jobs:
           test "$ST" = "Success"
 
       - name: Check live site
+        # the server already health-checked itself; this confirms the public path through Cloudflare.
+        # Retries so a single Cloudflare edge blip (seen once as a 522) does not mark a good deploy red.
         run: |
           for u in / /api/banks; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" "https://apnafastag.com$u")
-            echo "$u -> $code"; test "$code" = "200"
+            ok=0
+            for try in 1 2 3; do
+              code=$(curl -s -o /dev/null -m 20 -w "%{http_code}" "https://apnafastag.com$u")
+              echo "$u try $try -> $code"
+              if [ "$code" = "200" ]; then ok=1; break; fi
+              sleep 10
+            done
+            test "$ok" = "1"
           done
