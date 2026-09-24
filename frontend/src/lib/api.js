@@ -49,6 +49,7 @@ export const plazaApi = {
   list: () => api.get("/api/plazas"),
   byState: (slug) => api.get("/api/plazas", { params: { state: slug } }),
   get: (slug) => api.get(`/api/plazas/${slug}`),
+  nearby: (slug) => api.get(`/api/plazas/${slug}/nearby`),
 };
 
 export const citiesApi = {
