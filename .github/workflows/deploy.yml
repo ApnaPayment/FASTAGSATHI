@@ -81,17 +81,18 @@ jobs:
           echo "status: $ST"
           test "$ST" = "Success"
 
-      - name: Check live site
-        # the server already health-checked itself; this confirms the public path through Cloudflare.
-        # Retries so a single Cloudflare edge blip (seen once as a 522) does not mark a good deploy red.
+      - name: Check live site (informational)
+        # Success/rollback is decided by the server-side health check in deploy.sh. This only reports the
+        # public path through Cloudflare: GitHub's runner network was measured at 20-30 s (and one 522) to
+        # this site while US/EU/India clients got < 1.5 s, so it warns instead of failing the run.
         run: |
           for u in / /api/banks; do
-            ok=0
+            code=000
             for try in 1 2 3; do
-              code=$(curl -s -o /dev/null -m 20 -w "%{http_code}" "https://apnafastag.com$u")
+              code=$(curl -s -o /dev/null -m 30 -w "%{http_code}" "https://apnafastag.com$u" || true)
               echo "$u try $try -> $code"
-              if [ "$code" = "200" ]; then ok=1; break; fi
+              [ "$code" = "200" ] && break
               sleep 10
             done
-            test "$ok" = "1"
+            [ "$code" = "200" ] || echo "::warning::public check for $u returned $code from the GitHub runner (server-side health check passed)"
           done
