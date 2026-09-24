@@ -414,16 +414,21 @@ function sendFile(res, file) {
   });
 }
 
+function redirect(req, res, to) {
+  const query = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
+  res.writeHead(301, { "Location": to + query, "Cache-Control": "public, max-age=86400" });
+  res.end();
+}
+
 async function handlePage(req, res, pathname) {
-  if (ALIASES[pathname]) {
-    const query = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
-    res.writeHead(301, { "Location": ALIASES[pathname] + query, "Cache-Control": "public, max-age=86400" });
-    res.end();
-    return;
-  }
+  if (ALIASES[pathname]) { redirect(req, res, ALIASES[pathname]); return; }
 
   let decoded = pathname;
   try { decoded = decodeURIComponent(pathname); } catch { sendNotFound(res, pathname); return; }
+
+  // Every data-page slug is lowercase; old links like /state/Haryana go to the real page.
+  const upper = decoded.match(/^\/(help|toll|state|city|sathi|bank|highway)\/([^/]*[A-Z][^/]*)$/);
+  if (upper) { redirect(req, res, `/${upper[1]}/${upper[2].toLowerCase()}`); return; }
 
   for (const [re, render, preferFile] of DYNAMIC) {
     const m = decoded.match(re);
@@ -435,6 +440,10 @@ async function handlePage(req, res, pathname) {
     if (out && out !== NOT_FOUND) { sendHtml(res, 200, renderPage(out.head, out.body)); return; }
     // Keep every URL that has a prerendered page alive, even if the API no longer knows it.
     if (file) { sendFile(res, file); return; }
+    // Blog posts were once linked as /help/<slug>; send those to the post.
+    if (out === NOT_FOUND && decoded.startsWith("/help/") && prerenderedFile(`/blog/${m[1]}`)) {
+      redirect(req, res, `/blog/${m[1]}`); return;
+    }
     if (out === NOT_FOUND) { sendNotFound(res, decoded); return; }
     // Backend unreachable: let the app load and fetch for itself rather than claim 404.
     const head = headTags({ title: "ApnaFastag", description: "FASTag help at toll plazas across India.", url: `${SITE}${decoded}` });
