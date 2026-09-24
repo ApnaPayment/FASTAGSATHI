@@ -42,11 +42,12 @@ if ADMIN_SECRET == _admin_default:
 # Absolute origin of THIS backend service (used for logo/favicon image URLs).
 # Reads RAILWAY_PUBLIC_DOMAIN which Railway injects automatically into backend services.
 # Falls back to the known production URL.
+# Railway was retired on 2026-09-23; the API is now served from the site's own origin.
 _railway_domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")
 BACKEND_ORIGIN = (
-    f"https://{_railway_domain}" if _railway_domain
-    else "https://fastagsathi-production.up.railway.app"
-)
+    os.environ.get("BACKEND_ORIGIN")
+    or (f"https://{_railway_domain}" if _railway_domain else "https://apnafastag.com")
+).rstrip("/")
 JWT_ALGORITHM = "HS256"
 # When True any 4-digit OTP is accepted (dev / demo mode)
 OTP_BYPASS = os.environ.get("OTP_BYPASS", "false").lower() == "true"
@@ -811,6 +812,301 @@ async def get_branding_favicon():
         raise HTTPException(status_code=404, detail="No favicon uploaded")
     return _serve_branding_image(doc["favicon_url"])
 
+# ─── Help article enrichment ──────────────────────────────────────────────────
+# The seeded guides (plaza × issue, state × issue, bank × issue) were one template with a
+# name swapped in, so Google saw ~2,000 near-identical pages. Each guide is now built from
+# the real data we hold for that plaza / state / bank: rates, location, nearest plazas,
+# nearest verified Sathi (real distance), and issue-specific steps. Computed at read time,
+# so nothing stored changes and the SPA and the server-rendered HTML show the same content.
+
+from html import escape as _h
+import math as _math
+
+_PLAZA_GUIDES = [
+    ("fastag-dispute",     "FASTag dispute"),
+    ("fastag-not-working", "FASTag not working"),
+    ("fastag-recharge",    "FASTag recharge"),
+]
+_GUIDE_RE = re.compile(r"^(?P<base>.+)-(?P<issue>fastag-dispute|fastag-not-working|fastag-recharge)$")
+_STATE_GUIDE_RE = re.compile(
+    r"^(?P<base>.+)-(?P<issue>fastag-dispute|fastag-blacklist|fastag-balance-check|fastag-kyc-guide|"
+    r"fastag-recharge|toll-help|fastag-replacement|fastag-new-vehicle)$"
+)
+_plaza_geo_cache: dict = {"ts": 0.0, "rows": []}
+
+
+async def _all_plazas_geo() -> list:
+    if _plaza_geo_cache["rows"] and time.time() - _plaza_geo_cache["ts"] < 600:
+        return _plaza_geo_cache["rows"]
+    rows = await db.plazas.find(
+        {"lat": {"$type": "number"}, "lng": {"$type": "number"}},
+        {"_id": 0, "slug": 1, "name": 1, "city": 1, "state": 1, "state_name": 1,
+         "highway": 1, "lat": 1, "lng": 1, "carRate": 1, "truckRate": 1},
+    ).to_list(None)
+    _plaza_geo_cache.update(ts=time.time(), rows=rows)
+    return rows
+
+
+def _km(lat1, lng1, lat2, lng2) -> float:
+    p = _math.pi / 180
+    a = (_math.sin((lat2 - lat1) * p / 2) ** 2
+         + _math.cos(lat1 * p) * _math.cos(lat2 * p) * _math.sin((lng2 - lng1) * p / 2) ** 2)
+    return 12742 * _math.asin(_math.sqrt(a))
+
+
+async def _nearby_plazas(plaza: dict, limit: int = 6) -> list:
+    lat, lng = plaza.get("lat"), plaza.get("lng")
+    if not isinstance(lat, (int, float)) or not isinstance(lng, (int, float)):
+        return []
+    out = []
+    for r in await _all_plazas_geo():
+        if r["slug"] == plaza.get("slug"):
+            continue
+        out.append({**r, "km": round(_km(lat, lng, r["lat"], r["lng"]), 1)})
+    out.sort(key=lambda r: r["km"])
+    return out[:limit]
+
+
+async def _nearest_sathis(lat, lng, limit: int = 3) -> list:
+    if not isinstance(lat, (int, float)) or not isinstance(lng, (int, float)):
+        return []
+    rows = await db.sathis.find(
+        {"verified": True, "lat": {"$type": "number"}, "lng": {"$type": "number"}},
+        {"_id": 0, "slug": 1, "name": 1, "city": 1, "state": 1, "lat": 1, "lng": 1, "rating": 1},
+    ).to_list(None)
+    for r in rows:
+        r["km"] = round(_km(lat, lng, r.pop("lat"), r.pop("lng")), 1)
+    rows.sort(key=lambda r: r["km"])
+    return rows[:limit]
+
+
+# 676 of 690 imported plazas carry one of two filler rate pairs rather than their real toll.
+_PLACEHOLDER_RATES = {(80, 320), (95, 380)}
+
+
+def _rates_known(p: dict) -> bool:
+    try:
+        pair = (int(float(p.get("carRate") or 0)), int(float(p.get("truckRate") or 0)))
+    except (TypeError, ValueError):
+        return False
+    return pair[0] > 0 and pair not in _PLACEHOLDER_RATES
+
+
+def _plaza_label(name: str) -> str:
+    return name if "plaza" in (name or "").lower() else f"{name} toll plaza"
+
+
+def _dist(km: float) -> str:
+    return "less than 1 km" if km < 1 else f"about {km:.0f} km"
+
+
+def _highway_name(h) -> str:
+    h = (h or "").strip()
+    m = re.fullmatch(r"(?i)nh[\s-]*(\w+)", h)
+    return f"NH-{m.group(1).upper()}" if m else h
+
+
+def _rupees(v) -> str:
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return "—"
+    return f"₹{v:,.0f}" if v else "—"
+
+
+def _ul(items) -> str:
+    return "<ul>" + "".join(f"<li>{i}</li>" for i in items) + "</ul>"
+
+
+def _plaza_issue_section(issue: str, p: dict) -> str:
+    name = _h(p.get("name", ""))
+    known = _rates_known(p)
+    car = _rupees(p.get("carRate"))
+    truck = _rupees(p.get("truckRate"))
+    rate_line = (f"A single crossing at {name} costs {car} for a car and {truck} for a truck (rates on our record). "
+                 if known else f"Check the rate for your vehicle class on the board at {name}. ")
+    if issue == "fastag-dispute":
+        return (
+            f"<h2>When to raise a FASTag dispute for {name}</h2>"
+            f"<p>{rate_line}Compare it with the amount in your bank's SMS. Common reasons to dispute:</p>"
+            + _ul([
+                "Charged twice for one crossing (double deduction).",
+                "Charged the rate for a bigger vehicle class than the one on your RC.",
+                "Charged at this plaza on a date or time your vehicle did not pass it.",
+                "Charged in cash as well as through FASTag for the same crossing.",
+            ])
+            + "<h2>How to raise it</h2>"
+            + "<ol><li>Keep the deduction SMS: it has the transaction ID, plaza name, date and amount.</li>"
+            f"<li>Raise the dispute with the bank that issued your FASTag (its app, website or helpline), quoting {name} and the transaction ID.</li>"
+            "<li>Note the complaint number the bank gives you and follow up with it.</li>"
+            "<li>If the bank does not resolve it, call the NHAI helpline 1033.</li></ol>"
+        )
+    if issue == "fastag-not-working":
+        return (
+            f"<h2>Why a FASTag may not read at {name}</h2>"
+            + _ul([
+                "Low or negative balance: the tag is blocked until it is recharged.",
+                "Tag blacklisted or hotlisted by the bank, most often because KYC is incomplete or the vehicle details don't match the RC.",
+                "Tag damaged, peeling, or not stuck in the centre of the windscreen behind the rear-view mirror.",
+                "More than one FASTag on the vehicle, or a tag moved from another vehicle.",
+                "A lane reader problem at the plaza itself.",
+            ])
+            + "<h2>What to do at the lane</h2>"
+            + "<ol><li>Check the tag's status with your vehicle number on our <a href=\"/tools/fastag-status\">FASTag status check</a>.</li>"
+            "<li>If the balance is low, recharge (see the recharge guide below); it usually reflects within minutes.</li>"
+            "<li>If the tag is blacklisted, call your issuing bank's helpline and ask why; complete KYC if that is the reason.</li>"
+            "<li>If the tag is active with enough balance, ask the toll staff to scan it with the handheld reader.</li></ol>"
+            "<p>Vehicles without a working FASTag are charged more than the FASTag rate, so fix the tag before the next plaza.</p>"
+        )
+    return (
+        f"<h2>Recharge before you reach {name}</h2>"
+        f"<p>{rate_line}Keep more than that in the wallet so a later plaza on the same trip doesn't block the tag.</p>"
+        + _ul([
+            "Your issuing bank's app or net banking (FASTag section).",
+            "UPI apps that list FASTag under recharge or bill payments.",
+            "Bharat BillPay (BBPS) in most payment apps: choose FASTag, then your bank, then your vehicle number.",
+            "Our <a href=\"/tools/fastag-recharge\">FASTag recharge page</a>.",
+        ])
+        + "<p>If the money left your account but the balance didn't go up after a few hours, "
+        "raise it with the bank using the UPI or payment reference number.</p>"
+    )
+
+
+async def _enrich_plaza_article(doc: dict, plaza: dict, issue: str) -> None:
+    name, city = plaza.get("name", ""), plaza.get("city", "")
+    state_name = plaza.get("state_name") or (plaza.get("state") or "").replace("-", " ").title()
+    near = await _nearby_plazas(plaza, 5)
+    sathis = await _nearest_sathis(plaza.get("lat"), plaza.get("lng"), 1)
+    label = dict(_PLAZA_GUIDES)[issue]
+    known = _rates_known(plaza)
+    hwy = _highway_name(plaza.get("highway"))
+
+    facts = [
+        ("Location", ", ".join(_h(x) for x in [city, state_name] if x) + (f" – PIN {_h(str(plaza['pin_code']))}" if plaza.get("pin_code") else "")),
+        ("Highway / operator", _h(hwy or "—")),
+    ]
+    if known:
+        facts += [("Car, jeep, van (single crossing)", _rupees(plaza.get("carRate"))),
+                  ("Truck / bus (single crossing)", _rupees(plaza.get("truckRate")))]
+    if isinstance(plaza.get("lat"), (int, float)):
+        facts.append(("Coordinates", f"{plaza['lat']:.4f}° N, {plaza['lng']:.4f}° E"))
+    body = (
+        f"<h2>{_h(_plaza_label(name))} at a glance</h2><table>"
+        + "".join(f"<tr><th>{k}</th><td>{v}</td></tr>" for k, v in facts)
+        + ("</table><p>Rates are the latest we hold; confirm the current rate on the board at the plaza. " if known
+           else "</table><p>Check the current rates on the board at the plaza. ")
+        + f"See the <a href=\"/toll/{_h(plaza['slug'])}\">{_h(name)} page</a> for the map.</p>"
+        + _plaza_issue_section(issue, plaza)
+    )
+    if sathis:
+        s = sathis[0]
+        if s["km"] <= 50:
+            body += (f"<h2>On-spot help near {_h(name)}</h2><p>The nearest verified Sathi is "
+                     f"<a href=\"/sathi/{_h(s['slug'])}\">{_h(s['name'])}</a> in {_h(s.get('city') or '')}, {_dist(s['km'])} away.</p>")
+        else:
+            body += (f"<h2>On-spot help near {_h(name)}</h2><p>We don't have a verified Sathi within 50 km of this plaza yet. "
+                     f"The nearest is <a href=\"/sathi/{_h(s['slug'])}\">{_h(s['name'])}</a> in {_h(s.get('city') or '')}, "
+                     f"about {s['km']:.0f} km away. Your bank's helpline and NHAI's 1033 work from anywhere.</p>")
+    if near:
+        body += (f"<h2>Toll plazas near {_h(name)}</h2>"
+                 + _ul(f"<a href=\"/toll/{_h(n['slug'])}\">{_h(n['name'])}</a> – {_h(n.get('city') or '')}, "
+                       f"{_dist(n['km'])}" + (f", car {_rupees(n.get('carRate'))}" if _rates_known(n) else "") for n in near))
+    others = [(k, l) for k, l in _PLAZA_GUIDES if k != issue]
+    body += (f"<h2>More help for {_h(name)}</h2>"
+             + _ul(f"<a href=\"/help/{_h(plaza['slug'])}-{k}\">{l} at {_h(name)}</a>" for k, l in others)
+             + (f"<p>Other plazas in {_h(state_name)}: <a href=\"/state/{_h(plaza['state'])}\">{_h(state_name)} toll plazas</a>.</p>" if plaza.get("state") else ""))
+    doc["body"] = body
+
+    where = ", ".join(x for x in [city, state_name] if x)
+    doc["excerpt"] = (f"{label} help at {_plaza_label(name)}{', ' + where if where else ''}"
+                      + (f" (car {_rupees(plaza.get('carRate'))}, truck {_rupees(plaza.get('truckRate'))} per crossing)" if known else "")
+                      + ": what to check, who to contact, and the nearest toll plazas.")
+    doc["meta_description"] = doc["excerpt"][:158]
+    near_sathi = sathis[0] if sathis else None
+    doc["faq_pairs"] = ([
+        {"q": f"What is the toll for a car at {name}?",
+         "a": f"{_rupees(plaza.get('carRate'))} for a single crossing and {_rupees(plaza.get('truckRate'))} for a truck, as per the latest rates we hold. Check the plaza's rate board for the current rate."},
+    ] if known else []) + [
+        {"q": f"Where is {_plaza_label(name)}?",
+         "a": f"It is near {where}{' (PIN ' + str(plaza['pin_code']) + ')' if plaza.get('pin_code') else ''}, operated under {hwy or 'NHAI'}."},
+        {"q": f"Is there a Sathi at {name}?",
+         "a": (f"Yes, {near_sathi['name']} is {_dist(near_sathi['km'])} away." if near_sathi and near_sathi["km"] <= 50
+               else "Not yet. For now use your FASTag bank's helpline or NHAI's 1033 helpline.")},
+        {"q": "How do I report a FASTag issue at this plaza?",
+         "a": "Keep the deduction SMS (transaction ID, date, amount) and raise it with the bank that issued your FASTag. If it isn't resolved, call NHAI on 1033."},
+    ]
+
+
+async def _enrich_state_article(doc: dict, state: dict) -> None:
+    plazas = await db.plazas.find({"state": state["slug"]}, {"_id": 0, "slug": 1, "name": 1, "city": 1, "highway": 1, "carRate": 1, "truckRate": 1}).to_list(None)
+    sathis = await db.sathis.find({"verified": True, "state": state["slug"]}, {"_id": 0, "slug": 1, "name": 1, "city": 1}).to_list(None)
+    name = state.get("name", "")
+    body = doc.get("body") or ""
+    body = re.sub(r"<h2>Sathi network coverage</h2>(<p>.*?</p>)+", "", body)
+    body = body.replace("<p>Verified Sathis are available at major plazas across the state for on-spot help.</p>", "")
+    body = body.replace("<p>5. A verified Sathi can handle this process for you in under 10 minutes.</p>", "")
+    doc["body"] = body
+    extra = f"<h2>Toll plazas in {_h(name)}</h2>"
+    if plazas:
+        highways = sorted({_highway_name(p.get("highway")) for p in plazas if p.get("highway")} - {"NHAI", ""})
+        extra += (f"<p>We list {len(plazas)} toll plazas in {_h(name)}"
+                  + (f" on {_h(', '.join(highways[:8]))}" if highways else "") + ". A few of them:</p>"
+                  + _ul(f"<a href=\"/toll/{_h(p['slug'])}\">{_h(p['name'])}</a> – {_h(p.get('city') or '')}" + (f", car {_rupees(p.get('carRate'))}" if _rates_known(p) else "")
+                        for p in sorted(plazas, key=lambda p: p.get("name", ""))[:12])
+                  + f"<p>See all on the <a href=\"/state/{_h(state['slug'])}\">{_h(name)} page</a>.</p>")
+    else:
+        extra += f"<p>We don't list toll plazas in {_h(name)} yet.</p>"
+    if sathis:
+        extra += (f"<h2>Verified Sathis in {_h(name)}</h2>"
+                  + _ul(f"<a href=\"/sathi/{_h(s['slug'])}\">{_h(s['name'])}</a> – {_h(s.get('city') or '')}" for s in sathis))
+    else:
+        extra += f"<p>There is no verified Sathi in {_h(name)} yet; your bank's helpline and NHAI's 1033 work statewide.</p>"
+    doc["body"] = (doc.get("body") or "") + extra
+    # The seeded FAQ promised Sathi coverage everywhere; answer from real data instead.
+    for f in doc.get("faq_pairs") or []:
+        if f.get("q", "").startswith("Which toll plazas in"):
+            f["a"] = (f"{len(sathis)} verified Sathi{'s' if len(sathis) != 1 else ''} in {name}: "
+                      + ", ".join(f"{s['name']} ({s.get('city')})" for s in sathis) + "."
+                      if sathis else f"None yet in {name}. Use your bank's helpline or NHAI's 1033.")
+
+
+async def _enrich_bank_article(doc: dict, bank: dict) -> None:
+    name = bank.get("name") or ""
+    rows = []
+    if bank.get("helpline"):
+        rows.append(("Customer care", _h(bank["helpline"])))
+    if bank.get("smsCode"):
+        rows.append(("Balance by SMS", f"Send <strong>{_h(bank['smsCode'])}</strong> from your registered mobile (check the exact format with the bank)"))
+    rows.append(("NHAI helpline", "1033 (24×7)"))
+    doc["body"] = (doc.get("body") or "") + (
+        f"<h2>{_h(name)} contacts</h2><table>"
+        + "".join(f"<tr><th>{k}</th><td>{v}</td></tr>" for k, v in rows)
+        + f"</table><p>More on the <a href=\"/bank/{_h(bank['slug'])}\">{_h(name)} page</a>.</p>"
+    )
+
+
+async def _enrich_article(doc: dict) -> None:
+    slug = doc.get("slug") or ""
+    m = _GUIDE_RE.match(slug)
+    if m:
+        plaza = await db.plazas.find_one({"slug": m["base"]}, {"_id": 0})
+        if plaza:
+            await _enrich_plaza_article(doc, plaza, m["issue"])
+    if doc.get("related_state"):
+        state = await db.states.find_one({"slug": doc["related_state"]}, {"_id": 0})
+        if state and _STATE_GUIDE_RE.match(slug):
+            await _enrich_state_article(doc, state)
+    if doc.get("related_bank"):
+        bank = await db.banks.find_one({"slug": doc["related_bank"]}, {"_id": 0})
+        if bank and bank.get("name"):
+            await _enrich_bank_article(doc, bank)
+    if isinstance(doc.get("body"), str):
+        doc["body"] = doc["body"].replace("Select the option for for and", "Select the matching option and")
+    # Seed text doubled the word in several places ("FASTag FASTag Dispute").
+    for k in ("body", "title", "excerpt", "meta_description"):
+        if isinstance(doc.get(k), str):
+            doc[k] = re.sub(r"\bFASTag\s+FASTag\b", "FASTag", doc[k], flags=re.I)
+
 @help_router.get("")
 async def list_help(
     category: Optional[str] = None,
@@ -846,6 +1142,10 @@ async def get_help_article(slug: str):
     doc = await db.articles.find_one({"slug": slug, "is_published": True}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Article not found")
+    try:
+        await _enrich_article(doc)
+    except Exception as e:  # enrichment is additive — never fail the page because of it
+        logger.warning(f"help enrich failed for {slug}: {e}")
     # Recalculate read_min from actual body word count
     body = doc.get("body", "") or ""
     word_count = len(body.split())
@@ -860,13 +1160,33 @@ plazas_router = APIRouter(prefix="/plazas", tags=["plazas"])
 @plazas_router.get("")
 async def list_plazas(state: Optional[str] = None):
     query = {"state": state} if state else {}
-    return await db.plazas.find(query, {"_id": 0}).to_list(1000)
+    rows = await db.plazas.find(query, {"_id": 0}).to_list(1000)
+    for r in rows:
+        r["ratesKnown"] = _rates_known(r)
+    return rows
+
+@plazas_router.get("/{slug}/nearby")
+async def get_plaza_nearby(slug: str, limit: int = 6):
+    """Nearest plazas and verified Sathis by straight-line distance, plus this plaza's help guides."""
+    doc = await db.plazas.find_one({"slug": slug}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Plaza not found")
+    guides = await db.articles.find(
+        {"slug": {"$in": [f"{slug}-{k}" for k, _ in _PLAZA_GUIDES]}, "is_published": True},
+        {"_id": 0, "slug": 1, "title": 1},
+    ).to_list(10)
+    return {
+        "plazas": await _nearby_plazas(doc, max(1, min(limit, 12))),
+        "sathis": await _nearest_sathis(doc.get("lat"), doc.get("lng"), 3),
+        "guides": guides,
+    }
 
 @plazas_router.get("/{slug}")
 async def get_plaza(slug: str):
     doc = await db.plazas.find_one({"slug": slug}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Plaza not found")
+    doc["ratesKnown"] = _rates_known(doc)
     return doc
 
 # ─── Job routes ───────────────────────────────────────────────────────────────
@@ -4778,7 +5098,8 @@ async def sitemap_states():
 async def sitemap_banks():
     cached = _sitemap_cached("banks")
     if cached: return _sitemap_resp(cached)
-    banks = await db.banks.find({"is_active": {"$ne": False}}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
+    # Only banks with a real record — a slug-only row (bajaj-fastag) has no page to show.
+    banks = await db.banks.find({"is_active": {"$ne": False}, "name": {"$nin": [None, ""]}}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
     xml = _urlset([_url(f"{SITE}/bank/{b['slug']}", "0.80", "monthly", (b.get("updated_at") or "")[:10]) for b in banks])
     _sitemap_store("banks", xml); return _sitemap_resp(xml)
 
