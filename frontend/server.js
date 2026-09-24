@@ -520,6 +520,20 @@ function serveAsset(req, res, pathname) {
   });
 }
 
+// The sitemap index is built from the live article count. The build-time copy depended on
+// the build machine reaching the API; when it couldn't, 1,000 help URLs fell out of the index.
+const SITEMAP_PARTS = ["static", "plazas", "states", "banks", "highways", "cities", "sathis"];
+async function serveSitemapIndex(req, res) {
+  const r = await fetchBackend("/api/help?limit=1");
+  const total = ok(r) ? Number(r.total) : NaN;
+  if (!(total > 0)) { serveAsset(req, res, "/sitemap.xml"); return; }   // backend down: build copy
+  const files = [...SITEMAP_PARTS.map((p) => `sitemap-${p}.xml`),
+                 ...Array.from({ length: Math.ceil(total / 1000) }, (_, i) => `sitemap-help-${i + 1}.xml`)];
+  res.writeHead(200, { "Content-Type": "application/xml", "Cache-Control": "public, max-age=0, must-revalidate" });
+  res.end(`<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`
+    + files.map((f) => `  <sitemap><loc>${SITE}/${f}</loc></sitemap>`).join("\n") + "\n</sitemapindex>");
+}
+
 const ASSET_RE = /\.(js|css|map|json|xml|txt|png|jpe?g|gif|svg|ico|webp|woff2?)$/i;
 
 // ── Server ─────────────────────────────────────────────────────────────────────
@@ -548,7 +562,12 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 2. Files (build assets, robots.txt, sitemap.xml, images)
+  if (pathname === "/sitemap.xml") {
+    await serveSitemapIndex(req, res);
+    return;
+  }
+
+  // 2. Files (build assets, robots.txt, images)
   if (ASSET_RE.test(pathname)) {
     serveAsset(req, res, pathname);
     return;
