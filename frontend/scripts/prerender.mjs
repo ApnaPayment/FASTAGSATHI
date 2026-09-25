@@ -454,7 +454,7 @@ function bodyBlog() {
   </main>`;
 }
 
-function bodyTool(name, desc, steps) {
+function bodyTool(name, desc, steps, extra = "") {
   return `<article style="font-family:sans-serif;max-width:800px;margin:0 auto;padding:40px 20px">
     <h1 style="font-size:2rem;font-weight:900;color:#0A0A0A;margin-bottom:12px">${name}</h1>
     <p style="color:#4B5563;font-size:1.05rem;line-height:1.7;margin-bottom:28px">${desc}</p>
@@ -463,6 +463,7 @@ function bodyTool(name, desc, steps) {
     </div>
     <h2 style="font-size:1.3rem;font-weight:800;margin-bottom:12px">How to use</h2>
     <ol style="color:#374151;line-height:2;padding-left:20px">${steps.map(s=>`<li>${s}</li>`).join("")}</ol>
+    ${extra}
     <p style="color:#4B5563;margin-top:24px">Need help at the toll? <a href="/find" style="color:#FF6B00;font-weight:700">Find a Sathi near you →</a></p>
   </article>`;
 }
@@ -522,7 +523,15 @@ const routes = [
   { path:"/tools/fastag-balance-check", body:bodyTool("FASTag Balance Check — Free Tool for All Banks","Check your FASTag balance instantly for SBI, Paytm, ICICI, HDFC, Axis, Kotak, Yes Bank, and IDFC First. Free, no login required.",["Enter your vehicle number or FASTag ID","Select your bank","Click Check Balance","Balance is displayed instantly"]), head:buildHead({ title:"FASTag balance check — free tool for all banks (SBI, Paytm, ICICI, HDFC)", description:"Check FASTag balance instantly. Works for all 8 FASTag banks. Free, no login.", canonical:`${SITE_URL}/tools/fastag-balance-check`, keywords:"fastag balance check, sbi fastag balance, paytm fastag balance, icici fastag balance, hdfc fastag balance", jsonLd:[webAppSchema("FASTag Balance Checker","Free FASTag balance lookup for all Indian banks",`${SITE_URL}/tools/fastag-balance-check`)] }) },
   { path:"/tools/toll-calculator", body:bodyTool("Toll Calculator India — Estimate Trip Toll for Any Highway","Estimate total toll charges for any highway route in India. Updated 2026 rates for all NHAI plazas.",["Enter your origin city","Enter your destination city","Select vehicle type","See estimated toll charges for the route"]), head:buildHead({ title:"Toll calculator India — estimate trip toll for any highway 2026", description:"Estimate total toll charges for any route in India. Updated 2026 NHAI rates.", canonical:`${SITE_URL}/tools/toll-calculator`, keywords:"toll calculator india, nh48 toll rate, highway toll estimate 2026, road trip toll cost", jsonLd:[webAppSchema("Toll Calculator India","Free highway toll cost estimator India",`${SITE_URL}/tools/toll-calculator`)] }) },
   { path:"/tools/dispute-tracker", body:bodyTool("FASTag Dispute Tracker — Check NHAI Refund Status","Track your FASTag dispute and refund status in real-time using your reference number.",["Enter your dispute reference number","Select the bank or NHAI portal","Click Track Status","See current stage of your dispute"]), head:buildHead({ title:"FASTag dispute tracker — check NHAI refund status real-time", description:"Track FASTag dispute resolution in real-time using your reference number.", canonical:`${SITE_URL}/tools/dispute-tracker`, keywords:"fastag dispute tracker, nhai dispute status, fastag refund status check", jsonLd:[webAppSchema("FASTag Dispute Tracker","Real-time FASTag dispute and refund status tracker",`${SITE_URL}/tools/dispute-tracker`)] }) },
-  { path:"/tools/fastag-status", body:bodyTool("FASTag Status Check — Active, Blacklisted or Blocked?","Check your FASTag tag status instantly using your vehicle number.",["Enter your vehicle number (e.g. MH12AB1234)","Click Check Status","See if your FASTag is Active, Blacklisted, or Inactive","Get recommended action"]), head:buildHead({ title:"FASTag status check — is your tag active, blacklisted or blocked?", description:"Check your FASTag status instantly using vehicle number. Free tool.", canonical:`${SITE_URL}/tools/fastag-status`, keywords:"fastag status check, fastag active or not, fastag blacklist check vehicle number", jsonLd:[webAppSchema("FASTag Status Checker","Check FASTag active/blacklisted/blocked status",`${SITE_URL}/tools/fastag-status`)] }) },
+  { path:"/tools/fastag-status", body:bodyTool("FASTag Status Check — Active, Blacklisted or Blocked?","Check your FASTag tag status instantly using your vehicle number.",["Enter your vehicle number (e.g. MH12AB1234)","Click Check Status","See every FASTag linked to the vehicle, with its bank, class, issue date and status","Follow the suggested next step for any tag that isn't active"], `<h2 style="font-size:1.3rem;font-weight:800;margin:24px 0 12px">What each FASTag status means</h2>
+    <dl style="color:#374151;line-height:1.7">
+      <dt><strong>Active</strong></dt><dd>The tag works at every toll plaza on the FASTag network.</dd>
+      <dt><strong>Low balance</strong></dt><dd>The wallet balance is too low, so tolls fail. Recharge the tag and it works again within minutes.</dd>
+      <dt><strong>Blacklisted</strong></dt><dd>The issuing bank has blocked the tag, most often for pending KYC or vehicle details that don't match the RC.</dd>
+      <dt><strong>Hotlisted</strong></dt><dd>The tag has been flagged by the bank, for example after a complaint or a dispute. Call the issuing bank to reactivate it.</dd>
+      <dt><strong>Closed / replaced</strong></dt><dd>The tag was closed or replaced with a new one and no longer works.</dd>
+      <dt><strong>More than one active tag</strong></dt><dd>NHAI's One Vehicle One FASTag rule allows a single active tag per vehicle. Ask the bank of the older tag to close it.</dd>
+    </dl>`), head:buildHead({ title:"FASTag status check by vehicle number — active, blacklisted or low balance?", description:"Free FASTag status check by vehicle number: see every tag on the vehicle, its bank, class and whether it is active, low balance, blacklisted or closed.", canonical:`${SITE_URL}/tools/fastag-status`, keywords:"fastag status check, fastag active or not, fastag blacklist check vehicle number", jsonLd:[webAppSchema("FASTag Status Checker","Check FASTag active/blacklisted/blocked status",`${SITE_URL}/tools/fastag-status`)] }) },
 
   // Plazas
   ...PLAZAS.map(p => {

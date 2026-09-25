@@ -10,7 +10,6 @@ from typing import List, Optional, Literal
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import asyncio, os, uuid, logging, random, shutil, httpx, re, json, hmac, hashlib, base64, time
-from bs4 import BeautifulSoup
 from sse_starlette.sse import EventSourceResponse
 try:
     from google.oauth2 import id_token as _google_id_token
@@ -4374,58 +4373,145 @@ async def check_application(phone: str, current: dict = Depends(_require_user)):
 
 tools_router = APIRouter(prefix="/tools", tags=["tools"])
 
-APNA_BASE = "https://www.apnapayment.com"
-UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
+
+# ─── FASTag status (NPCI, via GV Partner's IDFC verifyNpciStatus) ────────────
+# Runs on the same host as GV Partner, so the call stays local. The reply carries
+# customer and bank-account identifiers; only public tag facts leave this function.
+# Public traffic is capped: 30-min cache per vehicle, per-visitor limits, daily cap.
+
+from collections import deque as _deque
+
+GVP_NPCI_URL  = os.environ.get("GVP_NPCI_URL", "https://127.0.0.1/api/agent/idfc/verifyNpciStatus")
+GVP_NPCI_HOST = os.environ.get("GVP_NPCI_HOST", "www.apnapayment.com")
+NPCI_DAILY_CAP = int(os.environ.get("NPCI_DAILY_CAP", "20000"))
+_NPCI_TTL, _NPCI_NEG_TTL = 1800, 600
+_NPCI_PER_HOUR, _NPCI_PER_DAY = 20, 60
+_npci_cache: dict = {}
+_npci_hits: dict = {}
+_npci_day = {"day": "", "count": 0}
+_VRN_RE = re.compile(r"^([A-Z]{2}\d{1,2}[A-Z]{0,3}\d{1,4}|\d{2}BH\d{4}[A-Z]{1,2})$")
+
+# NPCI issuer codes (same list GV Partner uses in Website/Common.php)
+_NPCI_BANKS = {
+    "607422": "Canara Bank", "607469": "Kotak Mahindra Bank", "607529": "Axis Bank", "607569": "Airtel Payments Bank",
+    "608001": "Fino Payments Bank", "608032": "Paytm Payments Bank", "608116": "IDFC First Bank", "652151": "Bank of Baroda",
+    "652402": "Equitas Small Finance Bank", "607318": "HDFC Bank", "607417": "ICICI Bank", "606986": "State Bank of India",
+    "652210": "Yes Bank", "607189": "IndusInd Bank", "607095": "IDBI Bank", "608268": "Bajaj Finance", "608362": "LivQuik",
+}
+_ONE_TAG_RULE = ("More than one FASTag is active on this vehicle. Under NHAI's One Vehicle One FASTag rule only one "
+                 "tag should stay active; ask the bank of the older tag to close it.")
+
+
+def _normalise_vrn(vehicle: str) -> str:
+    v = re.sub(r"[\s-]", "", (vehicle or "").upper())
+    if not _VRN_RE.match(v):
+        raise HTTPException(status_code=400, detail="Enter a valid vehicle number, e.g. MH12AB1234")
+    return v
+
+
+def _npci_client_ip(request: Request) -> str:
+    # Origin only accepts Cloudflare, so its client-IP header can be trusted here.
+    return request.headers.get("cf-connecting-ip") or (request.client.host if request.client else "unknown")
+
+
+def _npci_allow(ip: str) -> None:
+    now = time.time()
+    q = _npci_hits.setdefault(ip, _deque())
+    while q and now - q[0] > 86400:
+        q.popleft()
+    if len(q) >= _NPCI_PER_DAY or sum(1 for t in q if now - t < 3600) >= _NPCI_PER_HOUR:
+        raise HTTPException(status_code=429, detail="Too many checks from your connection. Please try again in a while.")
+    q.append(now)
+    if len(_npci_hits) > 50000:  # drop idle visitors so memory stays bounded
+        for k in [k for k, v in _npci_hits.items() if not v or now - v[-1] > 86400]:
+            _npci_hits.pop(k, None)
+
+
+def _tag_view(t: dict) -> dict:
+    exc = str(t.get("EXCCODE") or "").strip()
+    reason = (t.get("npci_ExcCode") or "").strip()
+    if reason.isdigit():  # sometimes a bare NPCI code instead of text
+        reason = ""
+    live = str(t.get("TAGSTATUS") or "").upper() == "A"
+    r = reason.lower()
+    if live and exc == "00":
+        status, advice = "Active", ""
+    elif "low balance" in r or exc == "03":
+        status, advice = "Low balance", "Recharge this tag; it works again within minutes of the balance going above zero."
+    elif "blacklist" in r or exc == "05":
+        status, advice = "Blacklisted", "Call the issuing bank. The usual causes are pending KYC or vehicle details that don't match the RC."
+    elif "hotlist" in r or exc == "01":
+        status, advice = "Hotlisted", "Call the issuing bank to find out why the tag was hotlisted and how to reactivate it."
+    elif "clos" in r or "replac" in r or exc == "06":
+        status, advice = "Closed / replaced", "This tag no longer works. Only the vehicle's current tag can be used."
+    else:
+        status, advice = (reason or ("Active" if live else "Inactive")), "Contact the issuing bank for details."
+    bank_id = str(t.get("BANKID") or "")
+    return {
+        "bank": _NPCI_BANKS.get(bank_id, f"Bank code {bank_id}" if bank_id else "Unknown"),
+        "tag_id": t.get("TAGID") or "",
+        "vehicle_class": t.get("VEHICLECLASS") or t.get("cch") or "",
+        "vehicle_type": t.get("tvc") or "",
+        "issue_date": t.get("ISSUEDATE") or t.get("issDt") or "",
+        "commercial": str(t.get("COMVEHICLE") or "").upper() == "T",
+        "status": status,
+        "reason": reason,
+        "advice": advice,
+        "is_active": status == "Active",
+        "rechargeable": live and status not in ("Closed / replaced",),
+    }
+
+
+def _issue_key(t: dict):
+    try:
+        d, m, y = t["issue_date"].split("-")
+        return int(y) * 10000 + int(m) * 100 + int(d)
+    except Exception:
+        return 0
+
+
+async def _npci_lookup(vehicle: str, request: Request) -> dict:
+    vrn = _normalise_vrn(vehicle)
+    now = time.time()
+    hit = _npci_cache.get(vrn)
+    if hit and now < hit[0]:
+        return hit[1]
+
+    _npci_allow(_npci_client_ip(request))
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if _npci_day["day"] != today:
+        _npci_day.update(day=today, count=0)
+    if _npci_day["count"] >= NPCI_DAILY_CAP:
+        raise HTTPException(status_code=503, detail="Status checks are busy right now. Please try again later.")
+    _npci_day["count"] += 1
+
+    try:
+        async with httpx.AsyncClient(timeout=20, verify=False) as client:
+            r = await client.post(GVP_NPCI_URL, data={"vrn": vrn, "tagId": ""}, headers={"Host": GVP_NPCI_HOST, "Accept": "application/json"})
+        data = r.json()
+    except Exception as e:
+        logger.warning(f"npci lookup failed for {vrn}: {e}")
+        raise HTTPException(status_code=502, detail="Could not reach the FASTag network. Please try again.")
+
+    first = data[0] if isinstance(data, list) and data else data if isinstance(data, dict) else {}
+    rows = first.get("NPCIVehicleDetails") if isinstance(first, dict) else None
+    if str(first.get("STATUS", "")).lower() != "success" or not isinstance(rows, list):
+        payload, ttl = {"vehicle": vrn, "tags": [], "warnings": []}, _NPCI_NEG_TTL
+    else:
+        tags = [_tag_view(t) for t in rows if isinstance(t, dict) and t.get("TAGID")]
+        tags.sort(key=lambda t: (not t["is_active"], not t["rechargeable"], -_issue_key(t)))
+        warnings = [_ONE_TAG_RULE] if sum(1 for t in tags if t["rechargeable"]) > 1 else []
+        payload, ttl = {"vehicle": vrn, "tags": tags, "warnings": warnings}, _NPCI_TTL
+    if len(_npci_cache) > 20000:
+        for k in [k for k, v in _npci_cache.items() if v[0] < now]:
+            _npci_cache.pop(k, None)
+    _npci_cache[vrn] = (now + ttl, payload)
+    return payload
+
 
 @tools_router.get("/fastag-status")
-async def fastag_status(vehicle: str):
-    vehicle = vehicle.strip().upper().replace(" ", "")
-    if not re.match(r"^[A-Z]{2}\d{1,2}[A-Z]{1,3}\d{1,4}$", vehicle):
-        raise HTTPException(status_code=400, detail="Invalid vehicle number format")
-    try:
-        async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
-            # Step 1: GET the page to obtain CSRF token + session cookies
-            r1 = await client.get(f"{APNA_BASE}/fastagstatus", headers={"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9"})
-            soup1 = BeautifulSoup(r1.text, "html.parser")
-            token_input = soup1.find("input", {"name": "_token"})
-            if not token_input:
-                raise HTTPException(status_code=502, detail="Could not fetch CSRF token from upstream")
-            csrf = token_input["value"]
-            cookies = dict(r1.cookies)
-
-            # Step 2: POST with vehicle number
-            r2 = await client.post(
-                f"{APNA_BASE}/fetchDataFromAPI",
-                data={"_token": csrf, "vehicle_number": vehicle},
-                cookies=cookies,
-                headers={"User-Agent": UA, "Referer": f"{APNA_BASE}/fastagstatus", "Accept-Language": "en-US,en;q=0.9"},
-            )
-            soup2 = BeautifulSoup(r2.text, "html.parser")
-            rows = soup2.select("tbody tr")
-            results = []
-            for row in rows:
-                cells = row.find_all(["th", "td"])
-                if len(cells) < 6:
-                    continue
-                status_cell = cells[5]
-                status_text = status_cell.get_text(strip=True)
-                status_bg = ""
-                div = status_cell.find("div")
-                if div and div.get("style"):
-                    m = re.search(r"background:\s*([^;]+)", div["style"])
-                    if m: status_bg = m.group(1).strip()
-                is_active = "active" in status_text.lower() or status_bg == "#b7edc5"
-                results.append({
-                    "bank":       cells[1].get_text(strip=True),
-                    "tag_id":     cells[2].get_text(strip=True),
-                    "vehicle_class": cells[3].get_text(strip=True),
-                    "issue_date": cells[4].get_text(strip=True),
-                    "status":     "Active" if is_active else status_text or "Inactive",
-                    "is_active":  is_active,
-                })
-            return {"vehicle": vehicle, "tags": results}
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail=f"Upstream error: {str(e)}")
+async def fastag_status(vehicle: str, request: Request):
+    return await _npci_lookup(vehicle, request)
 
 
 # ─── FASTag Recharge (NETC UPI) ───────────────────────────────────────────────
@@ -4480,66 +4566,24 @@ async def recharge_banks():
 
 
 @tools_router.get("/recharge/tag-info")
-async def recharge_tag_info(vehicle: str):
+async def recharge_tag_info(vehicle: str, request: Request):
     """
-    Fetches FASTag tag ID for a vehicle and auto-matches the NETC bank.
-    Returns everything needed to build the UPI payment string on the frontend:
-      netc.{tag_id}@{bank_upi}
+    FASTag tag ID for a vehicle, auto-matched to its NETC bank. Returns everything needed
+    to build the UPI payment string on the frontend: netc.{tag_id}@{bank_upi}
     """
-    vehicle = vehicle.strip().upper().replace(" ", "")
-    if not re.match(r"^[A-Z]{2}\d{1,2}[A-Z]{1,3}\d{1,4}$", vehicle):
-        raise HTTPException(status_code=400, detail="Invalid vehicle number format")
-    try:
-        async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
-            r1 = await client.get(f"{APNA_BASE}/fastagstatus",
-                                  headers={"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9"})
-            soup1 = BeautifulSoup(r1.text, "html.parser")
-            token_input = soup1.find("input", {"name": "_token"})
-            if not token_input:
-                raise HTTPException(status_code=502, detail="Could not fetch CSRF token from upstream")
-            csrf = token_input["value"]
-            cookies = dict(r1.cookies)
-
-            r2 = await client.post(
-                f"{APNA_BASE}/fetchDataFromAPI",
-                data={"_token": csrf, "vehicle_number": vehicle},
-                cookies=cookies,
-                headers={"User-Agent": UA, "Referer": f"{APNA_BASE}/fastagstatus",
-                         "Accept-Language": "en-US,en;q=0.9"},
-            )
-            soup2 = BeautifulSoup(r2.text, "html.parser")
-            rows = soup2.select("tbody tr")
-            tags = []
-            for row in rows:
-                cells = row.find_all(["th", "td"])
-                if len(cells) < 6:
-                    continue
-                bank_name = cells[1].get_text(strip=True)
-                tag_id    = cells[2].get_text(strip=True)
-                status_text = cells[5].get_text(strip=True)
-                div = cells[5].find("div")
-                status_bg = ""
-                if div and div.get("style"):
-                    m = re.search(r"background:\s*([^;]+)", div["style"])
-                    if m: status_bg = m.group(1).strip()
-                is_active = "active" in status_text.lower() or status_bg == "#b7edc5"
-
-                netc_bank = await _match_netc_bank(bank_name)
-                tags.append({
-                    "bank":         bank_name,
-                    "tag_id":       tag_id,
-                    "vehicle_class": cells[3].get_text(strip=True),
-                    "status":       "Active" if is_active else status_text or "Inactive",
-                    "is_active":    is_active,
-                    # Pre-matched NETC bank for UPI intent
-                    "netc_upi":     netc_bank["upi"]  if netc_bank else None,
-                    "netc_name":    netc_bank["name"] if netc_bank else None,
-                    # Ready-to-use UPI VPA (just add amount on frontend)
-                    "upi_vpa":      f"netc.{tag_id}@{netc_bank['upi']}" if netc_bank and tag_id else None,
-                })
-            return {"vehicle": vehicle, "tags": tags}
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail=f"Upstream error: {str(e)}")
+    res = await _npci_lookup(vehicle, request)
+    tags = []
+    for t in res["tags"]:
+        netc_bank = await _match_netc_bank(t["bank"])
+        tags.append({
+            **t,
+            # Pre-matched NETC bank for UPI intent
+            "netc_upi":  netc_bank["upi"]  if netc_bank else None,
+            "netc_name": netc_bank["name"] if netc_bank else None,
+            # Ready-to-use UPI VPA (just add amount on frontend); closed tags can't be recharged
+            "upi_vpa":   f"netc.{t['tag_id']}@{netc_bank['upi']}" if netc_bank and t["tag_id"] and t["rechargeable"] else None,
+        })
+    return {"vehicle": res["vehicle"], "tags": tags, "warnings": res["warnings"]}
 
 
 # ─── Admin: NETC Banks CRUD ────────────────────────────────────────────────────
