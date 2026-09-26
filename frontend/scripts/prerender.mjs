@@ -419,7 +419,42 @@ function bodyCity(c) {
   </article>`;
 }
 
-function bodyTool(name, desc, steps) {
+// Pages with no hand-written SSG body still get their heading, summary and plain links in the
+// HTML, so crawlers never see an empty page. Coverage and Help Center list what they link to.
+const LINK = (href, text) => `<a href="${href}" style="color:#FF6B00">${esc(text)}</a>`;
+function bodyGeneric(route, head) {
+  const title = ((head.match(/<title>([^<]*)<\/title>/) || [])[1] || "ApnaFastag").replace(/ · ApnaFastag$/, "");
+  const desc  = (head.match(/<meta name="description" content="([^"]*)"/) || [])[1] || "";
+  let extra = "";
+  if (route === "/coverage") {
+    extra = `<h2>States</h2><ul>${STATES.map(s => `<li>${LINK(`/state/${s.slug}`, s.name)}</li>`).join("")}</ul>
+    <h2>Highways</h2><ul>${HIGHWAYS.map(h => `<li>${LINK(`/highway/${h.slug}`, h.fullName)}</li>`).join("")}</ul>
+    <h2>Cities</h2><ul>${CITIES.map(c => `<li>${LINK(`/city/${c.slug}`, c.name)}</li>`).join("")}</ul>`;
+  } else if (route === "/help") {
+    extra = `<h2>FASTag banks</h2><ul>${BANKS.map(b => `<li>${LINK(`/bank/${b.slug}`, b.name)}</li>`).join("")}</ul>
+    <h2>Popular guides</h2><ul>${HELP_SLUGS.map(h => `<li>${LINK(`/help/${h}`, h.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()))}</li>`).join("")}</ul>`;
+  }
+  return `<main style="font-family:sans-serif;max-width:800px;margin:0 auto;padding:40px 20px">
+    <nav style="font-size:.85rem;color:#9CA3AF;margin-bottom:20px">${LINK("/", "Home")} › <span>${title}</span></nav>
+    <h1 style="font-size:2rem;font-weight:900;color:#0A0A0A;margin-bottom:12px">${title}</h1>
+    <p style="color:#4B5563;font-size:1.05rem;line-height:1.7">${desc}</p>
+    ${extra}
+    <p>${LINK("/find", "Find a Sathi")} · ${LINK("/help", "Help Center")} · ${LINK("/coverage", "Coverage")} · ${LINK("/tools/fastag-status", "FASTag status check")}</p>
+  </main>`;
+}
+
+function bodyBlog() {
+  return `<main style="font-family:sans-serif;max-width:800px;margin:0 auto;padding:40px 20px">
+    <nav style="font-size:.85rem;color:#9CA3AF;margin-bottom:20px"><a href="/" style="color:#FF6B00">Home</a> › <span>Blog</span></nav>
+    <h1 style="font-size:2rem;font-weight:900;color:#0A0A0A;margin-bottom:12px">ApnaFastag Blog — FASTag fixes, toll rates &amp; Sathi guides</h1>
+    <ul style="line-height:2;padding-left:20px">
+      ${BLOG_POSTS.map(p => `<li><a href="/blog/${p.slug}" style="color:#FF6B00">${esc(p.title)}</a> — ${esc(p.excerpt || "")}</li>`).join("\n      ")}
+    </ul>
+    <p><a href="/help" style="color:#FF6B00">FASTag Help Center →</a></p>
+  </main>`;
+}
+
+function bodyTool(name, desc, steps, extra = "") {
   return `<article style="font-family:sans-serif;max-width:800px;margin:0 auto;padding:40px 20px">
     <h1 style="font-size:2rem;font-weight:900;color:#0A0A0A;margin-bottom:12px">${name}</h1>
     <p style="color:#4B5563;font-size:1.05rem;line-height:1.7;margin-bottom:28px">${desc}</p>
@@ -428,6 +463,7 @@ function bodyTool(name, desc, steps) {
     </div>
     <h2 style="font-size:1.3rem;font-weight:800;margin-bottom:12px">How to use</h2>
     <ol style="color:#374151;line-height:2;padding-left:20px">${steps.map(s=>`<li>${s}</li>`).join("")}</ol>
+    ${extra}
     <p style="color:#4B5563;margin-top:24px">Need help at the toll? <a href="/find" style="color:#FF6B00;font-weight:700">Find a Sathi near you →</a></p>
   </article>`;
 }
@@ -474,7 +510,7 @@ const routes = [
   { path:"/become-a-sathi",head:buildHead({ title:"Become a FASTag Sathi — earn ₹25k–₹60k/month at your toll", description:"Join India's fastest-growing toll plaza network. Verify once, earn every day resolving FASTag issues.", canonical:`${SITE_URL}/become-a-sathi`, keywords:"become fastag sathi, fastag agent income, toll plaza job" }) },
   { path:"/coverage",      head:buildHead({ title:"Coverage — 700+ toll plazas across India with verified Sathis", canonical:`${SITE_URL}/coverage` }) },
   { path:"/about",         head:buildHead({ title:"About ApnaFastag — built by drivers, for drivers", canonical:`${SITE_URL}/about` }) },
-  { path:"/blog",          head:buildHead({ title:"Blog — FASTag fixes, toll rates, Sathi guides", canonical:`${SITE_URL}/blog` }) },
+  { path:"/blog",          head:buildHead({ title:"Blog — FASTag fixes, toll rates, Sathi guides", description:"Articles on FASTag disputes, toll rates, KYC and life at the toll plaza from the ApnaFastag team.", canonical:`${SITE_URL}/blog` }), body:bodyBlog() },
   { path:"/help",          head:buildHead({ title:"FASTag Help Center — 1000+ guides & answers", description:"Every FASTag question answered — disputes, blacklist, KYC, recharge, balance check. All 8 banks, all states.", canonical:`${SITE_URL}/help`, keywords:"fastag help, fastag faq, fastag guide, fastag problems solutions" }) },
   { path:"/contact",       head:buildHead({ title:"Contact ApnaFastag", canonical:`${SITE_URL}/contact` }) },
   { path:"/careers",       head:buildHead({ title:"Careers — build India's toll rescue layer", canonical:`${SITE_URL}/careers` }) },
@@ -487,7 +523,15 @@ const routes = [
   { path:"/tools/fastag-balance-check", body:bodyTool("FASTag Balance Check — Free Tool for All Banks","Check your FASTag balance instantly for SBI, Paytm, ICICI, HDFC, Axis, Kotak, Yes Bank, and IDFC First. Free, no login required.",["Enter your vehicle number or FASTag ID","Select your bank","Click Check Balance","Balance is displayed instantly"]), head:buildHead({ title:"FASTag balance check — free tool for all banks (SBI, Paytm, ICICI, HDFC)", description:"Check FASTag balance instantly. Works for all 8 FASTag banks. Free, no login.", canonical:`${SITE_URL}/tools/fastag-balance-check`, keywords:"fastag balance check, sbi fastag balance, paytm fastag balance, icici fastag balance, hdfc fastag balance", jsonLd:[webAppSchema("FASTag Balance Checker","Free FASTag balance lookup for all Indian banks",`${SITE_URL}/tools/fastag-balance-check`)] }) },
   { path:"/tools/toll-calculator", body:bodyTool("Toll Calculator India — Estimate Trip Toll for Any Highway","Estimate total toll charges for any highway route in India. Updated 2026 rates for all NHAI plazas.",["Enter your origin city","Enter your destination city","Select vehicle type","See estimated toll charges for the route"]), head:buildHead({ title:"Toll calculator India — estimate trip toll for any highway 2026", description:"Estimate total toll charges for any route in India. Updated 2026 NHAI rates.", canonical:`${SITE_URL}/tools/toll-calculator`, keywords:"toll calculator india, nh48 toll rate, highway toll estimate 2026, road trip toll cost", jsonLd:[webAppSchema("Toll Calculator India","Free highway toll cost estimator India",`${SITE_URL}/tools/toll-calculator`)] }) },
   { path:"/tools/dispute-tracker", body:bodyTool("FASTag Dispute Tracker — Check NHAI Refund Status","Track your FASTag dispute and refund status in real-time using your reference number.",["Enter your dispute reference number","Select the bank or NHAI portal","Click Track Status","See current stage of your dispute"]), head:buildHead({ title:"FASTag dispute tracker — check NHAI refund status real-time", description:"Track FASTag dispute resolution in real-time using your reference number.", canonical:`${SITE_URL}/tools/dispute-tracker`, keywords:"fastag dispute tracker, nhai dispute status, fastag refund status check", jsonLd:[webAppSchema("FASTag Dispute Tracker","Real-time FASTag dispute and refund status tracker",`${SITE_URL}/tools/dispute-tracker`)] }) },
-  { path:"/tools/fastag-status", body:bodyTool("FASTag Status Check — Active, Blacklisted or Blocked?","Check your FASTag tag status instantly using your vehicle number.",["Enter your vehicle number (e.g. MH12AB1234)","Click Check Status","See if your FASTag is Active, Blacklisted, or Inactive","Get recommended action"]), head:buildHead({ title:"FASTag status check — is your tag active, blacklisted or blocked?", description:"Check your FASTag status instantly using vehicle number. Free tool.", canonical:`${SITE_URL}/tools/fastag-status`, keywords:"fastag status check, fastag active or not, fastag blacklist check vehicle number", jsonLd:[webAppSchema("FASTag Status Checker","Check FASTag active/blacklisted/blocked status",`${SITE_URL}/tools/fastag-status`)] }) },
+  { path:"/tools/fastag-status", body:bodyTool("FASTag Status Check — Active, Blacklisted or Blocked?","Check your FASTag tag status instantly using your vehicle number.",["Enter your vehicle number (e.g. MH12AB1234)","Click Check Status","See every FASTag linked to the vehicle, with its bank, class, issue date and status","Follow the suggested next step for any tag that isn't active"], `<h2 style="font-size:1.3rem;font-weight:800;margin:24px 0 12px">What each FASTag status means</h2>
+    <dl style="color:#374151;line-height:1.7">
+      <dt><strong>Active</strong></dt><dd>The tag works at every toll plaza on the FASTag network.</dd>
+      <dt><strong>Low balance</strong></dt><dd>The wallet balance is too low, so tolls fail. Recharge the tag and it works again within minutes.</dd>
+      <dt><strong>Blacklisted</strong></dt><dd>The issuing bank has blocked the tag, most often for pending KYC or vehicle details that don't match the RC.</dd>
+      <dt><strong>Hotlisted</strong></dt><dd>The tag has been flagged by the bank, for example after a complaint or a dispute. Call the issuing bank to reactivate it.</dd>
+      <dt><strong>Closed / replaced</strong></dt><dd>The tag was closed or replaced with a new one and no longer works.</dd>
+      <dt><strong>More than one active tag</strong></dt><dd>NHAI's One Vehicle One FASTag rule allows a single active tag per vehicle. Ask the bank of the older tag to close it.</dd>
+    </dl>`), head:buildHead({ title:"FASTag status check by vehicle number — active, blacklisted or low balance?", description:"Free FASTag status check by vehicle number: see every tag on the vehicle, its bank, class and whether it is active, low balance, blacklisted or closed.", canonical:`${SITE_URL}/tools/fastag-status`, keywords:"fastag status check, fastag active or not, fastag blacklist check vehicle number", jsonLd:[webAppSchema("FASTag Status Checker","Check FASTag active/blacklisted/blocked status",`${SITE_URL}/tools/fastag-status`)] }) },
 
   // Plazas
   ...PLAZAS.map(p => {
@@ -508,7 +552,12 @@ const routes = [
   ...CITIES.map(c => ({ path:`/city/${c.slug}`, body:bodyCity(c), head:buildHead({ title:`FASTag help in ${c.name} — ${c.sathiCount}+ verified Sathis at toll plazas`, description:`${c.sathiCount}+ verified FASTag Sathis across ${c.plazaCount} toll plazas in ${c.name}, ${c.state}. Resolve disputes, blacklist, KYC in under 8 minutes.`, canonical:`${SITE_URL}/city/${c.slug}`, keywords:`fastag help ${c.name}, fastag sathi ${c.name}, toll plaza ${c.name} fastag, fastag dispute ${c.name}` }) })),
 
   // Blog posts
-  ...BLOG_POSTS.map(post => ({ path:`/blog/${post.slug}`, head:buildHead({ title:post.title, description:post.excerpt, canonical:`${SITE_URL}/blog/${post.slug}`, image:DEFAULT_IMG, jsonLd:[articleSchema(post), breadcrumb([{name:"Blog",url:`${SITE_URL}/blog`},{name:post.title,url:`${SITE_URL}/blog/${post.slug}`}])] }) })),
+  ...BLOG_POSTS.map(post => ({ path:`/blog/${post.slug}`, body:`<article style="font-family:sans-serif;max-width:800px;margin:0 auto;padding:40px 20px">
+    <nav style="font-size:.85rem;color:#9CA3AF;margin-bottom:20px"><a href="/" style="color:#FF6B00">Home</a> › <a href="/blog" style="color:#FF6B00">Blog</a> › <span>${esc(post.title)}</span></nav>
+    <h1 style="font-size:2rem;font-weight:900;color:#0A0A0A;margin-bottom:12px">${esc(post.title)}</h1>
+    <p style="color:#4B5563;font-size:1.05rem;line-height:1.7">${esc(post.excerpt || "")}</p>
+    <p><a href="/blog" style="color:#FF6B00">All posts</a> · <a href="/help" style="color:#FF6B00">FASTag Help Center</a></p>
+  </article>`, head:buildHead({ title:post.title, description:post.excerpt, canonical:`${SITE_URL}/blog/${post.slug}`, image:DEFAULT_IMG, jsonLd:[articleSchema(post), breadcrumb([{name:"Blog",url:`${SITE_URL}/blog`},{name:post.title,url:`${SITE_URL}/blog/${post.slug}`}])] }) })),
 
   // Sathi profiles
   ...SATHIS.map(s => ({ path:`/sathi/${s.slug}`, head:buildHead({ title:`${s.name} — Verified FASTag Sathi at ${s.plaza}, ${s.city}`, description:`${s.name} is a verified FASTag Sathi at ${s.plaza}, ${s.city}, ${s.state}. Rated ${s.rating}/5 from ${s.rc} reviews.`, canonical:`${SITE_URL}/sathi/${s.slug}`, keywords:`fastag sathi ${s.city}, fastag help ${s.plaza}, ${s.name} fastag`, jsonLd:[sathiSchema(s)] }) })),
@@ -552,7 +601,7 @@ async function emit() {
   // safe to include — tiny strings, cached by the browser, preload-able.
   let brandingSnippet = "";
   try {
-    const backendUrl = process.env.REACT_APP_BACKEND_URL || "https://fastagsathi-production.up.railway.app";
+    const backendUrl = process.env.REACT_APP_BACKEND_URL || "https://apnafastag.com";
     const res = await fetch(`${backendUrl}/api/branding`, { signal: AbortSignal.timeout(8000) });
     if (res.ok) {
       const d = await res.json();
@@ -564,6 +613,10 @@ async function emit() {
       }
       if (d.favicon_url && d.favicon_url.startsWith("/")) {
         d.favicon_url = `${backendUrl}${d.favicon_url}`;
+      }
+      // Railway was retired on 2026-09-23 — never bake its dead image URLs into pages.
+      for (const k of ["logo_url", "favicon_url"]) {
+        if (d[k]) d[k] = d[k].replace(/^https?:\/\/[^/]*\.railway\.app/, "https://apnafastag.com");
       }
       // Escape </script> sequences to prevent HTML injection.
       const json = JSON.stringify(d).replace(/<\//g, "<\\/");
@@ -580,15 +633,18 @@ async function emit() {
     console.log(`⚠  Branding fetch skipped (${e.message}) — pages will load branding via API on first visit`);
   }
 
+  // Page-less shell (branding, no page head, empty root) for pages server.js renders itself.
+  fs.writeFileSync(path.join(BUILD_DIR, "shell.html"),
+    brandingSnippet ? template.replace(/<\/head>/i, `${brandingSnippet}\n  </head>`) : template);
+
   let count = 0;
   for (const { path: route, head, body } of routes) {
     // Inject branding snippet + head meta right before </head>
     const headWithBranding = brandingSnippet ? `${brandingSnippet}\n${head}` : head;
     let html = template.replace(/<\/head>/i, `${headWithBranding}\n  </head>`);
     // Inject body content for all crawlers (SSG body)
-    if (body) {
-      html = html.replace('<div id="root"></div>', `<div id="root" data-ssg="1">${body}</div>`);
-    }
+    const pageBody = body || bodyGeneric(route, head);
+    html = html.replace('<div id="root"></div>', () => `<div id="root" data-ssg="1">${pageBody}</div>`);
     if (route === "/") {
       fs.writeFileSync(path.join(BUILD_DIR, "index.html"), html);
     } else {
@@ -603,7 +659,7 @@ async function emit() {
   // Clean URLs: /sitemap-banks.xml  NOT /api/sitemap-banks.xml
   // No proxy needed — server.js serves them straight from build/.
 
-  const backendUrl = process.env.REACT_APP_BACKEND_URL || "https://fastagsathi-production.up.railway.app";
+  const backendUrl = process.env.REACT_APP_BACKEND_URL || "https://apnafastag.com";
 
   // 1. Static core pages + blog
   const staticEntries = [

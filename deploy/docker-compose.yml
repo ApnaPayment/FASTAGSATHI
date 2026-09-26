@@ -1,0 +1,48 @@
+# ApnaFastag production stack — single EC2 host
+#
+#   caddy (:80/:443, TLS) → frontend (server.js :8080) → backend (uvicorn :8000)
+#                                                          └─ /api and /uploads
+#
+# Usage:  cp .env.example .env   (fill in production values)
+#         docker compose up -d --build
+services:
+  backend:
+    build: ../backend
+    env_file: .env
+    volumes:
+      - uploads:/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://localhost:8000/api/banks', timeout=5)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build: ../frontend
+    environment:
+      PORT: 8080
+      BACKEND_HOST: backend
+      BACKEND_PORT: 8000
+      BACKEND_SCHEME: http
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+    restart: unless-stopped
+
+volumes:
+  uploads:
+  caddy_data:
+  caddy_config:

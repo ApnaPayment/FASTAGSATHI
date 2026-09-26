@@ -119,8 +119,7 @@ export function BrandingProvider({ children }) {
 
   const fetchBranding = async () => {
     try {
-      const base = process.env.REACT_APP_BACKEND_URL || "";
-      const res = await fetch(`${base}/api/branding`);
+      const res = await fetch(`/api/branding`);
       if (!res.ok) throw new Error("branding fetch failed");
       const d = await res.json();
       const mapped = mapApiToContext(d);

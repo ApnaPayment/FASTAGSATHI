@@ -12,7 +12,7 @@ export default function BankPage() {
   const bank = BANKS.find((b) => b.slug === bankSlug);
   useEffect(() => { if (bank) { track("bank_view", { bank: bank.slug }); document.title = `${bank.name} · balance check, helpline & dispute help`; } }, [bank]);
 
-  if (!bank) return <section className="pt-40 pb-32 text-center"><h1 className="font-display font-black text-4xl">Bank not found</h1></section>;
+  if (!bank) return <section className="pt-40 pb-32 text-center"><SEO title="Bank not found · ApnaFastag" description="This bank page does not exist." path={`/bank/${bankSlug}`} noindex /><h1 className="font-display font-black text-4xl">Bank not found</h1></section>;
 
   return (
     <>

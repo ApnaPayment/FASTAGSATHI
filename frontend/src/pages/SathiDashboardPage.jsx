@@ -33,7 +33,7 @@ const ALL_LANGS = ["Hindi","English","Marathi","Tamil","Kannada","Telugu","Benga
 const DAYS = ["mon","tue","wed","thu","fri","sat","sun"];
 const DAY_LABELS = { mon:"Mon",tue:"Tue",wed:"Wed",thu:"Thu",fri:"Fri",sat:"Sat",sun:"Sun" };
 
-const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+const BACKEND = "";
 
 function fullUrl(url) {
   if (!url) return "";

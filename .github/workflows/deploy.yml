@@ -1,0 +1,98 @@
+# Deploy apnafastag.com on every push to main.
+#
+# 1. GitHub builds the frontend (CRA build + prerender) - the server never builds, it has too little memory.
+# 2. The build is uploaded to s3://gvpartner/apnafastag/releases/<sha>.tgz.
+# 3. AWS Systems Manager runs /opt/apnafastag/deploy.sh <sha> on the server (document "ApnafastagDeploy"):
+#    backend = git checkout of <sha>, frontend = that build, health check, automatic rollback on failure.
+#
+# No SSH keys and no stored AWS keys: GitHub signs in to AWS with OIDC as role github-apnafastag-deploy,
+# which can only upload to the releases/ prefix and run that one document on that one instance,
+# and only for pushes to main of ApnaPayment/FASTAGSATHI.
+# Kill switch: set the repository variable DEPLOY_ENABLED to anything other than "true".
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+  AWS_ROLE: arn:aws:iam::967907105629:role/github-apnafastag-deploy
+  INSTANCE_ID: i-07b54713706ce217e
+  RELEASES: s3://gvpartner/apnafastag/releases
+
+jobs:
+  deploy:
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          CI: "false"   # CRA would otherwise fail the build on lint warnings
+        run: |
+          npm ci --legacy-peer-deps
+          npm run build
+          test -f build/index.html
+          tar -czf ../release.tgz build server.js
+          ls -la ../release.tgz
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload release
+        run: aws s3 cp --only-show-errors release.tgz "$RELEASES/$GITHUB_SHA.tgz"
+
+      - name: Deploy on server
+        run: |
+          CID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name ApnafastagDeploy \
+            --parameters "commitSha=$GITHUB_SHA" \
+            --comment "github ${GITHUB_SHA:0:7} run $GITHUB_RUN_ID" \
+            --query Command.CommandId --output text)
+          echo "SSM command $CID"
+          for i in $(seq 1 60); do
+            sleep 10
+            ST=$(aws ssm get-command-invocation --command-id "$CID" --instance-id "$INSTANCE_ID" --query Status --output text 2>/dev/null || echo Pending)
+            case "$ST" in Success|Failed|TimedOut|Cancelled) break ;; esac
+          done
+          aws ssm get-command-invocation --command-id "$CID" --instance-id "$INSTANCE_ID" --query StandardOutputContent --output text
+          echo "status: $ST"
+          test "$ST" = "Success"
+
+      - name: Check live site (informational)
+        # Success/rollback is decided by the server-side health check in deploy.sh. This only reports the
+        # public path through Cloudflare: GitHub's runner network was measured at 20-30 s (and one 522) to
+        # this site while US/EU/India clients got < 1.5 s, so it warns instead of failing the run.
+        run: |
+          for u in / /api/banks; do
+            code=000
+            for try in 1 2 3; do
+              code=$(curl -s -o /dev/null -m 30 -w "%{http_code}" "https://apnafastag.com$u" || true)
+              echo "$u try $try -> $code"
+              [ "$code" = "200" ] && break
+              sleep 10
+            done
+            [ "$code" = "200" ] || echo "::warning::public check for $u returned $code from the GitHub runner (server-side health check passed)"
+          done
