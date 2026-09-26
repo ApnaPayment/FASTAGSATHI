@@ -20,6 +20,8 @@ const fs    = require("fs");
 const path  = require("path");
 
 const PORT      = process.env.PORT || 3000;
+// Bind address — set HOST=127.0.0.1 when nginx on the same host is the only client.
+const HOST      = process.env.HOST || undefined;
 // Backend origin — env-configurable so the same code runs on the server or locally.
 const BACKEND        = process.env.BACKEND_HOST   || "127.0.0.1";
 const BACKEND_PORT   = parseInt(process.env.BACKEND_PORT || "8000", 10);
@@ -596,8 +598,8 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`✅ Server running on ${HOST || "*"}:${PORT}`);
   console.log(`   Static files → ${BUILD_DIR}`);
   console.log(`   /api/*       → ${BACKEND_SCHEME}://${BACKEND}:${BACKEND_PORT}`);
 });

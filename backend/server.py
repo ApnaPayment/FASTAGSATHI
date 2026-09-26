@@ -5205,44 +5205,57 @@ app.add_middleware(
 )
 
 async def create_indexes():
-    """Create MongoDB indexes on startup for query performance at scale."""
-    # jobs
-    await db.jobs.create_index([("sathi_slug", 1), ("status", 1)])
-    await db.jobs.create_index([("user_id", 1), ("created_at", -1)])
-    await db.jobs.create_index([("cashfree_order_id", 1)], sparse=True)
-    await db.jobs.create_index([("ref", 1)], unique=True, sparse=True)
-    # sathis
-    await db.sathis.create_index([("state", 1), ("is_available", 1)])
-    await db.sathis.create_index([("slug", 1)], unique=True)
-    # applications
-    await db.sathi_applications.create_index([("phone", 1)], unique=True)
-    await db.sathi_applications.create_index([("status", 1), ("submitted_at", -1)])
-    await db.sathi_applications.create_index([("name", 1)])
-    # payment_intents
-    await db.payment_intents.create_index([("cashfree_order_id", 1)], unique=True, sparse=True)
-    # promo_codes
-    await db.promo_codes.create_index([("code", 1)], unique=True)
-    # plazas / states / highways / cities / banks
-    await db.plazas.create_index([("slug", 1)], unique=True, sparse=True)
-    await db.plazas.create_index([("state", 1), ("highway", 1)])
-    await db.states.create_index([("slug", 1)], unique=True, sparse=True)
-    await db.highways.create_index([("slug", 1)], unique=True, sparse=True)
-    await db.cities.create_index([("slug", 1)], unique=True, sparse=True)
-    await db.banks.create_index([("slug", 1)], unique=True, sparse=True)
-    # articles
-    await db.articles.create_index([("slug", 1)], unique=True, sparse=True)
-    await db.articles.create_index([("is_published", 1), ("category", 1)])
-    # fastag orders
-    await db.fastag_orders.create_index([("order_id", 1)], unique=True)
-    # netc banks
-    await db.netc_banks.create_index([("slug", 1)], unique=True)
-    await db.fastag_orders.create_index([("customer_phone", 1), ("created_at", -1)])
-    await db.fastag_orders.create_index([("status", 1), ("created_at", -1)])
-    # sathi leads
-    await db.sathi_leads.create_index([("lead_id", 1)], unique=True, sparse=True)
-    await db.sathi_leads.create_index([("status", 1), ("created_at", -1)])
-    await db.sathi_leads.create_index([("mobile", 1)])
-    logger.info("MongoDB indexes ensured")
+    """Create MongoDB indexes on startup for query performance at scale.
+
+    Each index is created on its own, so one failure (e.g. an options conflict
+    with an index that already exists) is logged and no longer skips the rest.
+    """
+    specs = [
+        # jobs
+        (db.jobs, [("sathi_slug", 1), ("status", 1)], {}),
+        (db.jobs, [("user_id", 1), ("created_at", -1)], {}),
+        (db.jobs, [("cashfree_order_id", 1)], {"sparse": True}),
+        (db.jobs, [("ref", 1)], {"unique": True, "sparse": True}),
+        # sathis
+        (db.sathis, [("state", 1), ("is_available", 1)], {}),
+        (db.sathis, [("slug", 1)], {"unique": True}),
+        # applications
+        (db.sathi_applications, [("phone", 1)], {"unique": True}),
+        (db.sathi_applications, [("status", 1), ("submitted_at", -1)], {}),
+        (db.sathi_applications, [("name", 1)], {}),
+        # payment_intents
+        (db.payment_intents, [("cashfree_order_id", 1)], {"unique": True, "sparse": True}),
+        # promo_codes
+        (db.promo_codes, [("code", 1)], {"unique": True}),
+        # plazas / states / highways / cities / banks
+        (db.plazas, [("slug", 1)], {"unique": True, "sparse": True}),
+        (db.plazas, [("state", 1), ("highway", 1)], {}),
+        (db.states, [("slug", 1)], {"unique": True, "sparse": True}),
+        (db.highways, [("slug", 1)], {"unique": True, "sparse": True}),
+        (db.cities, [("slug", 1)], {"unique": True, "sparse": True}),
+        (db.banks, [("slug", 1)], {"unique": True, "sparse": True}),
+        # articles — same options as seed_articles() (unique, not sparse); every article has a slug
+        (db.articles, [("slug", 1)], {"unique": True}),
+        (db.articles, [("is_published", 1), ("category", 1)], {}),
+        # fastag orders
+        (db.fastag_orders, [("order_id", 1)], {"unique": True}),
+        (db.fastag_orders, [("customer_phone", 1), ("created_at", -1)], {}),
+        (db.fastag_orders, [("status", 1), ("created_at", -1)], {}),
+        # netc banks
+        (db.netc_banks, [("slug", 1)], {"unique": True}),
+        # sathi leads
+        (db.sathi_leads, [("lead_id", 1)], {"unique": True, "sparse": True}),
+        (db.sathi_leads, [("status", 1), ("created_at", -1)], {}),
+        (db.sathi_leads, [("mobile", 1)], {}),
+    ]
+    failed = 0
+    for coll, keys, opts in specs:
+        try:
+            await coll.create_index(keys, **opts)
+        except Exception as e:
+            failed += 1
+            logger.warning(f"Index {coll.name}{keys} {opts} not created: {e}")
+    logger.info(f"MongoDB indexes ensured ({len(specs) - failed}/{len(specs)} ok)")
 
 @app.on_event("startup")
 async def startup_db():
