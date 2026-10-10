@@ -68,6 +68,7 @@ export default function Footer() {
               <li><Link to="/how-it-works" className="hover:text-white">How it works</Link></li>
               <li><Link to="/pricing" className="hover:text-white">Pricing</Link></li>
               <li><Link to="/coverage" className="hover:text-white">Coverage</Link></li>
+              <li><Link to="/sitemap" className="hover:text-white">All toll plazas</Link></li>
               <li><Link to="/become-a-sathi" className="hover:text-white">Become a Sathi</Link></li>
               <li><Link to="/help" className="hover:text-white">Help Center</Link></li>
             </ul>
@@ -129,6 +130,7 @@ export default function Footer() {
             <Link to="/privacy" className="hover:text-white">Privacy</Link>
             <Link to="/terms" className="hover:text-white">Terms</Link>
             <Link to="/refund-policy" className="hover:text-white">Refund Policy</Link>
+            <Link to="/sitemap" className="hover:text-white">Sitemap</Link>
           </div>
         </div>
       </div>

@@ -147,7 +147,7 @@ function layout(crumbs, inner) {
   <header><nav>${A("/", "ApnaFastag")} · ${A("/find", "Find a Sathi")} · ${A("/help", "Help Center")} · ${A("/coverage", "Coverage")} · ${A("/tools/fastag-status", "FASTag status")} · ${A("/buy-fastag", "Buy FASTag")}</nav>
   <nav aria-label="Breadcrumb" style="font-size:.85rem;margin:16px 0">${trail}</nav></header>
   <main>${inner}</main>
-  <footer style="margin-top:40px;font-size:.85rem"><nav>${A("/about", "About")} · ${A("/pricing", "Pricing")} · ${A("/become-a-sathi", "Become a Sathi")} · ${A("/blog", "Blog")} · ${A("/contact", "Contact")} · ${A("/privacy", "Privacy")} · ${A("/terms", "Terms")}</nav></footer>
+  <footer style="margin-top:40px;font-size:.85rem"><nav>${A("/about", "About")} · ${A("/pricing", "Pricing")} · ${A("/become-a-sathi", "Become a Sathi")} · ${A("/blog", "Blog")} · ${A("/contact", "Contact")} · ${A("/sitemap", "Sitemap")} · ${A("/privacy", "Privacy")} · ${A("/terms", "Terms")}</nav></footer>
 </div>`;
 }
 const list = (items) => items.length ? `<ul>${items.map((x) => `<li>${x}</li>`).join("")}</ul>` : "";
@@ -368,6 +368,56 @@ async function renderSathi(slug) {
   return { head, body };
 }
 
+// One page that links every toll plaza (grouped by state), highway, bank, city and Sathi,
+// so each of them is a click or two from the home page instead of only from the sitemap.
+async function renderSitemap() {
+  const [states, plazas, highways, banks, cities, sathis] = await Promise.all([
+    api("/api/states"), api("/api/plazas"), api("/api/highways"), api("/api/banks"),
+    api("/api/cities?limit=500"), api("/api/sathis"),
+  ]);
+  if (!ok(states) || !ok(plazas)) return null;              // backend down: let the app render
+  const byName = (a, b) => String(a.name).localeCompare(String(b.name));
+  const byState = new Map();
+  for (const p of plazas) {
+    if (!byState.has(p.state)) byState.set(p.state, []);
+    byState.get(p.state).push(p);
+  }
+  const stateList = states.slice().sort(byName);
+  const bankList = ok(banks) ? (Array.isArray(banks) ? banks : banks.banks || []).filter((b) => b.slug && b.name) : [];
+  const url = `${SITE}/sitemap`;
+  const crumbs = [["Home", "/"], ["Sitemap", "/sitemap"]];
+  const head = headTags({
+    title: `Sitemap — all ${plazas.length} toll plazas, states, highways & FASTag guides · ApnaFastag`,
+    description: `Every page on ApnaFastag: ${plazas.length} toll plazas grouped by state, ${stateList.length} states, national highways, FASTag banks, cities and verified Sathis.`,
+    url, ld: [breadcrumbLd(crumbs)],
+  });
+  const section = (title, items) => items.length ? `<h2>${esc(title)}</h2>${list(items)}` : "";
+  const body = layout(crumbs,
+    `<h1>ApnaFastag sitemap</h1>
+     <p>All ${plazas.length} toll plazas, grouped by state, plus highways, FASTag banks, cities and verified Sathis.
+        Looking for answers instead? Try the ${A("/help", "FASTag Help Center")} or the ${A("/tools/fastag-status", "FASTag status check")}.</p>
+     ${section("Tools", [A("/tools/fastag-status", "FASTag status check"), A("/tools/fastag-balance-check", "FASTag balance check"),
+        A("/tools/fastag-recharge", "FASTag recharge"), A("/tools/toll-calculator", "Toll calculator"), A("/tools/dispute-tracker", "Dispute tracker"),
+        A("/buy-fastag", "Buy a FASTag"), A("/find", "Find a Sathi near you")])}
+     ${section("FASTag banks", bankList.slice().sort(byName).map((b) => A(`/bank/${b.slug}`, b.name)))}
+     ${section("National highways", ok(highways) ? highways.filter((h) => h.slug).map((h) => A(`/highway/${h.slug}`, h.fullName || h.name)) : [])}
+     <h2>Toll plazas by state</h2>
+     ${stateList.map((st) => {
+        const pl = (byState.get(st.slug) || []).slice().sort(byName);
+        return `<h3>${A(`/state/${st.slug}`, st.name)}${pl.length ? ` (${pl.length})` : ""}</h3>${list(pl.map((p) => `${A(`/toll/${p.slug}`, p.name)}${p.city ? ` – ${esc(p.city)}` : ""}`))}`;
+      }).join("\n")}
+     ${(() => {   // plazas whose state isn't in the states list (bad data) are still linked
+        const known = new Set(stateList.map((st) => st.slug));
+        const rest = plazas.filter((p) => !known.has(p.state)).sort(byName);
+        return rest.length ? `<h3>Other toll plazas</h3>${list(rest.map((p) => `${A(`/toll/${p.slug}`, p.name)}${p.city ? ` – ${esc(p.city)}` : ""}`))}` : "";
+      })()}
+     ${section("Cities", ok(cities) ? cities.slice().sort(byName).map((c) => A(`/city/${c.slug}`, c.name)) : [])}
+     ${section("Verified FASTag Sathis", ok(sathis) ? sathis.filter((x) => x.verified && x.slug).sort(byName).map((x) => `${A(`/sathi/${x.slug}`, x.name)}${x.city ? ` – ${esc(x.city)}` : ""}`) : [])}
+     ${section("ApnaFastag", [A("/coverage", "Coverage"), A("/help", "Help Center"), A("/blog", "Blog"), A("/become-a-sathi", "Become a Sathi"),
+        A("/how-it-works", "How it works"), A("/pricing", "Pricing"), A("/about", "About"), A("/contact", "Contact")])}`);
+  return { head, body };
+}
+
 const DYNAMIC = [
   // [pattern, renderer, prefer the prerendered file when one exists]
   [/^\/help\/([^/]+)$/,    renderHelp,    false],
@@ -431,6 +481,14 @@ async function handlePage(req, res, pathname) {
   // Every data-page slug is lowercase; old links like /state/Haryana go to the real page.
   const upper = decoded.match(/^\/(help|toll|state|city|sathi|bank|highway)\/([^/]*[A-Z][^/]*)$/);
   if (upper) { redirect(req, res, `/${upper[1]}/${upper[2].toLowerCase()}`); return; }
+
+  if (decoded === "/sitemap") {
+    let out = null;
+    try { out = await renderSitemap(); } catch (e) { console.error("[ssr]", decoded, e.message); }
+    const head = out ? out.head : headTags({ title: "Sitemap · ApnaFastag", description: "Every toll plaza, state and FASTag guide on ApnaFastag.", url: `${SITE}/sitemap` });
+    sendHtml(res, 200, renderPage(head, out ? out.body : ""), out ? {} : { "Cache-Control": "no-store" });
+    return;
+  }
 
   for (const [re, render, preferFile] of DYNAMIC) {
     const m = decoded.match(re);

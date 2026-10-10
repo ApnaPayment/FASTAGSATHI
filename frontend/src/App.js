@@ -48,6 +48,7 @@ import AdminPage from "@/pages/AdminPage";
 import MLFFPage from "@/pages/MLFFPage";
 import ENoticePage from "@/pages/ENoticePage";
 import JoinPage from "@/pages/JoinPage";
+import SitemapPage from "@/pages/SitemapPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
 function RouteTracker() {
@@ -92,6 +93,7 @@ function App() {
 
             {/* Coverage + programmatic SEO */}
             <Route path="coverage" element={<CoveragePage />} />
+            <Route path="sitemap" element={<SitemapPage />} />
             <Route path="toll/:plazaSlug" element={<PlazaPage />} />
             <Route path="state/:stateSlug" element={<StatePage />} />
             <Route path="bank/:bankSlug" element={<BankPage />} />
