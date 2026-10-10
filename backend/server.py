@@ -5032,6 +5032,21 @@ def _url(loc: str, priority: str = "0.7", freq: str = "monthly", lastmod: str = 
 def _today() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
+# The last day every data page's content changed site-wide (2026-09-24: pages are rendered
+# from the API for every visitor, plaza/state guides enriched). A page's <lastmod> is the
+# later of this and its own updated_at, so Google learns which pages changed since its last
+# crawl. Bump it (or set SITEMAP_CONTENT_REVISED) only after a real site-wide content change;
+# a date that moves every day teaches Google to ignore lastmod.
+SITEMAP_CONTENT_REVISED = os.environ.get("SITEMAP_CONTENT_REVISED", "2026-09-24")
+
+def _lastmod(updated_at=None) -> str:
+    if isinstance(updated_at, datetime):
+        own = updated_at.strftime("%Y-%m-%d")
+    else:
+        own = str(updated_at or "")[:10]
+    own = own if re.fullmatch(r"\d{4}-\d{2}-\d{2}", own) else ""
+    return max(own, SITEMAP_CONTENT_REVISED)
+
 # ─── Sitemap cache (prevents Railway concurrency 503s when bots batch-fetch) ──
 # Sitemaps are regenerated from DB on first request then served from memory for
 # SITEMAP_TTL seconds. Cache-Control headers also let Cloudflare cache at edge.
@@ -5108,6 +5123,7 @@ async def sitemap_static():
         ("/tools/fastag-recharge","0.85", "weekly"),
         ("/blog",                "0.80", "weekly"),
         ("/coverage",            "0.75", "weekly"),
+        ("/sitemap",             "0.60", "weekly"),
         ("/how-it-works",        "0.80", "monthly"),
         ("/features",            "0.70", "monthly"),
         ("/pricing",             "0.70", "monthly"),
@@ -5117,7 +5133,7 @@ async def sitemap_static():
         ("/terms",               "0.20", "yearly"),
         ("/refund-policy",       "0.20", "yearly"),
     ]
-    rows = [_url(SITE + path, pri, freq, today if freq in ("daily","hourly","weekly") else "") for path, pri, freq in entries]
+    rows = [_url(SITE + path, pri, freq, today if freq in ("daily","hourly") else _lastmod()) for path, pri, freq in entries]
     xml = _urlset(rows)
     _sitemap_store("static", xml)
     return _sitemap_resp(xml)
@@ -5127,7 +5143,7 @@ async def sitemap_plazas():
     cached = _sitemap_cached("plazas")
     if cached: return _sitemap_resp(cached)
     plazas = await db.plazas.find({}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
-    xml = _urlset([_url(f"{SITE}/toll/{p['slug']}", "0.85", "weekly", (p.get("updated_at") or "")[:10]) for p in plazas])
+    xml = _urlset([_url(f"{SITE}/toll/{p['slug']}", "0.85", "weekly", _lastmod(p.get("updated_at"))) for p in plazas])
     _sitemap_store("plazas", xml); return _sitemap_resp(xml)
 
 @app.get("/api/sitemap-states.xml", include_in_schema=False)
@@ -5135,7 +5151,7 @@ async def sitemap_states():
     cached = _sitemap_cached("states")
     if cached: return _sitemap_resp(cached)
     states = await db.states.find({}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
-    xml = _urlset([_url(f"{SITE}/state/{s['slug']}", "0.70", "monthly", (s.get("updated_at") or "")[:10]) for s in states])
+    xml = _urlset([_url(f"{SITE}/state/{s['slug']}", "0.70", "monthly", _lastmod(s.get("updated_at"))) for s in states])
     _sitemap_store("states", xml); return _sitemap_resp(xml)
 
 @app.get("/api/sitemap-banks.xml", include_in_schema=False)
@@ -5144,7 +5160,7 @@ async def sitemap_banks():
     if cached: return _sitemap_resp(cached)
     # Only banks with a real record — a slug-only row (bajaj-fastag) has no page to show.
     banks = await db.banks.find({"is_active": {"$ne": False}, "name": {"$nin": [None, ""]}}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
-    xml = _urlset([_url(f"{SITE}/bank/{b['slug']}", "0.80", "monthly", (b.get("updated_at") or "")[:10]) for b in banks])
+    xml = _urlset([_url(f"{SITE}/bank/{b['slug']}", "0.80", "monthly", _lastmod(b.get("updated_at"))) for b in banks])
     _sitemap_store("banks", xml); return _sitemap_resp(xml)
 
 @app.get("/api/sitemap-highways.xml", include_in_schema=False)
@@ -5152,7 +5168,7 @@ async def sitemap_highways():
     cached = _sitemap_cached("highways")
     if cached: return _sitemap_resp(cached)
     highways = await db.highways.find({"is_active": {"$ne": False}}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
-    xml = _urlset([_url(f"{SITE}/highway/{h['slug']}", "0.75", "monthly", (h.get("updated_at") or "")[:10]) for h in highways])
+    xml = _urlset([_url(f"{SITE}/highway/{h['slug']}", "0.75", "monthly", _lastmod(h.get("updated_at"))) for h in highways])
     _sitemap_store("highways", xml); return _sitemap_resp(xml)
 
 @app.get("/api/sitemap-cities.xml", include_in_schema=False)
@@ -5160,7 +5176,7 @@ async def sitemap_cities():
     cached = _sitemap_cached("cities")
     if cached: return _sitemap_resp(cached)
     cities = await db.cities.find({}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
-    xml = _urlset([_url(f"{SITE}/city/{c['slug']}", "0.75", "monthly", (c.get("updated_at") or "")[:10]) for c in cities])
+    xml = _urlset([_url(f"{SITE}/city/{c['slug']}", "0.75", "monthly", _lastmod(c.get("updated_at"))) for c in cities])
     _sitemap_store("cities", xml); return _sitemap_resp(xml)
 
 @app.get("/api/sitemap-help-{page}.xml", include_in_schema=False)
@@ -5173,7 +5189,7 @@ async def sitemap_help_page(page: int):
     articles = await db.articles.find(
         {"is_published": True}, {"_id": 0, "slug": 1, "updated_at": 1}
     ).sort("created_at", 1).skip(skip).limit(PAGE_SIZE).to_list(PAGE_SIZE)
-    xml = _urlset([_url(f"{SITE}/help/{a['slug']}", "0.70", "monthly", (a.get("updated_at") or "")[:10]) for a in articles])
+    xml = _urlset([_url(f"{SITE}/help/{a['slug']}", "0.70", "monthly", _lastmod(a.get("updated_at"))) for a in articles])
     _sitemap_store(key, xml); return _sitemap_resp(xml)
 
 # Legacy redirect so any old bookmark of /sitemap-help.xml still works
@@ -5187,7 +5203,7 @@ async def sitemap_sathis():
     cached = _sitemap_cached("sathis")
     if cached: return _sitemap_resp(cached)
     sathis = await db.sathis.find({"verified": True}, {"_id": 0, "slug": 1, "updated_at": 1}).to_list(None)
-    xml = _urlset([_url(f"{SITE}/sathi/{s['slug']}", "0.80", "weekly", (s.get("updated_at") or "")[:10]) for s in sathis])
+    xml = _urlset([_url(f"{SITE}/sathi/{s['slug']}", "0.80", "weekly", _lastmod(s.get("updated_at"))) for s in sathis])
     _sitemap_store("sathis", xml); return _sitemap_resp(xml)
 
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")

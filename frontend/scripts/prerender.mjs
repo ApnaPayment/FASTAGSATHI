@@ -273,7 +273,8 @@ function bodyLanding() {
     <h2 style="font-size:1.6rem;font-weight:800;margin:32px 0 16px">FASTag banks we support</h2>
     <p style="color:#4B5563">SBI FASTag, Paytm FASTag, ICICI FASTag, HDFC FASTag, Axis FASTag, Kotak FASTag, Yes Bank FASTag, IDFC First FASTag — all banks supported at every toll plaza.</p>
     <h2 style="font-size:1.6rem;font-weight:800;margin:32px 0 16px">States covered</h2>
-    <p style="color:#4B5563">Maharashtra, Haryana, Karnataka, Gujarat, Tamil Nadu, Telangana, Delhi, Uttar Pradesh, Rajasthan, Punjab and 19 more states. <a href="/coverage" style="color:#FF6B00">View full coverage →</a></p>
+    <p style="color:#4B5563">${STATES.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(s=>`<a href="/state/${s.slug}" style="color:#0A0A0A">${esc(s.name)}</a>`).join(" · ")}</p>
+    <p style="color:#4B5563"><a href="/sitemap" style="color:#FF6B00">See all toll plazas →</a> · <a href="/coverage" style="color:#FF6B00">View full coverage →</a></p>
   </main>`;
 }
 
