@@ -70,6 +70,7 @@ export default function Footer() {
               <li><Link to="/coverage" className="hover:text-white">Coverage</Link></li>
               <li><Link to="/sitemap" className="hover:text-white">All toll plazas</Link></li>
               <li><Link to="/become-a-sathi" className="hover:text-white">Become a Sathi</Link></li>
+              <li><Link to="/guides" className="hover:text-white">FASTag guides</Link></li>
               <li><Link to="/help" className="hover:text-white">Help Center</Link></li>
             </ul>
           </div>

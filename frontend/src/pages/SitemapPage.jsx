@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import PageHero from "@/components/layout/PageHero";
 import SEO, { breadcrumbSchema } from "@/components/seo/SEO";
 import api, { stateApi, plazaApi, banksApi, citiesApi, sathiApi } from "@/lib/api";
+import GUIDES from "@/content/guides.json";
 
 // Every toll plaza (grouped by state), highway, bank, city and Sathi on one page, so each is
 // a click or two from the home page. server.js renders the same links for crawlers.
@@ -86,6 +87,7 @@ export default function SitemapPage() {
           <p className="text-[#6B7280]">Loading…</p>
         ) : (
           <>
+            <Section title="FASTag guides"><LinkGrid items={GUIDES.map((g) => [`/guides/${g.slug}`, g.short || g.title])} /></Section>
             <Section title="Tools"><LinkGrid items={TOOLS} /></Section>
             {d.banks.length > 0 && (
               <Section title="FASTag banks">

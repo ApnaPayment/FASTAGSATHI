@@ -1,0 +1,2066 @@
+[
+ {
+  "slug": "where-to-stick-fastag",
+  "title": "Where to stick your FASTag on the windshield, and why it won't read",
+  "short": "Where to stick your FASTag",
+  "metaTitle": "Where to stick FASTag on the windshield (with diagram)",
+  "description": "The correct FASTag position is inside the windshield, top centre, behind the rear-view mirror. See the diagram, the mistakes that get a tag blacklisted or charged double, and what to do when it won't read.",
+  "category": "Getting started",
+  "card": "The exact spot on the windshield, how to fix it so it reads first time, and the mistakes that get a tag blacklisted.",
+  "published": "2026-10-15",
+  "updated": "2026-10-15",
+  "checkedAgainst": "NHAI affixation procedure, IHMCL circular, PIB releases",
+  "lede": "Most \"FASTag not reading\" problems at the plaza start with where and how the tag was stuck. Here is the official position, shown on a diagram, and the fixes when it still won't read.",
+  "quickAnswer": "Stick the FASTag **from inside the car, at the top centre of the front windshield, behind the rear-view mirror**, with the adhesive side facing outward. Clean and dry the glass first, press it on once, and don't move it afterwards. A tag kept on the dashboard, held in hand or fixed with tape can be **blacklisted** and charged **double toll**.",
+  "sections": [
+   {
+    "id": "position",
+    "heading": "The correct position",
+    "blocks": [
+     {
+      "type": "figure",
+      "svg": "<svg viewBox=\"0 0 640 360\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-labelledby=\"ws-t ws-d\" font-family=\"Work Sans, Arial, sans-serif\"><title id=\"ws-t\">Where to stick a FASTag on a car windshield</title><desc id=\"ws-d\">Inside of the front windshield, centred behind the rear-view mirror, below the tinted strip; not on the dashboard, not in a corner, not on the tinted band.</desc><rect x=\"0\" y=\"0\" width=\"640\" height=\"360\" fill=\"#F8F9FA\"/><path d=\"M110 70 Q320 38 530 70 L590 300 Q320 330 50 300 Z\" fill=\"#DCEBF5\" stroke=\"#0A0A0A\" stroke-width=\"4\"/><path d=\"M114 74 Q320 43 526 74 L536 104 Q320 76 104 104 Z\" fill=\"#9FB5C4\" opacity=\"0.85\"/><text x=\"320\" y=\"93\" text-anchor=\"middle\" font-size=\"12\" fill=\"#0A0A0A\" font-weight=\"600\">Tinted sun strip — not here</text><rect x=\"296\" y=\"104\" width=\"48\" height=\"14\" rx=\"4\" fill=\"#0A0A0A\"/><rect x=\"262\" y=\"116\" width=\"116\" height=\"34\" rx=\"9\" fill=\"#2B2B2B\" stroke=\"#0A0A0A\" stroke-width=\"3\"/><text x=\"320\" y=\"138\" text-anchor=\"middle\" font-size=\"12\" fill=\"#FFFFFF\" font-weight=\"600\">Rear-view mirror</text><rect x=\"274\" y=\"158\" width=\"92\" height=\"42\" rx=\"5\" fill=\"#FF6B00\" stroke=\"#0A0A0A\" stroke-width=\"3\"/><text x=\"320\" y=\"176\" text-anchor=\"middle\" font-size=\"12\" fill=\"#FFFFFF\" font-weight=\"800\">FASTag</text><text x=\"320\" y=\"191\" text-anchor=\"middle\" font-size=\"10\" fill=\"#FFFFFF\">inside the glass</text><path d=\"M470 178 L366 178\" stroke=\"#0B6B3A\" stroke-width=\"3\" marker-end=\"url(#ws-a)\"/><text x=\"478\" y=\"172\" font-size=\"13\" fill=\"#0B6B3A\" font-weight=\"800\">Stick it here</text><text x=\"478\" y=\"190\" font-size=\"11\" fill=\"#0B6B3A\">centred, just behind</text><text x=\"478\" y=\"204\" font-size=\"11\" fill=\"#0B6B3A\">the mirror</text><g stroke=\"#DC2626\" stroke-width=\"4\" stroke-linecap=\"round\"><path d=\"M88 268 l24 24 m0 -24 l-24 24\"/><path d=\"M528 268 l24 24 m0 -24 l-24 24\"/></g><text x=\"100\" y=\"258\" text-anchor=\"middle\" font-size=\"11\" fill=\"#DC2626\" font-weight=\"700\">Not in a corner</text><text x=\"540\" y=\"258\" text-anchor=\"middle\" font-size=\"11\" fill=\"#DC2626\" font-weight=\"700\">Not in a corner</text><rect x=\"40\" y=\"318\" width=\"560\" height=\"26\" rx=\"6\" fill=\"#3A3A3A\"/><text x=\"320\" y=\"335\" text-anchor=\"middle\" font-size=\"12\" fill=\"#FFFFFF\" font-weight=\"600\">Dashboard — never leave the tag loose here or hold it in your hand</text><defs><marker id=\"ws-a\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"6\" markerHeight=\"6\" orient=\"auto\"><path d=\"M0 0 L10 5 L0 10 z\" fill=\"#0B6B3A\"/></marker></defs></svg>",
+      "caption": "Inside the front windshield, top centre, just behind the rear-view mirror. Based on NHAI's affixation procedure."
+     },
+     {
+      "type": "p",
+      "text": "NHAI's procedure for fixing a FASTag asks for the tag to go **on the inside of the windshield, at the top middle, behind the rear-view mirror**. The reader at the toll lane looks at that part of the glass, so a tag anywhere else is read late, read badly or not read at all."
+     },
+     {
+      "type": "rule",
+      "text": "Fix the tag from inside the vehicle at the top middle of the windshield behind the rear-view mirror, adhesive side facing outward. Once pasted, do not remove or reposition it.",
+      "source": {
+       "title": "NHAI – Standard procedure for FASTag affixation",
+       "url": "https://nhai.gov.in/nhai/sites/default/files/NETC/Guideline_to_Fix_the_RFID_Tag.pdf"
+      }
+     },
+     {
+      "type": "p",
+      "text": "If a dashcam or mirror mount leaves no room right behind the mirror, ICICI Bank's guidance is to place it slightly towards the passenger side, still near the top of the glass. That's bank guidance, not an NHAI rule, so stay as close to the centre as you can."
+     }
+    ]
+   },
+   {
+    "id": "how-to-fix",
+    "heading": "How to fix it so it reads first time",
+    "blocks": [
+     {
+      "type": "steps",
+      "items": [
+       {
+        "title": "Clean the glass from inside",
+        "text": "Wipe the spot behind the mirror and let it dry fully. NHAI's procedure says not to paste the tag on dirty or wet glass."
+       },
+       {
+        "title": "Peel the backing just before you stick it",
+        "text": "Don't touch the adhesive with your fingers; dust and oil weaken it."
+       },
+       {
+        "title": "Place it once, adhesive side out",
+        "text": "Line it up behind the mirror, then press gently from the centre outwards so there are no air bubbles."
+       },
+       {
+        "title": "Leave it alone",
+        "text": "Don't peel it off to adjust it later. A FASTag is built so that lifting it damages the antenna inside, and NHAI's procedure says not to reposition it."
+       },
+       {
+        "title": "Don't add tape or glue",
+        "text": "If the tag's own adhesive isn't holding, return it to your bank and ask for a replacement instead of taping it. Tape is one of the listed reasons for blacklisting."
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "mistakes",
+    "heading": "Mistakes that get a tag blacklisted or charged double",
+    "blocks": [
+     {
+      "type": "list",
+      "items": [
+       "**Keeping the tag on the dashboard or holding it up at the booth.** NHAI calls these \"loose\" or \"tag-in-hand\" FASTags. Since July 2025 toll agencies report them to NHAI for blacklisting or hotlisting.",
+       "**Fixing it with cello tape or extra glue**, or sticking it on a separate piece of glass or another surface. An IHMCL circular lists these as reasons a tag can't be used and should be blacklisted.",
+       "**Sticking it somewhere other than the front windshield.** Since July 2024 a vehicle entering the toll lane with a tag not fixed on the windshield from inside pays **double the toll**, and the plaza records CCTV of the number plate.",
+       "**Placing it behind a metal part or another sticker.** Metal blocks the radio signal. ICICI Bank advises keeping the tag clear of any metallic surface or other sticker."
+      ]
+     },
+     {
+      "type": "rule",
+      "text": "A vehicle entering a toll lane without a FASTag affixed on the front windshield from inside will be charged double the user fee, and such a FASTag can be blacklisted.",
+      "source": {
+       "title": "PIB – NHAI to charge double toll from vehicles with non-affixed FASTag (18 Jul 2024)",
+       "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2034064"
+      }
+     }
+    ]
+   },
+   {
+    "id": "not-reading",
+    "heading": "Your tag still won't read? Check these in order",
+    "blocks": [
+     {
+      "type": "steps",
+      "items": [
+       {
+        "title": "Check the status, not just the sticker",
+        "text": "A tag that's blacklisted, hotlisted or out of balance looks exactly like a working tag. Check it first with our [FASTag status check](/tools/fastag-status), then see [what each status means](/guides/fastag-blacklisted)."
+       },
+       {
+        "title": "Check the position",
+        "text": "If it sits low on the glass, in a corner or behind a mount, that's likely the cause. You can't move it, so ask your bank for a replacement and fix the new one in the right place."
+       },
+       {
+        "title": "Check for damage",
+        "text": "A tag that was peeled, folded or scratched across the chip may never read again. NHAI's FAQ says to approach your issuing bank for a replacement in that case."
+       },
+       {
+        "title": "Got a new windshield?",
+        "text": "The old tag can't be peeled off and reused, so you'll need a replacement tag. See [how to replace or reissue a FASTag](/guides/fastag-replacement-reissue)."
+       }
+      ]
+     },
+     {
+      "type": "plaza",
+      "title": "Tag doesn't beep",
+      "text": "If your tag is valid and has enough balance but the plaza's own reader fails, the rules let you cross without paying and you get a zero-transaction receipt. Details in [toll without a working FASTag](/guides/toll-without-fastag-penalty)."
+     }
+    ]
+   }
+  ],
+  "faqs": [
+   {
+    "q": "Should the FASTag be on the driver's side or the passenger side?",
+    "a": "Neither. NHAI's procedure puts it at the top middle of the windshield, behind the rear-view mirror. Only if there's no room there, place it slightly towards the passenger side near the top."
+   },
+   {
+    "q": "Can I stick the FASTag outside the windshield?",
+    "a": "No. It goes on the inside of the glass, adhesive side facing out, so the reader sees it through the windshield."
+   },
+   {
+    "q": "Can I remove my FASTag and stick it again?",
+    "a": "No. NHAI's procedure says not to peel off or reposition a fixed tag. Lifting it usually damages the tag, so you'll need a replacement from your bank."
+   },
+   {
+    "q": "Is it OK to keep the FASTag on the dashboard?",
+    "a": "No. A loose tag or a tag held in hand can be reported to NHAI and blacklisted, and since July 2024 a vehicle with a tag not fixed on the windshield is charged double toll."
+   },
+   {
+    "q": "How long does a FASTag last?",
+    "a": "NHAI's FAQ gives the physical tag a validity of 5 years."
+   }
+  ],
+  "tools": [
+   {
+    "to": "/tools/fastag-status",
+    "label": "Check FASTag status"
+   },
+   {
+    "to": "/buy-fastag",
+    "label": "Buy a new FASTag"
+   }
+  ],
+  "sources": [
+   {
+    "title": "NHAI – Standard procedure for FASTag affixation",
+    "url": "https://nhai.gov.in/nhai/sites/default/files/NETC/Guideline_to_Fix_the_RFID_Tag.pdf"
+   },
+   {
+    "title": "PIB – double toll for non-affixed FASTag",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2034064",
+    "date": "18 Jul 2024"
+   },
+   {
+    "title": "PIB – NHAI strengthens reporting of 'loose FASTag'",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2143962",
+    "date": "11 Jul 2025"
+   },
+   {
+    "title": "IHMCL policy circular on improper affixing",
+    "url": "https://ihmcl.co.in/wp-content/uploads/2024/08/IHMCL-Policy-Circular-dated-July-16th-2024-1.pdf"
+   },
+   {
+    "title": "ICICI Bank – where to stick FASTag",
+    "url": "https://www.icici.bank.in/personal-banking/blogs/fastag/fastag-where-to-stick-on-your-vehicle"
+   },
+   {
+    "title": "NHAI – FAQ on FASTag",
+    "url": "https://nhai.gov.in/nhai/sites/default/files/mix_file/FAQ-FASTag.pdf",
+    "date": "Feb 2021"
+   }
+  ],
+  "related": [
+   "fastag-replacement-reissue",
+   "fastag-blacklisted",
+   "toll-without-fastag-penalty",
+   "fastag-annual-pass"
+  ],
+  "readMins": 5
+ },
+ {
+  "slug": "fastag-annual-pass",
+  "title": "FASTag Annual Pass: price, roads it covers and how trips are counted",
+  "short": "FASTag Annual Pass",
+  "metaTitle": "FASTag Annual Pass 2026: ₹3,075, eligibility, trips",
+  "description": "The FASTag Annual Pass costs ₹3,075 from 1 April 2026 and covers 200 trips or one year at NH and National Expressway plazas. Who can buy it, where it works, how a trip is counted and how to activate it.",
+  "category": "Passes & discounts",
+  "card": "₹3,075 for 200 trips or one year on national highways. Who qualifies, where it works and how trips are counted.",
+  "published": "2026-10-15",
+  "updated": "2026-10-15",
+  "checkedAgainst": "Gazette G.S.R. 388(E), IHMCL Annual Pass FAQ, PIB releases",
+  "lede": "One payment a year instead of a toll every crossing. Before you buy, check that your car qualifies and that your regular route actually runs through NHAI plazas.",
+  "quickAnswer": "The FASTag Annual Pass costs **₹3,075 from 1 April 2026** (₹3,000 before). It's valid for **200 trips or one year, whichever comes first**, only at **national highway and national expressway** fee plazas, and only for **private (non-commercial) cars, jeeps and vans** with a working FASTag. Buy it in the **Rajmargyatra app** or on the NHAI website; it activates on your existing FASTag, normally within 2 hours.",
+  "sections": [
+   {
+    "id": "at-a-glance",
+    "heading": "At a glance",
+    "blocks": [
+     {
+      "type": "table",
+      "head": [
+       "",
+       "Annual Pass"
+      ],
+      "rows": [
+       [
+        "Price",
+        "₹3,075 from 1 Apr 2026 (₹3,000 from launch to 31 Mar 2026)"
+       ],
+       [
+        "Valid for",
+        "200 trips or 1 year, whichever is earlier"
+       ],
+       [
+        "Vehicles",
+        "Private car, jeep or van, checked against VAHAN"
+       ],
+       [
+        "Roads",
+        "NH and National Expressway fee plazas only"
+       ],
+       [
+        "Where to buy",
+        "Rajmargyatra app or NHAI website"
+       ],
+       [
+        "Needs a new tag?",
+        "No, it activates on your existing eligible FASTag"
+       ],
+       [
+        "Transferable?",
+        "No, only for the vehicle the tag is fixed on"
+       ]
+      ],
+      "note": "The fee can be revised every year from 1 April (NH Fee Rules, rule 9(3C))."
+     },
+     {
+      "type": "rule",
+      "text": "A non-commercial vehicle with a valid, functional FASTag can get a pass valid for one year or two hundred crossings, whichever is earlier. In a closed tolling system, entry and exit count as a single crossing.",
+      "source": {
+       "title": "Gazette G.S.R. 388(E), 17 Jun 2025",
+       "url": "https://egazette.gov.in/WriteReadData/2025/263948.pdf"
+      }
+     }
+    ]
+   },
+   {
+    "id": "eligibility",
+    "heading": "Does your vehicle qualify?",
+    "blocks": [
+     {
+      "type": "list",
+      "items": [
+       "**Private car, jeep or van only.** NHAI checks the vehicle against the VAHAN database. Using the pass in a commercial vehicle leads to immediate deactivation without notice.",
+       "**The tag must carry your registration number.** Tags registered only on a chassis number aren't eligible until the vehicle number is updated with your bank.",
+       "**The tag must be fixed on the windshield**, linked to a valid vehicle number and not blacklisted. If you're unsure, run a [FASTag status check](/tools/fastag-status) first.",
+       "**You don't need a new FASTag.** The pass is added to the tag you already have."
+      ]
+     }
+    ]
+   },
+   {
+    "id": "where",
+    "heading": "Where it works, and where it doesn't",
+    "blocks": [
+     {
+      "type": "p",
+      "text": "At launch on 15 August 2025 the pass worked at about **1,150 NHAI fee plazas** on national highways and national expressways. On expressways and state highways run by state governments or local bodies, and in parking lots, your FASTag works as a normal tag and the toll is deducted as usual."
+     },
+     {
+      "type": "warn",
+      "text": "Many popular routes mix NHAI plazas with state-run ones. Before you pay ₹3,075, check that the plazas on your regular route are NHAI plazas, or you may still pay at several of them."
+     }
+    ]
+   },
+   {
+    "id": "trips",
+    "heading": "How a trip is counted",
+    "blocks": [
+     {
+      "type": "table",
+      "head": [
+       "Type of plaza",
+       "What counts as one trip"
+      ],
+      "rows": [
+       [
+        "Point-based plaza (most NH plazas)",
+        "Each crossing is one trip, so going and coming back is two trips"
+       ],
+       [
+        "Closed tolling (entry and exit points, like some expressways)",
+        "One entry plus its exit is one trip"
+       ]
+      ]
+     },
+     {
+      "type": "p",
+      "text": "If you also hold a local pass or monthly pass at a plaza, crossings at that plaza aren't counted against your Annual Pass."
+     }
+    ]
+   },
+   {
+    "id": "buy",
+    "heading": "How to buy and activate it",
+    "blocks": [
+     {
+      "type": "steps",
+      "items": [
+       {
+        "title": "Open Rajmargyatra or the NHAI website",
+        "text": "These are the only two official places to buy the pass."
+       },
+       {
+        "title": "Enter your vehicle number",
+        "text": "The system checks that the vehicle is a private car, jeep or van and that your FASTag is active."
+       },
+       {
+        "title": "Pay ₹3,075",
+        "text": "Pay by UPI, card or net banking. You **can't** pay from your FASTag wallet balance."
+       },
+       {
+        "title": "Wait for the SMS",
+        "text": "The pass activates on your existing FASTag, normally within 2 hours of payment."
+       }
+      ]
+     },
+     {
+      "type": "p",
+      "text": "You can also buy it for someone else's car: in Rajmargyatra use **Add Pass**, enter their vehicle number and verify with the OTP sent to their number."
+     }
+    ]
+   },
+   {
+    "id": "after",
+    "heading": "When it runs out",
+    "blocks": [
+     {
+      "type": "p",
+      "text": "After 200 trips or one year, your tag automatically goes back to being a normal FASTag and tolls are deducted from your balance again. To continue, buy the pass again. Keep some balance on the tag anyway: plazas outside the scheme still deduct the normal toll."
+     }
+    ]
+   }
+  ],
+  "faqs": [
+   {
+    "q": "What is the FASTag Annual Pass price in 2026?",
+    "a": "₹3,075 from 1 April 2026, revised from ₹3,000. NHAI announced the revision on 15 March 2026."
+   },
+   {
+    "q": "Is the FASTag Annual Pass valid on state highways and state expressways?",
+    "a": "No. It works only at NH and National Expressway fee plazas. On roads run by state governments or local bodies, the normal toll is deducted from your FASTag."
+   },
+   {
+    "q": "Can I use the Annual Pass on a taxi or commercial vehicle?",
+    "a": "No. It's only for private cars, jeeps and vans. Use in a commercial vehicle leads to immediate deactivation without notice."
+   },
+   {
+    "q": "Can I pay for the Annual Pass from my FASTag balance?",
+    "a": "No. It's paid separately through the Rajmargyatra app or the NHAI website."
+   },
+   {
+    "q": "Can I get a refund if I don't use all 200 trips?",
+    "a": "NHAI's FAQ doesn't cover refunds, and banks such as Axis and IDFC FIRST say no refund applies. Treat it as non-refundable."
+   },
+   {
+    "q": "Do I need a new FASTag for the Annual Pass?",
+    "a": "No. It's added to your existing FASTag if that tag is eligible, active and linked to your vehicle number."
+   }
+  ],
+  "tools": [
+   {
+    "to": "/tools/fastag-status",
+    "label": "Check your FASTag is eligible"
+   },
+   {
+    "to": "/tools/toll-calculator",
+    "label": "Estimate your toll without the pass"
+   }
+  ],
+  "sources": [
+   {
+    "title": "Gazette G.S.R. 388(E) – NH Fee Rules amendment",
+    "url": "https://egazette.gov.in/WriteReadData/2025/263948.pdf",
+    "date": "17 Jun 2025"
+   },
+   {
+    "title": "PIB – NHAI implements FASTag Annual Pass",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2156992",
+    "date": "15 Aug 2025"
+   },
+   {
+    "title": "PIB – Annual Pass fee revised from 1 April 2026",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2240305",
+    "date": "15 Mar 2026"
+   },
+   {
+    "title": "IHMCL – Annual Pass FAQ",
+    "url": "https://ihmcl.co.in/wp-content/uploads/2025/08/FAQ-Annual-Pass_12.08.25.pdf",
+    "date": "12 Aug 2025"
+   },
+   {
+    "title": "PIB – gift a FASTag Annual Pass",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2180638",
+    "date": "18 Oct 2025"
+   }
+  ],
+  "related": [
+   "toll-concessions-exemptions",
+   "where-to-stick-fastag",
+   "fastag-vehicle-class",
+   "toll-without-fastag-penalty"
+  ],
+  "readMins": 4
+ },
+ {
+  "slug": "fastag-kyv",
+  "title": "FASTag KYV: do you still need it, and how to finish it",
+  "short": "FASTag KYV explained",
+  "metaTitle": "FASTag KYV 2026: who still needs it and how to do it",
+  "description": "KYV (Know Your Vehicle) is no longer a routine requirement for cars since 1 February 2026. When you still need it, what to upload (one front photo) and what to do if your FASTag was deactivated.",
+  "category": "Fix a problem",
+  "card": "Cars mostly don't need KYV any more. When you still do, what to upload and how to get a deactivated tag working.",
+  "published": "2026-10-15",
+  "updated": "2026-10-15",
+  "checkedAgainst": "PIB releases (Oct 2025, Jan 2026), NPCI KYV guidelines, IHMCL KYC FAQ",
+  "lede": "KYV used to switch off thousands of car FASTags. The rules have eased twice since then. Here's what applies to your vehicle today.",
+  "quickAnswer": "For **cars, jeeps and vans, KYV is no longer a routine requirement**. New car tags issued from **1 February 2026** don't need it, and existing car tags need it only if there's a complaint, such as a loose tag or misuse. If your bank does ask, you usually upload **one front photo showing the number plate and the FASTag**; RC details are fetched from VAHAN. **Commercial vehicles** still go through KYV.",
+  "sections": [
+   {
+    "id": "what",
+    "heading": "What KYV is",
+    "blocks": [
+     {
+      "type": "p",
+      "text": "KYV (Know Your Vehicle) checks that a FASTag is on the vehicle it was issued for. It came from NPCI's June 2024 guidelines, which asked banks to verify vehicle details against VAHAN and collect vehicle photos, and to blacklist tags that weren't verified."
+     },
+     {
+      "type": "table",
+      "head": [
+       "When",
+       "What changed"
+      ],
+      "rows": [
+       [
+        "Aug 2024",
+        "KYV rules start: front and side photos, tags linked to a mobile number"
+       ],
+       [
+        "30 Oct 2025",
+        "Simplified: car side photo dropped, only a front photo with number plate and FASTag; RC fetched from VAHAN; tags not cut off without warning"
+       ],
+       [
+        "1 Feb 2026",
+        "Dropped for new car/jeep/van tags; existing car tags need KYV only after a complaint; tags activate only after VAHAN validation"
+       ]
+      ]
+     },
+     {
+      "type": "rule",
+      "text": "From 1 February 2026, KYV is discontinued for new FASTags issued to cars, jeeps and vans. For existing car FASTags, KYV is no longer a routine requirement and applies only where complaints arise, such as loose FASTags, incorrect issuance or misuse.",
+      "source": {
+       "title": "PIB – KYV discontinued for cars on new FASTags (1 Jan 2026)",
+       "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2210506"
+      }
+     }
+    ]
+   },
+   {
+    "id": "who",
+    "heading": "Who still needs KYV",
+    "blocks": [
+     {
+      "type": "list",
+      "items": [
+       "**Commercial vehicles** (trucks, buses, LCVs): no 2026 change was announced for them, so KYV still applies.",
+       "**Cars with a complaint against the tag**, for example a tag reported as loose, issued on the wrong vehicle or misused.",
+       "**Cars where VAHAN has no data** for the vehicle: the bank then validates using your RC instead."
+      ]
+     }
+    ]
+   },
+   {
+    "id": "how",
+    "heading": "How to complete KYV when your bank asks",
+    "blocks": [
+     {
+      "type": "steps",
+      "items": [
+       {
+        "title": "Open your issuer's FASTag portal or app",
+        "text": "Use the portal of the bank that issued your tag. For tags issued directly by NHAI, the IHMCL FAQ points to fastag.ihmcl.com."
+       },
+       {
+        "title": "Take one clear front photo",
+        "text": "Stand in front of the vehicle so the number plate and the FASTag on the windshield are both visible. Since October 2025 a side photo isn't needed for cars."
+       },
+       {
+        "title": "Let it fetch your RC",
+        "text": "RC details are pulled from VAHAN using your vehicle, chassis or mobile number. Upload the RC only if the portal asks for it."
+       },
+       {
+        "title": "Keep the reference number",
+        "text": "If the tag stays inactive after a few days, call your bank with it, then the national highway helpline **1033**."
+       }
+      ]
+     },
+     {
+      "type": "warn",
+      "text": "If your FASTag is fixed on the dashboard or held in hand, the front photo will show it. Stick it properly first: see [where to stick your FASTag](/guides/where-to-stick-fastag)."
+     }
+    ]
+   },
+   {
+    "id": "deactivated",
+    "heading": "If your tag was deactivated for KYV",
+    "blocks": [
+     {
+      "type": "p",
+      "text": "Since the October 2025 change, banks are expected to send SMS reminders and help you before disconnecting a tag, and FASTag service isn't supposed to stop without giving you a chance to complete KYV. No fixed number of days has been published. If your tag shows as blacklisted, complete KYV through the steps above, then check the status again after it's approved. See [what each FASTag status means](/guides/fastag-blacklisted)."
+     }
+    ]
+   }
+  ],
+  "faqs": [
+   {
+    "q": "Is FASTag KYV mandatory in 2026?",
+    "a": "Not for most cars. New car, jeep and van tags issued from 1 February 2026 don't need it, and existing car tags need it only after a complaint. Commercial vehicles still need it."
+   },
+   {
+    "q": "What photos are needed for FASTag KYV?",
+    "a": "For cars, one front photo showing the number plate and the FASTag on the windshield. The side photo was dropped in October 2025."
+   },
+   {
+    "q": "Do I need to upload my RC for KYV?",
+    "a": "Usually not. RC details are fetched automatically from VAHAN. The bank asks for the RC only when VAHAN has no data for the vehicle."
+   },
+   {
+    "q": "My FASTag was blacklisted for KYV. How long until it works again?",
+    "a": "It's reactivated once your bank approves the KYV. No fixed timeline is published; if it's still inactive after a few days, call your bank and then the 1033 helpline."
+   }
+  ],
+  "tools": [
+   {
+    "to": "/tools/fastag-status",
+    "label": "Check FASTag status"
+   }
+  ],
+  "sources": [
+   {
+    "title": "PIB – NHAI simplifies KYV",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2184306",
+    "date": "30 Oct 2025"
+   },
+   {
+    "title": "PIB – KYV discontinued for cars on new FASTags",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2210506",
+    "date": "1 Jan 2026"
+   },
+   {
+    "title": "NPCI – Customer onboarding and Re-KYV guidelines",
+    "url": "https://npci.org.in/PDF/netc/circular/2024/NETC-OC-001-FY-24-25-Guidelines-for-Customer-Onboarding-and-Re-Know-Your-Vehicle-(KYV).pdf",
+    "date": "20 Jun 2024"
+   },
+   {
+    "title": "IHMCL – FAQ on FASTag KYC",
+    "url": "https://ihmcl.co.in/wp-content/uploads/2024/01/FAQ-on-FASTag-KYC-1.pdf",
+    "date": "Jan 2024"
+   }
+  ],
+  "related": [
+   "fastag-blacklisted",
+   "where-to-stick-fastag",
+   "fastag-replacement-reissue",
+   "close-or-transfer-fastag"
+  ],
+  "readMins": 3
+ },
+ {
+  "slug": "fastag-blacklisted",
+  "title": "Blacklisted, hotlisted or low balance: what each FASTag status means",
+  "short": "FASTag status meanings",
+  "metaTitle": "FASTag blacklisted, hotlisted, low balance: meaning & fix",
+  "description": "What blacklisted, hotlisted, low balance, exempted and closed mean on a FASTag, why a tag gets blacklisted, the 60-minute rule at the plaza, and how to fix each one.",
+  "category": "Fix a problem",
+  "card": "The six FASTag status codes in plain words, why tags get blacklisted, and the fix for each cause.",
+  "published": "2026-10-15",
+  "updated": "2026-10-15",
+  "checkedAgainst": "NPCI exception codes, NHAI FAQ, PIB clarifications",
+  "lede": "The toll reader doesn't care how new your tag looks. It checks one thing: the tag's status. Here's what each status means and how to clear it.",
+  "quickAnswer": "A **blacklisted** FASTag has been blocked by the issuing bank and can't pay toll. Common reasons are **low or negative balance, an incomplete KYC/KYV, a wrong vehicle number, a loose tag or more than one tag on the vehicle**. **Low balance** clears as soon as you recharge. The other causes clear only after you fix them with your bank. Check your tag's status first, then use the table below.",
+  "sections": [
+   {
+    "id": "codes",
+    "heading": "The six statuses a toll reader sees",
+    "blocks": [
+     {
+      "type": "table",
+      "head": [
+       "Status",
+       "What it means",
+       "Fix"
+      ],
+      "rows": [
+       [
+        "Low balance",
+        "Balance is below the level needed for the toll",
+        "Recharge; it clears almost immediately"
+       ],
+       [
+        "Blacklist",
+        "Blocked by the issuing bank, or on request of RBI, IHMCL/NHAI or law enforcement",
+        "Fix the reason with your bank (table below)"
+       ],
+       [
+        "Hotlist",
+        "Blocked at the issuer level, for example for a negative balance or a violation",
+        "Call your bank; clear the dues or complaint"
+       ],
+       [
+        "Exempted",
+        "Toll-exempt vehicle under NHAI/MoRTH rules",
+        "Nothing to fix; no toll is charged"
+       ],
+       [
+        "Closed / replaced",
+        "The account was closed, the tag surrendered or moved to a new bank",
+        "Use your newest active tag, or buy one"
+       ],
+       [
+        "Invalid carriage",
+        "A code NPCI added in 2022 for specific vehicle categories",
+        "Ask your bank what it applies to"
+       ]
+      ],
+      "note": "Codes from NPCI's NETC exception-code circular (2022). NPCI's site blocks direct access, so definitions are summarised from its published circular; confirm the exact wording with your bank."
+     },
+     {
+      "type": "p",
+      "text": "Run a [FASTag status check](/tools/fastag-status) with your vehicle number to see every tag linked to the vehicle and its status."
+     }
+    ]
+   },
+   {
+    "id": "why",
+    "heading": "Why a FASTag gets blacklisted, and the fix for each",
+    "blocks": [
+     {
+      "type": "table",
+      "head": [
+       "Reason",
+       "How to fix it"
+      ],
+      "rows": [
+       [
+        "Low or negative balance",
+        "Recharge enough to clear the negative amount plus the next toll"
+       ],
+       [
+        "KYC or KYV not completed",
+        "Finish it in your bank's FASTag portal. See [FASTag KYV](/guides/fastag-kyv)"
+       ],
+       [
+        "Wrong or invalid vehicle number on the tag",
+        "Ask your bank to update the vehicle number using your RC. NHAI told banks in April 2026 to blacklist tags with incorrect numbers"
+       ],
+       [
+        "Tag issued on chassis number, never updated",
+        "Update the vehicle number within 90 days of issue, or the tag is closed and you need a new one"
+       ],
+       [
+        "Loose tag or tag held in hand",
+        "Stick it on the windshield properly; if it's damaged, get a [replacement](/guides/fastag-replacement-reissue)"
+       ],
+       [
+        "More than one tag on the vehicle",
+        "Only the newest tag stays active (One Vehicle One FASTag). Close the older ones"
+       ],
+       [
+        "Vehicle class doesn't match the tag",
+        "Get a tag of the right class. See [vehicle classes](/guides/fastag-vehicle-class)"
+       ],
+       [
+        "Unpaid e-notice from a barrier-free (MLFF) plaza",
+        "Pay the pending e-notice; unpaid dues may lead to blacklisting"
+       ]
+      ]
+     }
+    ]
+   },
+   {
+    "id": "timing",
+    "heading": "Recharged just before the plaza? The 60-minute rule",
+    "blocks": [
+     {
+      "type": "p",
+      "text": "Since 17 February 2025, NPCI's rule says a transaction is declined if the tag was blacklisted, hotlisted or low on balance for **more than 60 minutes before** the reader read it **and** still in that state **10 minutes after**. In practice, if you recharge and the status clears before the plaza, or within about 10 minutes after the read, the toll goes through."
+     },
+     {
+      "type": "rule",
+      "text": "NHAI clarified that the rule concerns disputes between banks and has no impact on customers: all NH plazas check tag status in real time, so you can recharge any time before crossing. Some state highway plazas still refresh status periodically, so recharge a little earlier there.",
+      "source": {
+       "title": "PIB – clarification on new FASTag rule (19 Feb 2025)",
+       "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2104728"
+      }
+     }
+    ]
+   },
+   {
+    "id": "plaza",
+    "heading": "If it happens at the toll booth",
+    "blocks": [
+     {
+      "type": "plaza",
+      "title": "Tag shown as blacklisted",
+      "text": "Ask the operator what status the system shows. If it's low balance, recharge from your phone and ask them to read the tag again. If your tag is valid with enough balance but shown as blacklisted wrongly, note the time and plaza and complain to your bank and to 1033."
+     },
+     {
+      "type": "p",
+      "text": "If you end up paying without FASTag, the extra charge depends on how you pay. See [toll without a working FASTag](/guides/toll-without-fastag-penalty)."
+     }
+    ]
+   }
+  ],
+  "faqs": [
+   {
+    "q": "What does blacklisted mean on FASTag?",
+    "a": "The tag has been blocked by the issuing bank and can't pay toll until the reason is fixed. Common reasons are low or negative balance, incomplete KYC/KYV, a wrong vehicle number, a loose tag or multiple tags on the vehicle."
+   },
+   {
+    "q": "What is the difference between blacklist and hotlist on FASTag?",
+    "a": "Both block the tag at the plaza. A hotlist is an issuer-level block, for example for a negative balance or a violation. A blacklist can also be requested by RBI, IHMCL/NHAI or law enforcement."
+   },
+   {
+    "q": "How long does it take to remove a FASTag from the blacklist?",
+    "a": "A low-balance block clears almost as soon as you recharge. Blocks for KYC, vehicle number or a loose tag clear only after your bank verifies the fix; there's no fixed published time."
+   },
+   {
+    "q": "Can I check if my FASTag is blacklisted?",
+    "a": "Yes. Use the [FASTag status check](/tools/fastag-status) with your vehicle number, or NPCI's NETC status page, or your bank's app."
+   }
+  ],
+  "tools": [
+   {
+    "to": "/tools/fastag-status",
+    "label": "Check FASTag status"
+   },
+   {
+    "to": "/tools/fastag-recharge",
+    "label": "Recharge FASTag"
+   }
+  ],
+  "sources": [
+   {
+    "title": "NPCI – Changes to the rule for declining transactions from tags in exception (004A)",
+    "url": "https://npci.org.in/PDF/npci/netc/2024/NETC-004A-FY-24-25-Changes-to-the-rule-for-declining-transactions-from-tags-in-exception.pdf",
+    "date": "28 Jan 2025"
+   },
+   {
+    "title": "PIB – clarification on new FASTag rule",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2104728",
+    "date": "19 Feb 2025"
+   },
+   {
+    "title": "PIB – One Vehicle One FASTag",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=1996191",
+    "date": "15 Jan 2024"
+   },
+   {
+    "title": "PIB – NHAI validates vehicle registration numbers",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2252275",
+    "date": "15 Apr 2026"
+   },
+   {
+    "title": "NHAI – FAQ on FASTag",
+    "url": "https://nhai.gov.in/nhai/sites/default/files/mix_file/FAQ-FASTag.pdf",
+    "date": "Feb 2021"
+   }
+  ],
+  "related": [
+   "fastag-kyv",
+   "fastag-wrong-deduction-refund",
+   "where-to-stick-fastag",
+   "toll-without-fastag-penalty"
+  ],
+  "readMins": 4
+ },
+ {
+  "slug": "fastag-wrong-deduction-refund",
+  "title": "Wrong or double toll deduction: how to get your money back",
+  "short": "Wrong or double deduction refund",
+  "metaTitle": "FASTag wrong or double deduction: how to get a refund",
+  "description": "Charged twice, charged for a plaza you never crossed, or charged the wrong amount? How to raise a FASTag dispute with your bank, the reporting windows, typical refund times and when to escalate to 1033.",
+  "category": "Money & disputes",
+  "card": "Charged twice or at the wrong plaza? Report it in time, keep the right proof, and know when to escalate.",
+  "published": "2026-10-15",
+  "updated": "2026-10-15",
+  "checkedAgainst": "IHMCL FAQ, NHAI FAQ, bank dispute pages",
+  "lede": "Wrong deductions are fixed through your bank, not at the plaza. What matters most is reporting it within your bank's window, with the SMS as proof.",
+  "quickAnswer": "Report the wrong deduction to **the bank that issued your FASTag** (app, website or toll-free number) **as soon as you see the SMS**. Banks set their own windows, as short as **15 days** at some banks, so don't wait. The bank raises a chargeback on the toll plaza's bank; IHMCL says this **normally takes 20 to 30 working days**. If your bank doesn't respond, call the national highway helpline **1033**, then email **etc.nodal@ihmcl.com**.",
+  "sections": [
+   {
+    "id": "types",
+    "heading": "Which problem do you have?",
+    "blocks": [
+     {
+      "type": "table",
+      "head": [
+       "What happened",
+       "Is it refundable?",
+       "What to do"
+      ],
+      "rows": [
+       [
+        "Charged twice at the same plaza for one crossing",
+        "Yes, the duplicate is reversed once proven",
+        "Raise a dispute with your bank"
+       ],
+       [
+        "Charged at a plaza you never crossed",
+        "Yes, if the plaza can't show your vehicle crossed",
+        "Raise a dispute; mention where your vehicle actually was"
+       ],
+       [
+        "Charged at the wrong vehicle class",
+        "Yes, for the difference",
+        "Dispute it, and fix the tag's class. See [vehicle classes](/guides/fastag-vehicle-class)"
+       ],
+       [
+        "Paid by FASTag and also in cash or UPI at the booth",
+        "Yes, one of them",
+        "Keep the booth receipt and dispute the FASTag debit"
+       ],
+       [
+        "Valid tag not read, and you were made to pay",
+        "You shouldn't have paid at all",
+        "See [toll without a working FASTag](/guides/toll-without-fastag-penalty), then complain to 1033"
+       ]
+      ]
+     }
+    ]
+   },
+   {
+    "id": "steps",
+    "heading": "How to raise the dispute",
+    "blocks": [
+     {
+      "type": "steps",
+      "items": [
+       {
+        "title": "Find the SMS for the deduction",
+        "text": "Every FASTag debit sends an SMS with the plaza, date, time and amount. That's your main evidence."
+       },
+       {
+        "title": "Report it to your issuing bank",
+        "text": "Use the bank's FASTag app, website or toll-free number. Mention the transaction ID or SMS details, and what was wrong."
+       },
+       {
+        "title": "Attach proof if asked",
+        "text": "Plaza receipt or zero-transaction receipt, the cash or UPI receipt if you paid twice, your RC, and a front photo of the vehicle showing the tag."
+       },
+       {
+        "title": "Note the complaint number",
+        "text": "You'll need it to follow up or escalate."
+       },
+       {
+        "title": "Escalate if there's no answer",
+        "text": "Call **1033**, the national highway helpline. If your bank still doesn't respond, email **etc.nodal@ihmcl.com** with the complaint number."
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "windows",
+    "heading": "How long you have, and how long it takes",
+    "blocks": [
+     {
+      "type": "table",
+      "head": [
+       "Bank",
+       "Report within",
+       "Refund time stated"
+      ],
+      "rows": [
+       [
+        "IHMCL (general guidance)",
+        "40 days of the transaction",
+        "Normally 20–30 working days"
+       ],
+       [
+        "HDFC Bank",
+        "15 days of the transaction",
+        "Not stated"
+       ],
+       [
+        "ICICI Bank",
+        "30 days",
+        "Within 25 working days"
+       ],
+       [
+        "Kotak Mahindra Bank",
+        "35 days of the transaction",
+        "10 days to process the refund"
+       ]
+      ],
+      "note": "Banks publish different windows, so follow your own bank's. Checked on each bank's FASTag page in October 2026."
+     },
+     {
+      "type": "warn",
+      "text": "Kotak notes that if the toll plaza's bank later re-claims the amount with proof, a refunded amount can be debited again. Keep your evidence until the case is closed."
+     }
+    ]
+   },
+   {
+    "id": "prevent",
+    "heading": "Spotting it early",
+    "blocks": [
+     {
+      "type": "list",
+      "items": [
+       "Keep FASTag SMS alerts on, and check them the same day after a long trip.",
+       "Note plazas where you paid in cash or UPI, and keep those receipts.",
+       "Make sure only one FASTag is active on your vehicle; old tags can cause confusing deductions. See [FASTag status meanings](/guides/fastag-blacklisted).",
+       "Track an open complaint with our [dispute tracker](/tools/dispute-tracker)."
+      ]
+     }
+    ]
+   }
+  ],
+  "faqs": [
+   {
+    "q": "How do I get a refund for a double FASTag deduction?",
+    "a": "Report it to the bank that issued your FASTag with the SMS details. The bank raises a chargeback on the plaza's bank and reverses the duplicate once it's proven, normally within 20 to 30 working days."
+   },
+   {
+    "q": "How many days do I have to report a wrong FASTag deduction?",
+    "a": "It depends on your bank: HDFC says 15 days, ICICI 30 days, Kotak 35 days, and IHMCL's general guidance is 40 days. Report it as soon as you see the SMS."
+   },
+   {
+    "q": "Who do I complain to if my bank doesn't refund a FASTag deduction?",
+    "a": "Call the national highway helpline 1033, then email etc.nodal@ihmcl.com with your bank complaint number."
+   },
+   {
+    "q": "Can the toll plaza refund a wrong FASTag deduction?",
+    "a": "No. FASTag refunds go through the bank that issued your tag, which recovers the money from the plaza's bank."
+   }
+  ],
+  "tools": [
+   {
+    "to": "/tools/dispute-tracker",
+    "label": "Track a dispute"
+   },
+   {
+    "to": "/tools/fastag-status",
+    "label": "Check FASTag status"
+   }
+  ],
+  "sources": [
+   {
+    "title": "IHMCL – FASTag FAQ",
+    "url": "https://ihmcl.co.in/faq/",
+    "date": "checked Oct 2026"
+   },
+   {
+    "title": "NHAI – FAQ on FASTag",
+    "url": "https://nhai.gov.in/nhai/sites/default/files/mix_file/FAQ-FASTag.pdf",
+    "date": "Feb 2021"
+   },
+   {
+    "title": "HDFC Bank – FASTag FAQ",
+    "url": "https://v.hdfc.bank.in/htdocs/common/fastag/faq.html"
+   },
+   {
+    "title": "ICICI Bank – FASTag dispute",
+    "url": "https://www.icici.bank.in/campaigns/Dispute-etoll-LP/index"
+   },
+   {
+    "title": "Kotak – FASTag toll-related help",
+    "url": "https://www.kotak.bank.in/en/help-center/cards/fastag/toll-related/qns-5.html"
+   },
+   {
+    "title": "PIB – FASTag grievance channels",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2214528",
+    "date": "14 Jan 2026"
+   }
+  ],
+  "related": [
+   "fastag-blacklisted",
+   "toll-without-fastag-penalty",
+   "fastag-vehicle-class",
+   "fastag-replacement-reissue"
+  ],
+  "readMins": 3
+ },
+ {
+  "slug": "fastag-replacement-reissue",
+  "title": "Replace, reissue or get a duplicate FASTag (Axis, ICICI, HDFC and others)",
+  "short": "Replace or reissue a FASTag",
+  "metaTitle": "FASTag replacement & duplicate tag: fees by bank",
+  "description": "How to replace a damaged, lost or mismatched FASTag, what each bank charges (Axis ₹100, ICICI ₹99.12, HDFC ₹100, IDFC FIRST ₹100, Kotak nil), the Axis Bank replacement steps, and what happens to your old tag.",
+  "category": "Fix a problem",
+  "card": "Damaged, lost or wrong-class tag? Replacement steps, each bank's fee, and the full Axis Bank process.",
+  "published": "2026-10-15",
+  "updated": "2026-10-15",
+  "checkedAgainst": "Bank fee pages, Axis Bank FASTag page, NHAI FAQ, NPCI closure policy",
+  "lede": "A replacement keeps your FASTag account and balance and gives you a new sticker. You need one more often than you'd think: a new windshield, a peeled tag or a class mismatch all mean a new tag.",
+  "quickAnswer": "Ask **the bank that issued your FASTag** for a replacement. Most banks charge **about ₹100** (Axis ₹100, ICICI ₹99.12, HDFC ₹100, IDFC FIRST ₹100; Kotak charges nothing) and usually ask for your **RC**. Your balance moves to the new tag, and the old one is closed: only one FASTag can be active on a vehicle. At **Axis Bank**, request it at **fastag.axis.bank.in → Helpdesk → Replacement**, or call **1800 419 8585**.",
+  "sections": [
+   {
+    "id": "when",
+    "heading": "When you need a replacement",
+    "blocks": [
+     {
+      "type": "table",
+      "head": [
+       "Situation",
+       "Replacement?",
+       "Why"
+      ],
+      "rows": [
+       [
+        "Tag damaged, peeled or not reading",
+        "Yes",
+        "NHAI's FAQ says to ask your issuing bank for a replacement"
+       ],
+       [
+        "Windshield replaced",
+        "Yes",
+        "A fixed tag can't be peeled off and reused"
+       ],
+       [
+        "Tag lost or stolen",
+        "Block it first, then replace",
+        "Call your bank to block the old tag so nobody else can use it"
+       ],
+       [
+        "Tag shows the wrong vehicle class",
+        "Yes",
+        "A class mismatch can get the tag blacklisted"
+       ],
+       [
+        "You want a different bank",
+        "Not needed",
+        "From 17 Sep 2026 you can switch bank and keep the same tag (OneTag)"
+       ]
+      ]
+     }
+    ]
+   },
+   {
+    "id": "fees",
+    "heading": "What each bank charges",
+    "blocks": [
+     {
+      "type": "table",
+      "head": [
+       "Bank",
+       "Replacement / reissue fee"
+      ],
+      "rows": [
+       [
+        "[Axis Bank](/bank/axis-fastag)",
+        "₹100 including taxes; RC upload mandatory"
+       ],
+       [
+        "[ICICI Bank](/bank/icici-fastag)",
+        "₹99.12 including GST"
+       ],
+       [
+        "[HDFC Bank](/bank/hdfc-fastag)",
+        "₹100 including taxes, debited from the FASTag wallet"
+       ],
+       [
+        "[IDFC FIRST Bank](/bank/idfc-fastag)",
+        "₹100 including GST"
+       ],
+       [
+        "[Kotak Mahindra Bank](/bank/kotak-fastag)",
+        "Nil; replacement within 2 working days"
+       ],
+       [
+        "[SBI](/bank/sbi-fastag)",
+        "Not published on SBI's FASTag pages; ask SBI"
+       ]
+      ],
+      "note": "From each bank's own FASTag fees page, checked October 2026. Banks can change fees; check before you apply."
+     }
+    ]
+   },
+   {
+    "id": "axis",
+    "heading": "Axis Bank: replacement step by step",
+    "blocks": [
+     {
+      "type": "p",
+      "text": "Axis Bank still issues new FASTags in 2026. Its replacement request covers three cases: damaged, stolen or mismatched tag."
+     },
+     {
+      "type": "steps",
+      "items": [
+       {
+        "title": "Log in at fastag.axis.bank.in",
+        "text": "Use the customer portal for your Axis FASTag account."
+       },
+       {
+        "title": "Open Helpdesk",
+        "text": "Go to **Helpdesk → Request Information/Queries**."
+       },
+       {
+        "title": "Choose the request type",
+        "text": "Type **Request**, sub-type **Replacement**, then pick damaged, stolen or mismatched."
+       },
+       {
+        "title": "Upload your RC",
+        "text": "The RC upload is mandatory. The fee is ₹100 including taxes."
+       },
+       {
+        "title": "Fix the new tag properly",
+        "text": "Stick it behind the rear-view mirror on clean, dry glass. See [where to stick your FASTag](/guides/where-to-stick-fastag)."
+       }
+      ]
+     },
+     {
+      "type": "table",
+      "head": [
+       "Axis Bank FASTag",
+       ""
+      ],
+      "rows": [
+       [
+        "Customer care",
+        "1800 419 8585"
+       ],
+       [
+        "Email",
+        "etc.management@axis.bank.in"
+       ],
+       [
+        "Lost tag or stolen vehicle",
+        "Call 1800 419 8585 to block the tag"
+       ],
+       [
+        "Issuance fee / security deposit",
+        "₹100 / ₹200"
+       ]
+      ],
+      "note": "From Axis Bank's FASTag page, checked October 2026. Axis doesn't issue FASTags for two-wheelers."
+     }
+    ]
+   },
+   {
+    "id": "old-tag",
+    "heading": "What happens to your old tag",
+    "blocks": [
+     {
+      "type": "p",
+      "text": "Under the One Vehicle One FASTag rule, only the latest tag on a vehicle stays active. NPCI's policy auto-closes older duplicate tags 15 days after a new tag is registered for the same vehicle. Your balance is transferred to the new account. Remove and destroy the old sticker so it isn't read by mistake."
+     },
+     {
+      "type": "plaza",
+      "title": "Waiting for the new tag",
+      "text": "Until the new tag arrives, your old tag may still work if it reads. If it doesn't read and you pay by UPI, the no-FASTag charge applies. See [toll without a working FASTag](/guides/toll-without-fastag-penalty)."
+     }
+    ]
+   },
+   {
+    "id": "switch-bank",
+    "heading": "Switching bank without a new tag (OneTag)",
+    "blocks": [
+     {
+      "type": "p",
+      "text": "Since 17 September 2026, the Rajmargyatra app lets you move your FASTag to another bank and **keep the same physical tag and Tag ID**. You check eligibility with your vehicle number, get a 6-digit Mobile Verification Code from your current bank, pick the new bank and finish its KYC and wallet setup. The old bank closes your old wallet and refunds the balance after adjustments. You can't port again for 6 months."
+     },
+     {
+      "type": "rule",
+      "text": "OneTag lets FASTag users change their issuer bank while keeping the same FASTag and Tag ID, through the Rajmargyatra app.",
+      "source": {
+       "title": "PIB – Rajmargyatra app hosts 'OneTag' portability (17 Sep 2026)",
+       "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2311392"
+      }
+     }
+    ]
+   }
+  ],
+  "faqs": [
+   {
+    "q": "How do I get a duplicate FASTag from Axis Bank?",
+    "a": "Log in at fastag.axis.bank.in, go to Helpdesk → Request Information/Queries, choose Request → Replacement, select damaged, stolen or mismatched, and upload your RC. The fee is ₹100. You can also call 1800 419 8585."
+   },
+   {
+    "q": "What is the FASTag replacement charge?",
+    "a": "About ₹100 at most banks: Axis ₹100, ICICI ₹99.12, HDFC ₹100 and IDFC FIRST ₹100. Kotak charges nothing for reissuance."
+   },
+   {
+    "q": "Will I lose my FASTag balance if I replace the tag?",
+    "a": "No. NHAI's FAQ says the issuer transfers the balance to your new account."
+   },
+   {
+    "q": "Do I need a new FASTag after changing the windshield?",
+    "a": "Yes. A fixed tag can't be peeled off and reused, so ask your bank for a replacement."
+   },
+   {
+    "q": "Can I change my FASTag bank without buying a new tag?",
+    "a": "Yes, since 17 September 2026, using OneTag in the Rajmargyatra app. You keep the same tag and Tag ID."
+   }
+  ],
+  "tools": [
+   {
+    "to": "/bank/axis-fastag",
+    "label": "Axis Bank FASTag help"
+   },
+   {
+    "to": "/buy-fastag",
+    "label": "Buy a new FASTag"
+   }
+  ],
+  "sources": [
+   {
+    "title": "Axis Bank – FASTag",
+    "url": "https://www.axis.bank.in/payments/fastag",
+    "date": "checked Oct 2026"
+   },
+   {
+    "title": "ICICI Bank – FASTag fees and charges",
+    "url": "https://www.icici.bank.in/personal-banking/payments/fastag/fees-and-charges"
+   },
+   {
+    "title": "HDFC Bank – FASTag fees",
+    "url": "https://v.hdfc.bank.in/htdocs/common/fastag/feescharges.html"
+   },
+   {
+    "title": "IDFC FIRST Bank – FASTag fees",
+    "url": "https://www.idfcfirst.bank.in/personal-banking/fastag/fees-and-charges"
+   },
+   {
+    "title": "Kotak – FASTag fees and charges",
+    "url": "https://www.kotak.bank.in/en/personal-banking/cards/prepaid-card/fastag/fee-and-charges.html"
+   },
+   {
+    "title": "NPCI – One Vehicle One FASTag and closure of multiple tags",
+    "url": "https://www.npci.org.in/PDF/netc/circular/2024/NETC-OC-006-FY-23-24-One-Vehicle-One-FASTag-and-closure-of-Multiple-tags-linked-to-vehicles.pdf",
+    "date": "29 Mar 2024"
+   },
+   {
+    "title": "PIB – Rajmargyatra app hosts 'OneTag' portability (17 Sep 2026)",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2311392"
+   }
+  ],
+  "related": [
+   "where-to-stick-fastag",
+   "close-or-transfer-fastag",
+   "fastag-vehicle-class",
+   "fastag-blacklisted"
+  ],
+  "readMins": 4
+ },
+ {
+  "slug": "close-or-transfer-fastag",
+  "title": "Selling your car? How to close or move your FASTag",
+  "short": "Close or transfer a FASTag",
+  "metaTitle": "Selling your car? How to close your FASTag",
+  "description": "A FASTag can't be transferred to a new owner. How the seller closes the tag and gets the balance and security deposit back, what the buyer must do, and how OneTag differs from a transfer.",
+  "category": "Getting started",
+  "card": "A FASTag doesn't go with the car. What the seller closes, what the buyer buys, and how to get your deposit back.",
+  "published": "2026-10-15",
+  "updated": "2026-10-15",
+  "checkedAgainst": "NHAI FAQ, Axis Bank and SBI FASTag pages, NPCI closure policy",
+  "lede": "The FASTag is linked to your bank account and your name, not just the car. If you sell the car without closing it, tolls the new owner runs up can still come out of your wallet.",
+  "quickAnswer": "A FASTag **can't be transferred to the car's new owner**. The **seller closes the FASTag account** with the bank that issued it and gets the unused balance (and usually the security deposit) refunded. The **buyer removes the old sticker and buys a new FASTag** in their own name. Only one tag can be active on a vehicle, so the buyer's new tag replaces yours.",
+  "sections": [
+   {
+    "id": "seller",
+    "heading": "If you're selling the car",
+    "blocks": [
+     {
+      "type": "steps",
+      "items": [
+       {
+        "title": "Recharge or settle any negative balance",
+        "text": "Banks won't close an account with dues. SBI, for example, asks you to settle a negative balance first."
+       },
+       {
+        "title": "Ask your bank to close the FASTag account",
+        "text": "Use the bank's FASTag portal or helpline. At Axis Bank, email etc.management@axis.bank.in from your registered email with a cancelled cheque."
+       },
+       {
+        "title": "Remove and destroy the sticker",
+        "text": "Axis Bank asks you to remove (destroy) the tag when you sell the vehicle, so it can't be used again."
+       },
+       {
+        "title": "Get the refund",
+        "text": "The unused balance goes back to your bank account. Axis says within 10 working days. The security deposit is refunded at closure, subject to the bank's conditions."
+       }
+      ]
+     },
+     {
+      "type": "warn",
+      "text": "HDFC and Kotak refund the security deposit only to full-KYC customers, and HDFC doesn't refund it if the tag balance is negative. Banks can also use the deposit to cover unpaid tolls."
+     }
+    ]
+   },
+   {
+    "id": "buyer",
+    "heading": "If you're buying a used car",
+    "blocks": [
+     {
+      "type": "steps",
+      "items": [
+       {
+        "title": "Check what's on the car",
+        "text": "Run a [FASTag status check](/tools/fastag-status) with the vehicle number to see any tags still linked to it."
+       },
+       {
+        "title": "Ask the seller to close their tag",
+        "text": "If they haven't, the old tag stays linked to their account until your new one replaces it."
+       },
+       {
+        "title": "Remove the old sticker",
+        "text": "Peel it off and destroy it."
+       },
+       {
+        "title": "Buy a new FASTag in your name",
+        "text": "Get one from any bank, or [buy a FASTag here](/buy-fastag), and stick it correctly. See [where to stick your FASTag](/guides/where-to-stick-fastag)."
+       }
+      ]
+     },
+     {
+      "type": "p",
+      "text": "Under the One Vehicle One FASTag rule, your new tag becomes the only active tag on that vehicle number, and older tags on it are closed."
+     }
+    ]
+   },
+   {
+    "id": "onetag",
+    "heading": "OneTag isn't a transfer to a new owner",
+    "blocks": [
+     {
+      "type": "p",
+      "text": "OneTag, live in the Rajmargyatra app since 17 September 2026, lets **the same owner** move their FASTag to a different bank and keep the tag. It doesn't change the owner. When a car changes hands, the seller still closes the tag and the buyer still gets a new one."
+     }
+    ]
+   },
+   {
+    "id": "annual-pass",
+    "heading": "If you had an Annual Pass",
+    "blocks": [
+     {
+      "type": "p",
+      "text": "The FASTag Annual Pass is non-transferable: it's valid only for the vehicle the tag is fixed on and registered to. NHAI hasn't published what happens to unused pass trips when a tag is closed, so ask your bank before you close it. See [FASTag Annual Pass](/guides/fastag-annual-pass)."
+     }
+    ]
+   }
+  ],
+  "faqs": [
+   {
+    "q": "Can I transfer my FASTag to a new owner when I sell my car?",
+    "a": "No. The seller closes the FASTag account with their bank, and the buyer buys a new FASTag in their own name."
+   },
+   {
+    "q": "How do I close my FASTag account?",
+    "a": "Contact the bank that issued it through its FASTag portal or helpline, settle any negative balance, and request closure. The unused balance is refunded to your bank account."
+   },
+   {
+    "q": "Will I get my FASTag security deposit back?",
+    "a": "Usually yes, at closure, but conditions apply. For example, HDFC and Kotak refund it only to full-KYC customers, and HDFC doesn't refund it if your balance is negative."
+   },
+   {
+    "q": "I bought a used car with a FASTag already on it. Can I use it?",
+    "a": "No. The tag belongs to the seller's account. Remove it and buy a new FASTag in your name; your new tag becomes the only active one on the vehicle."
+   }
+  ],
+  "tools": [
+   {
+    "to": "/tools/fastag-status",
+    "label": "Check tags on a vehicle"
+   },
+   {
+    "to": "/buy-fastag",
+    "label": "Buy a FASTag in your name"
+   }
+  ],
+  "sources": [
+   {
+    "title": "NHAI – FAQ on FASTag",
+    "url": "https://nhai.gov.in/nhai/sites/default/files/mix_file/FAQ-FASTag.pdf",
+    "date": "Feb 2021"
+   },
+   {
+    "title": "IHMCL – FASTag FAQ",
+    "url": "https://ihmcl.co.in/faq/",
+    "date": "checked Oct 2026"
+   },
+   {
+    "title": "Axis Bank – FASTag",
+    "url": "https://www.axis.bank.in/payments/fastag",
+    "date": "checked Oct 2026"
+   },
+   {
+    "title": "SBI – FASTag",
+    "url": "https://sbi.bank.in/web/personal-banking/digital/sbi-fastag"
+   },
+   {
+    "title": "HDFC Bank – FASTag fees",
+    "url": "https://v.hdfc.bank.in/htdocs/common/fastag/feescharges.html"
+   },
+   {
+    "title": "PIB – Rajmargyatra app hosts 'OneTag' portability (17 Sep 2026)",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2311392"
+   }
+  ],
+  "related": [
+   "fastag-replacement-reissue",
+   "fastag-annual-pass",
+   "where-to-stick-fastag",
+   "fastag-kyv"
+  ],
+  "readMins": 3
+ },
+ {
+  "slug": "toll-without-fastag-penalty",
+  "title": "Paying toll without a working FASTag: penalties and your rights",
+  "short": "Toll without a working FASTag",
+  "metaTitle": "Toll without FASTag in 2026: 1.25× UPI or e-notice",
+  "description": "From 10 April 2026, a vehicle without a valid FASTag pays 1.25× the toll by UPI, or gets an e-notice payable at 1× within 72 hours or 2× after. And if your valid FASTag isn't read because of the plaza, you cross free.",
+  "category": "Toll rules",
+  "card": "What you pay without a valid FASTag in 2026, how e-notices work, and when the plaza must let you through free.",
+  "published": "2026-10-15",
+  "updated": "2026-10-15",
+  "checkedAgainst": "Gazette G.S.R. 251(E), G.S.R. 191(E), G.S.R. 734(E), PIB releases",
+  "lede": "The rules for toll without a FASTag changed twice in six months. Here is what applies at national highway plazas from 10 April 2026.",
+  "quickAnswer": "From **10 April 2026**, a vehicle without a valid FASTag at a national highway plaza can pay **1.25 times the toll by UPI**. If it doesn't pay that way, an **e-notice** is sent to the owner: pay **1× the toll within 72 hours, or 2× after that**. But if your FASTag **is valid, has enough balance and the plaza's reader fails**, you must be allowed through **free**, with a zero-transaction receipt.",
+  "sections": [
+   {
+    "id": "now",
+    "heading": "The rule today",
+    "blocks": [
+     {
+      "type": "table",
+      "head": [
+       "Your situation",
+       "What you pay"
+      ],
+      "rows": [
+       [
+        "No FASTag, or tag not valid (blacklisted, no balance), pay by UPI",
+        "1.25× the toll"
+       ],
+       [
+        "No valid FASTag and you don't pay by UPI",
+        "E-notice to the vehicle owner: 1× if paid within 72 hours, 2× after"
+       ],
+       [
+        "Valid FASTag with enough balance, plaza reader fails",
+        "Nothing; you get a zero-transaction receipt"
+       ],
+       [
+        "Tag not fixed on the windshield (loose or in hand)",
+        "Double the toll, and the tag can be blacklisted"
+       ]
+      ],
+      "note": "For a ₹100 toll: ₹125 by UPI; ₹100 on an e-notice paid within 72 hours, ₹200 after."
+     },
+     {
+      "type": "rule",
+      "text": "A vehicle entering a fee plaza without a FASTag or a valid functional FASTag that opts to pay through UPI shall pay 1.25 times the user fee. If it doesn't opt to pay this way, it is dealt with under the unpaid-fee (e-notice) rule.",
+      "source": {
+       "title": "Gazette G.S.R. 251(E) – NH Fee (Third Amendment) Rules, 2026",
+       "url": "https://egazette.gov.in/WriteReadData/2026/271540.pdf"
+      }
+     }
+    ]
+   },
+   {
+    "id": "free",
+    "heading": "When the plaza must let you through free",
+    "blocks": [
+     {
+      "type": "rule",
+      "text": "A vehicle with a valid, functional FASTag having sufficient balance that couldn't pay because the electronic toll collection equipment malfunctioned shall be allowed to cross without paying any user fee, and a zero-transaction receipt shall be issued.",
+      "source": {
+       "title": "Gazette G.S.R. 734(E) – NH Fee (Third Amendment) Rules, 2025",
+       "url": "https://egazette.gov.in/WriteReadData/2025/266618.pdf"
+      }
+     },
+     {
+      "type": "plaza",
+      "title": "Your tag isn't read",
+      "text": "First check your tag is valid and has balance in your bank app. If it is, tell the operator the reader failed and ask for a zero-transaction receipt instead of paying. If you're made to pay anyway, keep the receipt and complain to your bank and the 1033 helpline."
+     },
+     {
+      "type": "p",
+      "text": "NHAI also published a guideline in 2021 for a waiting time of no more than 10 seconds per vehicle: if the queue goes beyond a yellow line 100 metres from the booth, vehicles pass without paying until the queue is back within 100 metres. It's an NHAI guideline rather than part of the fee rules, and we couldn't confirm how it's enforced in 2026."
+     }
+    ]
+   },
+   {
+    "id": "e-notice",
+    "heading": "How e-notices work",
+    "blocks": [
+     {
+      "type": "steps",
+      "items": [
+       {
+        "title": "The passage is recorded",
+        "text": "Cameras and the toll system record a crossing where the toll wasn't received."
+       },
+       {
+        "title": "The owner gets an e-notice",
+        "text": "It goes to the owner listed in VAHAN by SMS, email or app, and is also shown on nhfeenotice.parivahan.gov.in and in the Rajmargyatra app."
+       },
+       {
+        "title": "Pay within 72 hours for 1×",
+        "text": "After 72 hours the amount becomes 2× the toll."
+       },
+       {
+        "title": "Disagree? Object within 72 hours",
+        "text": "Your objection must be decided within 5 days, or the claim lapses."
+       },
+       {
+        "title": "Don't ignore it",
+        "text": "If it's unpaid after 15 days with no objection pending, the dues are posted on VAHAN and vehicle-related services can be restricted. Unpaid e-notices can also get your FASTag blacklisted."
+       }
+      ]
+     },
+     {
+      "type": "rule",
+      "text": "Unpaid user fee is payable at twice the fee, or at the fee itself if paid within 72 hours of the e-notice.",
+      "source": {
+       "title": "Gazette G.S.R. 191(E) – unpaid user fee and e-notice",
+       "url": "https://egazette.gov.in/WriteReadData/2026/271032.pdf"
+      }
+     },
+     {
+      "type": "p",
+      "text": "Barrier-free (MLFF) lanes, live at several NH plazas since May 2026, use the same e-notice process when a payment fails. See [FASTag e-notice](/fastag-e-notice) and [MLFF](/mlff)."
+     }
+    ]
+   },
+   {
+    "id": "history",
+    "heading": "How the rule changed",
+    "blocks": [
+     {
+      "type": "table",
+      "head": [
+       "Period",
+       "Without a valid FASTag"
+      ],
+      "rows": [
+       [
+        "Before 15 Nov 2025",
+        "2× the toll, cash or UPI"
+       ],
+       [
+        "15 Nov 2025 – 9 Apr 2026",
+        "2× in cash, or 1.25× by UPI"
+       ],
+       [
+        "From 10 Apr 2026",
+        "1.25× by UPI, otherwise e-notice (1× within 72 hours, 2× after)"
+       ]
+      ],
+      "note": "The 2026 amendment removed the 2× cash option from the rule. News reports say plazas stopped taking cash from 10 April 2026; we didn't find an NHAI statement confirming that on the ground."
+     }
+    ]
+   }
+  ],
+  "faqs": [
+   {
+    "q": "What is the toll for a car without FASTag in 2026?",
+    "a": "From 10 April 2026, 1.25 times the toll if you pay by UPI at the plaza. Otherwise an e-notice is sent: 1× if paid within 72 hours, 2× after that."
+   },
+   {
+    "q": "Can I pay toll in cash without FASTag?",
+    "a": "The rules from 10 April 2026 no longer include a cash option at national highway plazas; payment is by FASTag or UPI, or through an e-notice."
+   },
+   {
+    "q": "My FASTag is valid but the plaza scanner didn't read it. Do I have to pay?",
+    "a": "No. If your tag is valid and has enough balance and the plaza's equipment fails, you must be allowed through free with a zero-transaction receipt."
+   },
+   {
+    "q": "What happens if I don't pay a FASTag e-notice?",
+    "a": "After 72 hours it doubles. If it's still unpaid after 15 days with no objection pending, the dues go on VAHAN and vehicle services can be restricted; your FASTag can also be blacklisted."
+   }
+  ],
+  "tools": [
+   {
+    "to": "/tools/fastag-status",
+    "label": "Check FASTag status before you drive"
+   },
+   {
+    "to": "/tools/fastag-recharge",
+    "label": "Recharge FASTag"
+   }
+  ],
+  "sources": [
+   {
+    "title": "Gazette G.S.R. 251(E)",
+    "url": "https://egazette.gov.in/WriteReadData/2026/271540.pdf",
+    "date": "2 Apr 2026"
+   },
+   {
+    "title": "Gazette G.S.R. 191(E)",
+    "url": "https://egazette.gov.in/WriteReadData/2026/271032.pdf",
+    "date": "17 Mar 2026"
+   },
+   {
+    "title": "Gazette G.S.R. 734(E)",
+    "url": "https://egazette.gov.in/WriteReadData/2025/266618.pdf",
+    "date": "3 Oct 2025"
+   },
+   {
+    "title": "NHAI press release on e-notices",
+    "url": "https://nhai.gov.in/nhai/sites/default/files/2026-03/NHAI_Press_Release_18-03-2026.pdf",
+    "date": "18 Mar 2026"
+   },
+   {
+    "title": "PIB – waiting time at toll plazas",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=1721963",
+    "date": "26 May 2021"
+   },
+   {
+    "title": "PIB – barrier-free tolling and e-notices",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2277765",
+    "date": "25 Jun 2026"
+   }
+  ],
+  "related": [
+   "fastag-blacklisted",
+   "where-to-stick-fastag",
+   "fastag-wrong-deduction-refund",
+   "toll-concessions-exemptions"
+  ],
+  "readMins": 4
+ },
+ {
+  "slug": "fastag-vehicle-class",
+  "title": "FASTag vehicle classes (VC4, VC5, VC7…) and what to do if you're overcharged",
+  "short": "FASTag vehicle classes",
+  "metaTitle": "FASTag vehicle class list: VC4, VC5, VC7, VC12 explained",
+  "description": "What VC4, VC5, VC6, VC7, VC12, VC15 and VC16 mean on a FASTag, which vehicles each covers, and what to do if your tag has the wrong class and you're charged the wrong toll.",
+  "category": "Toll rules",
+  "card": "VC4 to VC16 in one table, and how to fix a tag with the wrong class before it gets blacklisted.",
+  "published": "2026-10-15",
+  "updated": "2026-10-15",
+  "checkedAgainst": "IHMCL vehicle classification document, NHAI FAQ, NH fee notifications",
+  "lede": "The class printed on your FASTag decides which toll rate you pay. A wrong class means the wrong toll, and it can get the tag blacklisted.",
+  "quickAnswer": "The class on your FASTag tells the toll system what kind of vehicle you drive. **VC4** is for **cars, jeeps and vans** (and Tata Ace-type mini trucks); **VC5** for light commercial vehicles and mini-buses; **VC7** for 2-axle buses and trucks; **VC6** for 3-axle commercial vehicles; **VC12** for 4–6 axle trucks; **VC15** for 7+ axle trucks; **VC16** for earth-moving and construction machinery. If your tag shows the wrong class, ask your bank for a **replacement tag** of the right class.",
+  "sections": [
+   {
+    "id": "classes",
+    "heading": "The tag classes",
+    "blocks": [
+     {
+      "type": "table",
+      "head": [
+       "Tag class",
+       "Vehicles",
+       "Weight (GVW) / axles"
+      ],
+      "rows": [
+       [
+        "VC4",
+        "Car, jeep, van; Tata Ace-type mini LCV",
+        "Up to 7,500 kg"
+       ],
+       [
+        "VC5",
+        "Light commercial vehicle (2-axle), mini-bus",
+        "7,500 – 12,000 kg"
+       ],
+       [
+        "VC7",
+        "Bus (2-axle), truck (2-axle)",
+        "12,000 – 16,200 kg"
+       ],
+       [
+        "VC6",
+        "3-axle commercial: LCV, bus or truck",
+        "16,200 – 25,000 kg"
+       ],
+       [
+        "VC12",
+        "Truck with 4, 5 or 6 axles",
+        "Up to 36,600 / 45,400 / 54,200 kg"
+       ],
+       [
+        "VC15",
+        "Truck with 7 or more axles",
+        "Above 54,200 kg"
+       ],
+       [
+        "VC16",
+        "Earth-moving and heavy construction machinery",
+        "—"
+       ]
+      ],
+      "note": "From IHMCL's FASTag issuance vehicle classification document (July 2025). FASTags aren't issued for two-wheelers, three-wheelers or tractors, and two-wheelers pay no toll on national highways."
+     }
+    ]
+   },
+   {
+    "id": "fee",
+    "heading": "How the class sets your toll",
+    "blocks": [
+     {
+      "type": "p",
+      "text": "Toll rates on national highways are set per kilometre for six fee categories, and every plaza publishes its rates by category. The tag class maps your vehicle to one of them. The base rates fixed in 2007-08, which are revised every year, show how much the category matters:"
+     },
+     {
+      "type": "table",
+      "head": [
+       "Fee category",
+       "Base rate (2007-08), ₹/km"
+      ],
+      "rows": [
+       [
+        "Car / jeep / van / LMV",
+        "0.65"
+       ],
+       [
+        "LCV / LGV / mini-bus",
+        "1.05"
+       ],
+       [
+        "Bus / truck (2 axles)",
+        "2.20"
+       ],
+       [
+        "3-axle commercial",
+        "2.40"
+       ],
+       [
+        "Heavy construction / multi-axle (4–6 axles)",
+        "3.45"
+       ],
+       [
+        "Oversized (7+ axles)",
+        "4.20"
+       ]
+      ],
+      "note": "Base rates from NH fee notifications; actual toll is revised yearly and differs by plaza. Check a plaza's rates on its [toll plaza page](/sitemap)."
+     }
+    ]
+   },
+   {
+    "id": "wrong",
+    "heading": "If your tag has the wrong class",
+    "blocks": [
+     {
+      "type": "p",
+      "text": "A car tag (VC4) on a truck underpays; a truck tag on a car overpays. The plaza system flags a mismatch between the vehicle and the tag's class, and NHAI's FAQ says such a tag is liable to be blacklisted. Since 2024, new tags are issued only after checking the vehicle against VAHAN, to stop class mismatches."
+     },
+     {
+      "type": "steps",
+      "items": [
+       {
+        "title": "Check the class on your tag",
+        "text": "It's printed on the FASTag and shown in your bank's app."
+       },
+       {
+        "title": "Ask for a replacement of the correct class",
+        "text": "Banks treat this as a replacement. At Axis Bank it's the \"mismatched\" replacement, ₹100. See [replace or reissue a FASTag](/guides/fastag-replacement-reissue)."
+       },
+       {
+        "title": "Dispute any overcharge",
+        "text": "If you were charged a higher class's toll, raise a dispute with your bank for the difference. See [wrong or double deduction](/guides/fastag-wrong-deduction-refund)."
+       }
+      ]
+     },
+     {
+      "type": "warn",
+      "text": "Never use one vehicle's FASTag on another vehicle. It isn't allowed, and it can get the tag blacklisted."
+     }
+    ]
+   }
+  ],
+  "faqs": [
+   {
+    "q": "What is VC4 in FASTag?",
+    "a": "VC4 is the class for cars, jeeps and vans, and also Tata Ace-type mini trucks, with gross vehicle weight up to 7,500 kg."
+   },
+   {
+    "q": "Which FASTag class is for a truck?",
+    "a": "It depends on the axles: VC7 for a 2-axle truck, VC6 for 3 axles, VC12 for 4 to 6 axles and VC15 for 7 or more axles."
+   },
+   {
+    "q": "What happens if my FASTag has the wrong vehicle class?",
+    "a": "You may be charged the wrong toll, and the tag can be blacklisted for a class mismatch. Ask your bank for a replacement tag of the correct class."
+   },
+   {
+    "q": "Do two-wheelers need a FASTag?",
+    "a": "No. FASTags aren't issued for two-wheelers, and no toll is charged from two-wheelers on national highways."
+   }
+  ],
+  "tools": [
+   {
+    "to": "/tools/toll-calculator",
+    "label": "Estimate toll by vehicle type"
+   },
+   {
+    "to": "/tools/fastag-status",
+    "label": "Check your tag's details"
+   }
+  ],
+  "sources": [
+   {
+    "title": "IHMCL – FASTag issuance vehicle classification document",
+    "url": "https://ihmcl.co.in/wp-content/uploads/2025/07/Vehicle-Classification-Document.pdf",
+    "date": "2 Jul 2025"
+   },
+   {
+    "title": "NHAI – FAQ on FASTag",
+    "url": "https://nhai.gov.in/nhai/sites/default/files/mix_file/FAQ-FASTag.pdf",
+    "date": "Feb 2021"
+   },
+   {
+    "title": "Gazette S.O. 1157(E) – plaza fee notification",
+    "url": "https://egazette.gov.in/WriteReadData/2026/270676.pdf"
+   },
+   {
+    "title": "PIB – no user fee for two-wheelers",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2158942",
+    "date": "21 Aug 2025"
+   },
+   {
+    "title": "PIB – FASTag measures incl. VAHAN validation",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2214528",
+    "date": "14 Jan 2026"
+   }
+  ],
+  "related": [
+   "fastag-replacement-reissue",
+   "fastag-wrong-deduction-refund",
+   "toll-concessions-exemptions",
+   "fastag-blacklisted"
+  ],
+  "readMins": 3
+ },
+ {
+  "slug": "toll-concessions-exemptions",
+  "title": "Toll concessions: local monthly pass, return-trip discount and exempt vehicles",
+  "short": "Toll concessions and exemptions",
+  "metaTitle": "Toll local pass, return discount & exempt vehicles",
+  "description": "Live within 20 km of a toll plaza? Get a local monthly pass. Coming back within 24 hours? A return pass costs 1.5× one way. Plus the 50-trip pass, the local commercial discount and who is exempt from toll on national highways.",
+  "category": "Passes & discounts",
+  "card": "Local pass within 20 km, 24-hour return discount, 50-trip pass, and the official list of toll-exempt vehicles.",
+  "published": "2026-10-15",
+  "updated": "2026-10-15",
+  "checkedAgainst": "NH fee notifications, PIB releases, NHAI FAQ",
+  "lede": "Many drivers pay the full one-way toll every time without knowing about the passes that already exist. Here's every concession on national highway plazas, and how to get it.",
+  "quickAnswer": "If you **live within 20 km of a toll plaza** and use a private vehicle, you can get a **local monthly pass** with unlimited crossings of that plaza, now also on the **Rajmargyatra app** at many plazas. A **return trip within 24 hours** costs **1.5× the one-way toll**. Regular commuters can buy a **50-trip pass** valid for a month at **two-thirds** of 50 single trips. Some official and emergency vehicles are **exempt** from toll altogether.",
+  "sections": [
+   {
+    "id": "passes",
+    "heading": "Passes at a glance",
+    "blocks": [
+     {
+      "type": "table",
+      "head": [
+       "Pass",
+       "Who",
+       "Price",
+       "Valid for"
+      ],
+      "rows": [
+       [
+        "Local monthly pass",
+        "Private vehicle, owner living within 20 km of the plaza",
+        "Set per plaza, revised yearly (e.g. ₹340 for 2025-26 at one notified plaza)",
+        "Unlimited crossings of that plaza for a calendar month"
+       ],
+       [
+        "Return pass",
+        "Anyone",
+        "1.5× the one-way toll",
+        "2 one-way trips within 24 hours of payment"
+       ],
+       [
+        "50-trip pass",
+        "Anyone",
+        "2/3 of the fee for 50 single trips",
+        "50 one-way trips within 1 month"
+       ],
+       [
+        "Local commercial vehicle",
+        "Commercial vehicle registered in the plaza's district (not National Permit)",
+        "50% of the toll",
+        "Where no service road or alternative road exists"
+       ],
+       [
+        "[FASTag Annual Pass](/guides/fastag-annual-pass)",
+        "Private car, jeep, van",
+        "₹3,075",
+        "200 trips or 1 year at NH plazas"
+       ]
+      ],
+      "note": "From NH fee notifications (e.g. Gazette S.O. 1157(E), March 2026). Local pass rates differ by plaza; check the rate shown at your plaza."
+     }
+    ]
+   },
+   {
+    "id": "local",
+    "heading": "Getting a local monthly pass",
+    "blocks": [
+     {
+      "type": "list",
+      "items": [
+       "**Who qualifies:** a non-commercial vehicle whose owner lives within 20 km of the plaza.",
+       "**Where it's not available:** where the toll is collected under a closed system, or where a service road or alternative road exists.",
+       "**At the plaza:** apply at the plaza helpdesk with your Aadhaar, RC and proof of address.",
+       "**Online:** since July 2026 you can apply in the **Rajmargyatra app** at participating plazas (121 by 18 August 2026). The app checks your documents through DigiLocker and VAHAN, and your address against the 20 km radius."
+      ]
+     },
+     {
+      "type": "plaza",
+      "title": "Daily commuter",
+      "text": "If you cross the same plaza twice a day, compare the local pass rate with your monthly tolls. A local pass at that plaza also means those crossings don't count against an Annual Pass."
+     }
+    ]
+   },
+   {
+    "id": "exempt",
+    "heading": "Who is exempt from toll",
+    "blocks": [
+     {
+      "type": "p",
+      "text": "Rule 11 of the National Highways Fee Rules lists the exempt categories. In short:"
+     },
+     {
+      "type": "list",
+      "items": [
+       "**Constitutional and senior office holders**, including the President, Vice-President, Prime Minister, Governors, Chief Justice of India and Supreme Court judges, Union ministers, Chief Ministers, the Lok Sabha Speaker, High Court judges, MPs and MLAs/MLCs, the Chief Secretary of a state and Secretaries to the Government of India, plus foreign dignitaries on state visits.",
+       "**Gallantry award winners**: Param Vir Chakra, Ashok Chakra, Maha Vir Chakra, Kirti Chakra, Vir Chakra and Shaurya Chakra.",
+       "**On official duty**: Ministry of Defence vehicles, Central and State armed forces in uniform, paramilitary forces and police, and Executive Magistrates.",
+       "**Emergency and highway vehicles**: fire-fighting vehicles, ambulances, funeral vans, and NHAI or government vehicles used for highway inspection, survey, construction or operation.",
+       "**Vehicles specially designed for persons with physical disability.**"
+      ]
+     },
+     {
+      "type": "rule",
+      "text": "The exemption applies only when the vehicle is used for an official purpose; for example, army personnel commuting in private cars aren't exempt. Exempt vehicles must still carry a FASTag, issued free as an exempt tag through NHAI's authorised agency.",
+      "source": {
+       "title": "NHAI – FAQ on FASTag",
+       "url": "https://nhai.gov.in/nhai/sites/default/files/mix_file/FAQ-FASTag.pdf",
+       "date": "Feb 2021"
+      }
+     },
+     {
+      "type": "p",
+      "text": "There's no exemption for public carriers such as buses and taxis."
+     }
+    ]
+   },
+   {
+    "id": "other",
+    "heading": "Two more discounts worth knowing",
+    "blocks": [
+     {
+      "type": "list",
+      "items": [
+       "**Partly opened national expressways:** from 15 February 2026 (for one year or until fully opened), the normal NH toll is charged instead of the higher expressway rate.",
+       "**Highways being widened:** where a 2-lane road with paved shoulders is being upgraded to 4 or more lanes, users pay 50% of the earlier toll until the work is complete (MoRTH, announced January 2026)."
+      ]
+     }
+    ]
+   }
+  ],
+  "faqs": [
+   {
+    "q": "Is toll free for local residents near a toll plaza?",
+    "a": "Not free, but residents within 20 km using a private vehicle can get a local monthly pass with unlimited crossings of that plaza, at a fixed monthly rate set per plaza."
+   },
+   {
+    "q": "Is there a discount on a return journey at a toll plaza?",
+    "a": "Yes. A return pass costs 1.5 times the one-way toll and covers the return trip within 24 hours of payment."
+   },
+   {
+    "q": "How do I apply for a toll local pass online?",
+    "a": "Use the Rajmargyatra app at participating plazas; it verifies documents through DigiLocker and VAHAN and checks you live within 20 km. Otherwise apply at the plaza helpdesk with Aadhaar, RC and proof of address."
+   },
+   {
+    "q": "Who is exempt from paying toll?",
+    "a": "Categories in Rule 11 of the NH Fee Rules: senior office holders and gallantry award winners, defence, armed forces and police on official duty, fire-fighting vehicles, ambulances, funeral vans, highway vehicles on duty and vehicles specially designed for persons with disability."
+   }
+  ],
+  "tools": [
+   {
+    "to": "/tools/toll-calculator",
+    "label": "Estimate your trip toll"
+   },
+   {
+    "to": "/sitemap",
+    "label": "Find your toll plaza"
+   }
+  ],
+  "sources": [
+   {
+    "title": "Gazette S.O. 1157(E) – plaza fee notification",
+    "url": "https://egazette.gov.in/WriteReadData/2026/270676.pdf",
+    "date": "3 Mar 2026"
+   },
+   {
+    "title": "PIB – local pass and concessions (Rajya Sabha reply)",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=1845319",
+    "date": "27 Jul 2022"
+   },
+   {
+    "title": "PIB – digital local pass on Rajmargyatra",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2300851",
+    "date": "18 Aug 2026"
+   },
+   {
+    "title": "PIB – local pass documents",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2182163",
+    "date": "24 Oct 2025"
+   },
+   {
+    "title": "NHAI – FAQ on FASTag",
+    "url": "https://nhai.gov.in/nhai/sites/default/files/mix_file/FAQ-FASTag.pdf",
+    "date": "Feb 2021"
+   },
+   {
+    "title": "PIB – no exemption for public carriers",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=1983060",
+    "date": "6 Dec 2023"
+   },
+   {
+    "title": "PIB – NH rate on partly opened expressways",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2227126",
+    "date": "12 Feb 2026"
+   },
+   {
+    "title": "PIB – 50% toll during highway upgrade",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2214528",
+    "date": "14 Jan 2026"
+   }
+  ],
+  "related": [
+   "fastag-annual-pass",
+   "fastag-vehicle-class",
+   "toll-without-fastag-penalty",
+   "where-to-stick-fastag"
+  ],
+  "readMins": 4
+ }
+]

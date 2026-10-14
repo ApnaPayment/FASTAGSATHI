@@ -88,6 +88,17 @@ export default function HelpDirectoryPage() {
       <section className="py-10 bg-white">
         <div className="max-w-5xl mx-auto px-6 md:px-10 lg:px-12">
 
+          {/* In-depth guides strip: green signboards linking to /guides */}
+          <div className="mb-8 bg-[#0B6B3A] rounded-2xl p-[5px]">
+            <div className="border-[3px] border-white rounded-xl px-5 py-4 text-white flex flex-col md:flex-row md:items-center gap-3 md:justify-between">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#FFD60A]">In-depth guides</p>
+                <p className="font-display font-bold text-lg leading-snug">Annual Pass, KYV, blacklisted tags, wrong deductions, where to stick the tag and more</p>
+              </div>
+              <Link to="/guides" className="inline-flex items-center justify-center bg-white text-[#0B6B3A] font-bold rounded-full px-5 py-2 text-sm whitespace-nowrap hover:bg-[#FFD60A] hover:text-[#0A0A0A]">Read the guides</Link>
+            </div>
+          </div>
+
           {/* Search */}
           <div className="relative mb-6">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />

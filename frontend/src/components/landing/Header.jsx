@@ -14,6 +14,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 const NAV = [
   { key: "nav.howItWorks",  to: "/how-it-works" },
   { key: "nav.becomeSathi", to: "/become-a-sathi" },
+  { key: "nav.guides",      to: "/guides" },
   { key: "nav.help",        to: "/help" },
   { key: "nav.buyFastag",   to: "/buy-fastag", highlight: true },
 ];
