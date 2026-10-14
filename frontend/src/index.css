@@ -143,3 +143,17 @@ a, button { cursor: pointer; }
 /* Hide scrollbar for marquee */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Guide "At the toll plaza" tip: a printed toll receipt with torn zigzag edges top and bottom */
+.guide-receipt {
+    --zz: 8px;
+    -webkit-mask:
+        conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / calc(2 * var(--zz)) var(--zz) repeat-x,
+        conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / calc(2 * var(--zz)) var(--zz) repeat-x,
+        linear-gradient(#000 0 0) center / 100% calc(100% - 2 * var(--zz)) no-repeat;
+    mask:
+        conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / calc(2 * var(--zz)) var(--zz) repeat-x,
+        conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / calc(2 * var(--zz)) var(--zz) repeat-x,
+        linear-gradient(#000 0 0) center / 100% calc(100% - 2 * var(--zz)) no-repeat;
+    padding-block: calc(var(--zz) + 14px);
+}

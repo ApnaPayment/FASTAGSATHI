@@ -370,6 +370,81 @@ async function renderSathi(slug) {
 
 // One page that links every toll plaza (grouped by state), highway, bank, city and Sathi,
 // so each of them is a click or two from the home page instead of only from the sitemap.
+// ── FASTag guides (content lives in src/content/guides.json, shared with the React pages) ──
+const GUIDES = (() => {
+  try { return JSON.parse(fs.readFileSync(path.join(__dirname, "src", "content", "guides.json"), "utf8")); }
+  catch (e) { console.error("[guides]", e.message); return []; }
+})();
+const INLINE = /\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*]+)\*\*/g;
+const inlineHtml = (t) => esc(t).replace(INLINE, (_, label, href, bold) =>
+  label ? `<a href="${href}"${href.startsWith("/") ? "" : ' rel="noopener"'}>${label}</a>` : `<strong>${bold}</strong>`);
+const plainText = (t) => String(t || "").replace(INLINE, (_, label, _h, bold) => label || bold || "");
+function guideBlock(b) {
+  switch (b.type) {
+    case "p": return `<p>${inlineHtml(b.text)}</p>`;
+    case "list": return list(b.items.map(inlineHtml));
+    case "steps": return `<ol>${b.items.map((x) => `<li><strong>${esc(x.title)}</strong> ${inlineHtml(x.text)}</li>`).join("")}</ol>`;
+    case "table": return `<table><thead><tr>${b.head.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${b.rows.map((r) => `<tr>${r.map((c) => `<td>${inlineHtml(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>${b.note ? `<p><small>${inlineHtml(b.note)}</small></p>` : ""}`;
+    case "plaza": return `<aside><p><strong>At the toll plaza · ${esc(b.title)}:</strong> ${inlineHtml(b.text)}</p></aside>`;
+    case "rule": return `<aside><p><strong>Official rule:</strong> ${inlineHtml(b.text)}${b.source ? ` (${A(b.source.url, b.source.title)})` : ""}</p></aside>`;
+    case "warn": return `<aside><p><strong>Watch out:</strong> ${inlineHtml(b.text)}</p></aside>`;
+    case "figure": return `<figure>${b.svg}${b.caption ? `<figcaption>${esc(b.caption)}</figcaption>` : ""}</figure>`;
+    default: return "";
+  }
+}
+function renderGuide(slug) {
+  const g = GUIDES.find((x) => x.slug === slug);
+  if (!g) return NOT_FOUND;
+  const url = `${SITE}/guides/${g.slug}`;
+  const crumbs = [["Home", "/"], ["Guides", "/guides"], [g.short || g.title, `/guides/${g.slug}`]];
+  const head = headTags({
+    title: `${g.metaTitle || g.title} · ApnaFastag`, description: g.description, url, type: "article",
+    ld: [
+      { "@context": "https://schema.org", "@type": "Article", headline: g.title, description: g.description, inLanguage: "en-IN",
+        datePublished: g.published, dateModified: g.updated, mainEntityOfPage: url,
+        author: { "@type": "Organization", name: "ApnaFastag", url: SITE },
+        publisher: { "@type": "Organization", name: "ApnaFastag", logo: { "@type": "ImageObject", url: `${SITE}/logo.png` } } },
+      breadcrumbLd(crumbs),
+      g.faqs && g.faqs.length ? { "@context": "https://schema.org", "@type": "FAQPage",
+        mainEntity: g.faqs.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: plainText(f.a) } })) } : null,
+    ],
+  });
+  const related = (g.related || []).map((s) => GUIDES.find((x) => x.slug === s)).filter(Boolean);
+  const body = layout(crumbs,
+    `<article><p>${esc(g.category)} · ${g.readMins} min read · Updated ${esc(g.updated)}</p>
+     <h1>${esc(g.title)}</h1><p>${esc(g.lede)}</p>
+     <section><h2>Quick answer</h2><p>${inlineHtml(g.quickAnswer)}</p></section>
+     ${g.sections.map((s) => `<section id="${esc(s.id)}"><h2>${esc(s.heading)}</h2>${s.blocks.map(guideBlock).join("\n")}</section>`).join("\n")}
+     ${g.faqs && g.faqs.length ? `<section><h2>Questions drivers ask</h2>${g.faqs.map((f) => `<h3>${esc(f.q)}</h3><p>${inlineHtml(f.a)}</p>`).join("")}</section>` : ""}
+     ${g.tools && g.tools.length ? `<p>${g.tools.map((t) => A(t.to, t.label)).join(" · ")}</p>` : ""}
+     ${g.sources && g.sources.length ? `<section><h2>Sources we checked</h2>${list(g.sources.map((s) => `${A(s.url, s.title)}${s.date ? ` · ${esc(s.date)}` : ""}`))}</section>` : ""}
+     ${related.length ? `<section><h2>Next on this route</h2>${list(related.map((r) => A(`/guides/${r.slug}`, r.short || r.title)))}</section>` : ""}
+     <p>${A("/guides", "All FASTag guides")}</p></article>`);
+  return { head, body };
+}
+function renderGuidesHub() {
+  const url = `${SITE}/guides`;
+  const crumbs = [["Home", "/"], ["Guides", "/guides"]];
+  const head = headTags({
+    title: "FASTag guides — rules, fixes and how-tos checked against NHAI and NPCI · ApnaFastag",
+    description: "Plain-language FASTag guides: where to stick the tag, Annual Pass, KYV, blacklisted tags, wrong deductions, replacement, closing a tag and toll rules — checked against official NHAI, NPCI and bank sources.",
+    url, ld: [breadcrumbLd(crumbs), { "@context": "https://schema.org", "@type": "ItemList",
+      itemListElement: GUIDES.map((g, i) => ({ "@type": "ListItem", position: i + 1, url: `${SITE}/guides/${g.slug}`, name: g.title })) }],
+  });
+  const groups = [...new Set(GUIDES.map((g) => g.category))];
+  const body = layout(crumbs, `<h1>FASTag guides for the road ahead</h1>
+    <p>What the rules actually say and what to do at the plaza, written plainly. Every guide is checked against NHAI, NPCI and bank sources, and dated.</p>
+    ${groups.map((c) => `<h2>${esc(c)}</h2>${list(GUIDES.filter((g) => g.category === c).map((g) => `${A(`/guides/${g.slug}`, g.title)} – ${esc(g.card)}`))}`).join("\n")}`);
+  return { head, body };
+}
+function sendGuidesSitemap(res) {
+  const latest = GUIDES.map((g) => g.updated).sort().pop() || "";
+  const rows = [`  <url><loc>${SITE}/guides</loc>${latest ? `<lastmod>${latest}</lastmod>` : ""}<priority>0.80</priority><changefreq>weekly</changefreq></url>`,
+    ...GUIDES.map((g) => `  <url><loc>${SITE}/guides/${g.slug}</loc><lastmod>${g.updated}</lastmod><priority>0.85</priority><changefreq>monthly</changefreq></url>`)];
+  res.writeHead(200, { "Content-Type": "application/xml", "Cache-Control": "public, max-age=0, must-revalidate" });
+  res.end(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${rows.join("\n")}\n</urlset>`);
+}
+
 async function renderSitemap() {
   const [states, plazas, highways, banks, cities, sathis] = await Promise.all([
     api("/api/states"), api("/api/plazas"), api("/api/highways"), api("/api/banks"),
@@ -396,6 +471,7 @@ async function renderSitemap() {
     `<h1>ApnaFastag sitemap</h1>
      <p>All ${plazas.length} toll plazas, grouped by state, plus highways, FASTag banks, cities and verified Sathis.
         Looking for answers instead? Try the ${A("/help", "FASTag Help Center")} or the ${A("/tools/fastag-status", "FASTag status check")}.</p>
+     ${section("FASTag guides", GUIDES.map((g) => A(`/guides/${g.slug}`, g.title)))}
      ${section("Tools", [A("/tools/fastag-status", "FASTag status check"), A("/tools/fastag-balance-check", "FASTag balance check"),
         A("/tools/fastag-recharge", "FASTag recharge"), A("/tools/toll-calculator", "Toll calculator"), A("/tools/dispute-tracker", "Dispute tracker"),
         A("/buy-fastag", "Buy a FASTag"), A("/find", "Find a Sathi near you")])}
@@ -481,6 +557,14 @@ async function handlePage(req, res, pathname) {
   // Every data-page slug is lowercase; old links like /state/Haryana go to the real page.
   const upper = decoded.match(/^\/(help|toll|state|city|sathi|bank|highway)\/([^/]*[A-Z][^/]*)$/);
   if (upper) { redirect(req, res, `/${upper[1]}/${upper[2].toLowerCase()}`); return; }
+
+  if (decoded === "/guides" || decoded.startsWith("/guides/")) {
+    const slug = decoded === "/guides" ? null : decoded.slice("/guides/".length);
+    const out = slug === null ? renderGuidesHub() : renderGuide(slug);
+    if (out === NOT_FOUND) { sendNotFound(res, decoded); return; }
+    sendHtml(res, 200, renderPage(out.head, out.body));
+    return;
+  }
 
   if (decoded === "/sitemap") {
     let out = null;
@@ -596,7 +680,7 @@ async function serveSitemapIndex(req, res) {
   const r = await fetchBackend("/api/help?limit=1");
   const total = ok(r) ? Number(r.total) : NaN;
   if (!(total > 0)) { serveAsset(req, res, "/sitemap.xml"); return; }   // backend down: build copy
-  const files = [...SITEMAP_PARTS.map((p) => `sitemap-${p}.xml`),
+  const files = [...SITEMAP_PARTS.map((p) => `sitemap-${p}.xml`), ...(GUIDES.length ? ["sitemap-guides.xml"] : []),
                  ...Array.from({ length: Math.ceil(total / 1000) }, (_, i) => `sitemap-help-${i + 1}.xml`)];
   res.writeHead(200, { "Content-Type": "application/xml", "Cache-Control": "public, max-age=0, must-revalidate" });
   res.end(`<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`
@@ -616,6 +700,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // 1b. Sitemap sub-files come from the backend (live data), served at the root path.
+  if (pathname === "/sitemap-guides.xml") { sendGuidesSitemap(res); return; }
   const sitemapProxy = pathname.match(/^\/(sitemap-[a-z0-9-]+\.xml)$/);
   if (sitemapProxy) {
     req.url = `/api/${sitemapProxy[1]}`;
