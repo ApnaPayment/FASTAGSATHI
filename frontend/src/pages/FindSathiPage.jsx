@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import PageHero from "@/components/layout/PageHero";
-import SEO from "@/components/seo/SEO";
+import SEO, { orgSchema } from "@/components/seo/SEO";
 import { MapPin, Search, Compass, AlertCircle, Star, BadgeCheck, ArrowRight, Milestone, Siren } from "lucide-react";
 import { motion } from "framer-motion";
 import MapView from "@/components/map/MapView";
@@ -12,7 +12,7 @@ import { haversineKm, formatDistance } from "@/lib/geo";
 import { track } from "@/lib/analytics";
 import { sathiApi, plazaApi } from "@/lib/api";
 
-const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+const BACKEND = "";
 const fullUrl = (url) => { if (!url) return ""; if (url.startsWith("http") || url.startsWith("data:")) return url; if (BACKEND.includes("localhost") && !window.location.hostname.includes("localhost")) return ""; return `${BACKEND}${url}`; };
 
 const CITY_FALLBACKS = [
@@ -64,6 +64,19 @@ export default function FindSathiPage() {
         title="Find a Sathi near you"
         description="See verified Fastag Sathis around your location on a live map. Pick by plaza or directly by agent. Login with mobile OTP to start contacting."
         path="/find"
+        jsonLd={[
+          orgSchema,
+          {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            url: "https://apnafastag.com",
+            potentialAction: {
+              "@type": "SearchAction",
+              target: { "@type": "EntryPoint", urlTemplate: "https://apnafastag.com/find?q={search_term_string}" },
+              "query-input": "required name=search_term_string",
+            },
+          },
+        ]}
       />
 
       <PageHero

@@ -45,6 +45,12 @@ import SathiProfilePage from "@/pages/SathiProfilePage";
 import MyJobsPage from "@/pages/MyJobsPage";
 import SathiDashboardPage from "@/pages/SathiDashboardPage";
 import AdminPage from "@/pages/AdminPage";
+import MLFFPage from "@/pages/MLFFPage";
+import ENoticePage from "@/pages/ENoticePage";
+import JoinPage from "@/pages/JoinPage";
+import SitemapPage from "@/pages/SitemapPage";
+import GuidesHubPage from "@/pages/GuidesHubPage";
+import GuidePage from "@/pages/GuidePage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
 function RouteTracker() {
@@ -89,11 +95,21 @@ function App() {
 
             {/* Coverage + programmatic SEO */}
             <Route path="coverage" element={<CoveragePage />} />
+            <Route path="sitemap" element={<SitemapPage />} />
+            <Route path="guides" element={<GuidesHubPage />} />
+            <Route path="guides/:slug" element={<GuidePage />} />
             <Route path="toll/:plazaSlug" element={<PlazaPage />} />
             <Route path="state/:stateSlug" element={<StatePage />} />
             <Route path="bank/:bankSlug" element={<BankPage />} />
             <Route path="highway/:highwaySlug" element={<HighwayPage />} />
             <Route path="city/:citySlug" element={<CityPage />} />
+
+            {/* FASTag guides */}
+            <Route path="mlff" element={<MLFFPage />} />
+            <Route path="fastag-e-notice" element={<ENoticePage />} />
+
+            {/* Sathi onboarding */}
+            <Route path="join" element={<JoinPage />} />
 
             {/* Content */}
             <Route path="about" element={<AboutPage />} />

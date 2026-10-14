@@ -9,6 +9,7 @@ import Features from "./Features";
 import TrustSection from "./TrustSection";
 import BecomeSathi from "./BecomeSathi";
 import Testimonials from "./Testimonials";
+import BrowseByState from "./BrowseByState";
 import FAQ from "./FAQ";
 import CTABanner from "./CTABanner";
 
@@ -53,6 +54,7 @@ export default function LandingPage() {
       <TrustSection />
       <BecomeSathi />
       <Testimonials />
+      <BrowseByState />
       <FAQ />
       <CTABanner />
     </div>

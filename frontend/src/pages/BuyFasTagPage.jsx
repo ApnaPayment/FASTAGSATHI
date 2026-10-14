@@ -5,7 +5,7 @@ import {
   CheckCircle2, ChevronRight, Truck, ShieldCheck, Clock, Star,
   CreditCard, MapPin, Phone, Zap, BadgeCheck, ChevronDown,
 } from "lucide-react";
-import SEO from "@/components/seo/SEO";
+import SEO, { howToSchema, faqSchema } from "@/components/seo/SEO";
 import { fastagOrderApi } from "@/lib/api";
 import { BANKS as SEED_BANKS } from "@/data/seed";
 import { track } from "@/lib/analytics";
@@ -61,9 +61,17 @@ export default function BuyFasTagPage() {
     <>
       <SEO
         title="Buy FASTag Online — Doorstep Delivery & Activation | ApnaFastag"
-        description="Order FASTag online from SBI, HDFC, ICICI, Axis & more. A verified Sathi delivers and activates it at your door. Same-day activation in 20+ cities."
+        description="Order FASTag online from SBI, HDFC, ICICI, Axis & more. A verified Sathi delivers and activates it at your door. Same-day activation in 20+ cities across India."
         path="/buy-fastag"
         keywords="buy fastag online, fastag doorstep delivery, fastag activation at home, new fastag apply, fastag sathi activation"
+        jsonLd={[
+          howToSchema({
+            name: "How to buy and activate FASTag online",
+            description: "Order FASTag online with doorstep delivery and activation by a verified Sathi.",
+            steps: HOW_STEPS.map(s => ({ name: s.title, text: s.body })),
+          }),
+          faqSchema(FAQ.map(f => ({ q: f.q, a: f.a }))),
+        ]}
       />
 
       {/* ── Hero ── */}

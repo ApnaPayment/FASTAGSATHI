@@ -14,7 +14,9 @@ export default function PlazaPage() {
   const [plaza, setPlaza] = useState(null);
   const [state, setState] = useState(null);
   const [nearby, setNearby] = useState([]);
+  const [guides, setGuides] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -25,17 +27,29 @@ export default function PlazaPage() {
 
         const [stateRes, nearbyRes] = await Promise.all([
           stateApi.get(p.state),
-          plazaApi.byState(p.state),
+          plazaApi.nearby(plazaSlug).catch(() => null),
         ]);
         setState(stateRes.data);
-        setNearby((nearbyRes.data || []).filter((x) => x.slug !== plazaSlug).slice(0, 3));
-      } catch {
+        if (nearbyRes) {
+          setNearby((nearbyRes.data.plazas || []).slice(0, 6));
+          setGuides(nearbyRes.data.guides || []);
+        } else {
+          const byState = await plazaApi.byState(p.state);
+          setNearby((byState.data || []).filter((x) => x.slug !== plazaSlug).slice(0, 3));
+        }
+      } catch (err) {
+        const is404 = err?.response?.status === 404;
         const fallbackPlaza = PLAZAS.find((p) => p.slug === plazaSlug);
-        setPlaza(fallbackPlaza || null);
         if (fallbackPlaza) {
+          setPlaza(fallbackPlaza);
           setState(STATES.find((s) => s.slug === fallbackPlaza.state) || null);
           setNearby(PLAZAS.filter((p) => p.state === fallbackPlaza.state && p.slug !== plazaSlug).slice(0, 3));
+        } else if (is404) {
+          // Plaza genuinely doesn't exist — noindex is correct
+          setNotFound(true);
         }
+        // Non-404 error (network/proxy issue) with no seed fallback:
+        // leave plaza null but don't set notFound so we don't noindex
       } finally {
         setLoading(false);
       }
@@ -54,20 +68,27 @@ export default function PlazaPage() {
     return <section className="pt-40 pb-32 text-center"><p className="text-[#4B5563] text-lg">Loading…</p></section>;
   }
 
-  if (!plaza) {
+  if (notFound) {
     return (
       <section className="pt-40 pb-32 text-center px-6">
+        <SEO title="Toll plaza not found · ApnaFastag" description="This toll plaza page does not exist." path={`/toll/${plazaSlug}`} noindex />
         <h1 className="font-display font-black text-4xl">Plaza not found</h1>
         <Link to="/coverage" className="text-[#FF6B00] font-bold mt-4 inline-block">Back to coverage →</Link>
       </section>
     );
   }
 
+  if (!plaza) {
+    return <section className="pt-40 pb-32 text-center"><p className="text-[#4B5563] text-lg">Loading…</p></section>;
+  }
+
   return (
     <>
       <SEO
         title={`${plaza.name} (${plaza.highway}) toll rates 2026 · ApnaFastag`}
-        description={`${plaza.name} on ${plaza.highway} at ${plaza.city}: live toll rates (car ₹${plaza.carRate}, truck ₹${plaza.truckRate}), top complaint trends, and verified Sathis ready to help on-spot.`}
+        description={plaza.ratesKnown === false
+          ? `${plaza.name} toll plaza near ${plaza.city}: location, FASTag help guides, and the nearest toll plazas.`
+          : `${plaza.name} on ${plaza.highway} at ${plaza.city}: car ₹${plaza.carRate}, truck ₹${plaza.truckRate}, FASTag dispute help and nearby toll plazas.`}
         path={`/toll/${plaza.slug}`}
         keywords={`${plaza.name} toll, ${plaza.highway} toll rates, ${plaza.city} fastag help, ${plaza.name} dispute, ${plaza.name} mischarge`}
         jsonLd={[
@@ -95,8 +116,8 @@ export default function PlazaPage() {
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-6 md:px-10 lg:px-12 grid md:grid-cols-4 gap-5">
           {[
-            { Icon: IndianRupee, l: "Car rate", v: `₹${plaza.carRate}`, c: "#FF6B00" },
-            { Icon: IndianRupee, l: "Truck rate", v: `₹${plaza.truckRate}`, c: "#0A0A0A" },
+            { Icon: IndianRupee, l: "Car rate", v: plaza.ratesKnown === false ? "See board" : `₹${plaza.carRate}`, c: "#FF6B00" },
+            { Icon: IndianRupee, l: "Truck rate", v: plaza.ratesKnown === false ? "See board" : `₹${plaza.truckRate}`, c: "#0A0A0A" },
             { Icon: Clock, l: "Avg lane wait", v: plaza.avgWait || "—", c: "#059669" },
             { Icon: AlertCircle, l: "Monthly issues", v: (plaza.monthlyComplaints || 0).toLocaleString("en-IN"), c: "#DC2626" },
           ].map((s) => (
@@ -120,7 +141,9 @@ export default function PlazaPage() {
               <div className="text-xs uppercase font-bold tracking-widest text-[#DC2626]">Top complaint</div>
               <div className="font-display font-bold text-2xl mt-2">{plaza.topIssue}</div>
               <p className="text-[#4B5563] mt-3">
-                Of <strong>{(plaza.monthlyComplaints || 0).toLocaleString("en-IN")}</strong> issues reported here this month, the majority are tied to <em>{plaza.topIssue?.toLowerCase()}</em>. Our local Sathis are trained specifically on this plaza's escalation paths with NHAI and the issuing banks.
+                {plaza.monthlyComplaints > 0
+                  ? <>Of <strong>{plaza.monthlyComplaints.toLocaleString("en-IN")}</strong> issues reported here this month, the majority are tied to <em>{plaza.topIssue?.toLowerCase()}</em>.</>
+                  : <>The most common problem drivers report at toll plazas like this one is <em>{plaza.topIssue?.toLowerCase()}</em>.</>} Our local Sathis are trained specifically on this plaza's escalation paths with NHAI and the issuing banks.
               </p>
               <Link to="/find" onClick={() => track("plaza_ping_sathi", { plaza: plaza.slug })} className="mt-5 inline-flex items-center gap-2 bg-[#FF6B00] text-white font-bold px-6 py-3 rounded-full shadow-[0_4px_0_#0A0A0A]">
                 Ping a Sathi at {plaza.name} <ArrowRight className="w-4 h-4" />
@@ -140,17 +163,31 @@ export default function PlazaPage() {
         </div>
       </section>
 
+      {guides.length > 0 && (
+        <section className="py-16 bg-white">
+          <div className="max-w-7xl mx-auto px-6 md:px-10 lg:px-12">
+            <h2 className="font-display font-black text-2xl md:text-3xl mb-6">FASTag help at {plaza.name}</h2>
+            <div className="grid md:grid-cols-3 gap-5">
+              {guides.map((g) => (
+                <Link key={g.slug} to={`/help/${g.slug}`} className="bg-[#F8F9FA] border-2 border-[#0A0A0A] rounded-2xl p-5 hover:-translate-y-1 transition-transform font-display font-bold">
+                  {g.title}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
       {/* Nearby plazas */}
       {nearby.length > 0 && (
         <section className="py-16 bg-white">
           <div className="max-w-7xl mx-auto px-6 md:px-10 lg:px-12">
-            <h2 className="font-display font-black text-2xl md:text-3xl mb-6">Nearby plazas in {state?.name}</h2>
+            <h2 className="font-display font-black text-2xl md:text-3xl mb-6">Toll plazas near {plaza.name}</h2>
             <div className="grid md:grid-cols-3 gap-5">
               {nearby.map((p) => (
                 <Link key={p.slug} to={`/toll/${p.slug}`} className="bg-[#F8F9FA] border-2 border-[#0A0A0A] rounded-2xl p-5 hover:-translate-y-1 transition-transform">
                   <div className="text-xs font-bold uppercase tracking-widest text-[#FF6B00]">{p.highway}</div>
                   <div className="font-display font-bold text-lg mt-1">{p.name}</div>
-                  <div className="text-sm text-[#4B5563]">{p.city}</div>
+                  <div className="text-sm text-[#4B5563]">{p.city}{typeof p.km === "number" ? ` · ${p.km < 1 ? "<1" : Math.round(p.km)} km` : ""}</div>
                 </Link>
               ))}
             </div>

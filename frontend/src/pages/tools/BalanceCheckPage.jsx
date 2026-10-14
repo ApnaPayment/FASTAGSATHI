@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import PageHero from "@/components/layout/PageHero";
 import PageCTA from "@/components/layout/PageCTA";
-import SEO, { webAppSchema } from "@/components/seo/SEO";
+import SEO, { webAppSchema, faqSchema } from "@/components/seo/SEO";
 import { BANKS } from "@/data/seed";
 import { MessageSquare, RefreshCw } from "lucide-react";
 import { track } from "@/lib/analytics";
@@ -27,11 +27,15 @@ export default function BalanceCheckPage() {
         description="Check your FASTag balance instantly. Works for SBI, Paytm, ICICI, HDFC, Axis. Enter vehicle number, get latest balance. No app install needed."
         path="/tools/fastag-balance-check"
         keywords="fastag balance check, fastag balance, sbi fastag balance, paytm fastag balance, icici fastag balance, hdfc fastag balance"
-        jsonLd={webAppSchema({
-          name: "FASTag Balance Checker",
-          description: "Free FASTag balance lookup across all major Indian banks.",
-          url: "https://apnafastag.com/tools/fastag-balance-check",
-        })}
+        jsonLd={[
+          webAppSchema({ name: "FASTag Balance Checker", description: "Free FASTag balance lookup across all major Indian banks.", url: "https://apnafastag.com/tools/fastag-balance-check" }),
+          faqSchema([
+            { q: "How do I check my FASTag balance?", a: "Enter your vehicle registration number, select your issuing bank, and click Check Balance. Your current FASTag wallet balance is shown instantly." },
+            { q: "Which banks are supported for FASTag balance check?", a: "SBI, Paytm, ICICI, HDFC, Axis, Kotak, Yes Bank, IDFC First, and all other NHAI-registered FASTag banks." },
+            { q: "Is the FASTag balance check free?", a: "Yes, completely free. No registration or login needed." },
+            { q: "Why is my FASTag balance showing zero even after recharge?", a: "Recharges can take up to 4 hours to reflect. If it's been longer, ping a Sathi — recharge failures are one of the most common FASTag issues." },
+          ]),
+        ]}
       />
       <PageHero
         eyebrow="Free tool"

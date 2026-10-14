@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import PageCTA from "@/components/layout/PageCTA";
-import SEO, { webAppSchema } from "@/components/seo/SEO";
+import SEO, { webAppSchema, faqSchema } from "@/components/seo/SEO";
 import { track } from "@/lib/analytics";
 import { toolsApi } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
@@ -8,6 +8,22 @@ import {
   Search, CheckCircle2, XCircle, AlertTriangle, Car, RefreshCw,
   CreditCard, Building2, CalendarDays, Tag, ArrowRight,
 } from "lucide-react";
+
+const STATUS_MEANINGS = [
+  ["Active", "The tag works at every toll plaza on the FASTag network."],
+  ["Low balance", "The wallet balance is too low, so tolls fail. Recharge the tag and it works again within minutes."],
+  ["Blacklisted", "The issuing bank has blocked the tag, most often for pending KYC or vehicle details that don't match the RC. The bank can tell you the exact reason and what to submit."],
+  ["Hotlisted", "The tag has been flagged by the bank, for example after a complaint or a dispute. Call the issuing bank to reactivate it."],
+  ["Closed / replaced", "The tag was closed or replaced with a new one. It no longer works; only the vehicle's current tag can be used."],
+  ["More than one active tag", "NHAI's One Vehicle One FASTag rule allows a single active tag per vehicle. Ask the bank of the older tag to close it."],
+];
+
+const FAQS = [
+  { q: "How do I check if my FASTag is active or blacklisted?", a: "Enter your vehicle number above. The result lists every FASTag linked to the vehicle, with its bank, vehicle class, issue date and current status: active, low balance, blacklisted, hotlisted or closed." },
+  { q: "Why is my FASTag blacklisted?", a: "The usual reasons are incomplete KYC, a negative balance, or vehicle details that don't match the RC. The issuing bank can confirm the exact reason." },
+  { q: "Why does my vehicle show two FASTags?", a: "Usually a new tag was bought without closing the old one. Only one tag should be active per vehicle, so ask the bank of the older tag to close it." },
+  { q: "Can a blacklisted FASTag be reactivated?", a: "Yes. Clear the reason first, for example complete KYC with the issuing bank or recharge a negative balance, and the bank lifts the block." },
+];
 
 export default function FasTagStatusPage() {
   const [vehicle, setVehicle] = useState("");
@@ -30,14 +46,7 @@ export default function FasTagStatusPage() {
     track("fastag_status_check", { vehicle_len: v.length });
     try {
       const res = await toolsApi.fastagStatus(v);
-      const data = res.data;
-      data.tags = [...data.tags].sort((a, b) => {
-        if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
-        const dateA = new Date(a.issue_date.split("-").reverse().join("-"));
-        const dateB = new Date(b.issue_date.split("-").reverse().join("-"));
-        return dateB - dateA;
-      });
-      setResult(data);
+      setResult(res.data);
     } catch (err) {
       const msg = err?.response?.data?.detail || "Could not fetch status. Please try again.";
       setError(msg);
@@ -53,11 +62,10 @@ export default function FasTagStatusPage() {
         description="Check your FASTag status instantly by vehicle number. See if your tag is active, blacklisted, low balance, or KYC pending. Works for all banks."
         path="/tools/fastag-status"
         keywords="fastag status check, fastag vehicle number check, fastag blacklist check, fastag active status"
-        jsonLd={webAppSchema({
-          name: "FASTag Status Checker",
-          description: "Free FASTag status lookup by vehicle number.",
-          url: "https://apnafastag.com/tools/fastag-status",
-        })}
+        jsonLd={[
+          webAppSchema({ name: "FASTag Status Checker", description: "Free FASTag status lookup by vehicle number.", url: "https://apnafastag.com/tools/fastag-status" }),
+          faqSchema(FAQS),
+        ]}
       />
 
       <section className="pt-28 pb-10 bg-[#F8F9FA]">
@@ -129,6 +137,12 @@ export default function FasTagStatusPage() {
                     <p className="text-xs font-bold text-[#4B5563] uppercase tracking-widest px-1">
                       {result.tags.length} tag{result.tags.length > 1 ? "s" : ""} found for {result.vehicle}
                     </p>
+                    {(result.warnings || []).map((w) => (
+                      <div key={w} className="flex items-start gap-2 bg-[#FFFBEB] border-2 border-[#F59E0B] rounded-2xl px-4 py-3 text-sm text-[#92400E]">
+                        <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                        <span>{w}</span>
+                      </div>
+                    ))}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {result.tags.map((tag, i) => (
                         <TagCard key={i} tag={tag} />
@@ -137,8 +151,15 @@ export default function FasTagStatusPage() {
                   </>
                 )}
 
+                {/* Low balance: recharge fixes it */}
+                {result.tags.some((t) => t.status === "Low balance") && (
+                  <a href="/tools/fastag-recharge" className="flex items-center justify-between gap-2 bg-[#FF6B00] text-white font-bold px-5 py-4 rounded-3xl hover:bg-[#E66000] transition-colors">
+                    Recharge this FASTag now <ArrowRight className="w-4 h-4" />
+                  </a>
+                )}
+
                 {/* CTA for problem tags */}
-                {result.tags.some((t) => !t.is_active) && (
+                {result.tags.some((t) => !t.is_active && t.status !== "Closed / replaced") && (
                   <div className="bg-[#0A0A0A] text-white rounded-3xl p-6">
                     <h3 className="font-display font-bold text-lg mb-3">Need help resolving this?</h3>
                     <div className="space-y-2 mb-4">
@@ -161,6 +182,29 @@ export default function FasTagStatusPage() {
               </motion.div>
             )}
           </AnimatePresence>
+        </div>
+      </section>
+
+      <section className="py-12 bg-white">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6">
+          <h2 className="font-display font-black text-2xl mb-4">What each FASTag status means</h2>
+          <dl className="space-y-3">
+            {STATUS_MEANINGS.map(([term, text]) => (
+              <div key={term} className="border-2 border-[#E5E7EB] rounded-2xl px-4 py-3">
+                <dt className="font-bold text-[#0A0A0A]">{term}</dt>
+                <dd className="text-sm text-[#4B5563] mt-1">{text}</dd>
+              </div>
+            ))}
+          </dl>
+          <h2 className="font-display font-black text-2xl mt-10 mb-4">Frequently asked questions</h2>
+          <div className="space-y-4">
+            {FAQS.map((f) => (
+              <div key={f.q}>
+                <h3 className="font-bold text-[#0A0A0A]">{f.q}</h3>
+                <p className="text-sm text-[#4B5563] mt-1">{f.a}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -194,9 +238,14 @@ function TagCard({ tag }) {
       <div className="bg-white px-4 py-4 grid grid-cols-2 gap-3">
         <Detail icon={Building2} label="Issuing Bank" value={tag.bank} />
         <Detail icon={Tag} label="Tag ID" value={tag.tag_id} mono truncate />
-        <Detail icon={Car} label="Vehicle Class" value={tag.vehicle_class} />
-        <Detail icon={CalendarDays} label="Issue Date" value={tag.issue_date} />
+        <Detail icon={Car} label="Vehicle Class" value={tag.vehicle_type ? `${tag.vehicle_class} · ${tag.vehicle_type}` : tag.vehicle_class} truncate />
+        <Detail icon={CalendarDays} label="Issue Date" value={tag.issue_date || "—"} />
       </div>
+      {tag.advice && (
+        <div className="bg-white px-4 pb-4 -mt-1 text-sm text-[#4B5563]">
+          <span className="font-bold text-[#0A0A0A]">What to do: </span>{tag.advice}
+        </div>
+      )}
     </div>
   );
 }

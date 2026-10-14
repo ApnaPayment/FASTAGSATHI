@@ -10,7 +10,7 @@ import {
   Loader2, AlertCircle, User, CheckCheck,
 } from "lucide-react";
 
-const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+const BACKEND = "";
 function fullUrl(url) {
   if (!url) return "";
   if (url.startsWith("http") || url.startsWith("data:")) return url;
